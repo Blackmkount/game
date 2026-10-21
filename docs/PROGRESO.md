@@ -4,7 +4,8 @@
 
 - **Fase actual:** 1. Simulación, en curso. Por pedido del dueño se adelantó el estilo visual de la Fase 2.
 - **Diseño:** GDD versión 2.1 y guía de estilo en `docs/ESTILO.md`.
-- **Siguiente paso:** tarea 3 de la Fase 1, tienda y envíos: que el botón "Comprar" funcione. La tarea 2 quedó adelantada en parte (estado, reloj y niveles); le falta el azar reproducible, que se completa cuando haga falta en la tarea 5.
+- **Ruta nueva propuesta:** `docs/RUTA.md` reorganiza todo el proyecto en 8 fases (0 a 7) y da prioridad al ciclo jugable, los controles, el game feel y la UX/UI. **Está pendiente de aprobación**: mientras tanto valen la tabla y el plan de abajo.
+- **Siguiente paso:** que el dueño responda las decisiones de la sección 11 de `docs/RUTA.md`. Si aprueba la ruta, se actualiza el GDD y se empieza la tarea 2 de la nueva Fase 1, controles del mundo (cámara y tocar objetos). Si no, se sigue con la tarea 3 del plan actual, tienda y envíos.
 
 | Fase | Estado |
 |---|---|
@@ -112,3 +113,26 @@ Cada tarea conecta su lógica con la interfaz que ya existe. Por ejemplo, la tar
 - La partida no se guarda todavía: cada vez que se abre, empieza de nuevo el día 1.
 - El modelo de la Bóveda P1 es muy simple (una caja con ventana); se mejorará con el resto del arte.
 
+
+### 2026-10-21 — Ruta de desarrollo por fases (propuesta)
+
+**Pedido del dueño:** un plan de acción para diseñar y mejorar el juego por fases, con variables de la vida real (precios, tiempos, máquinas) y empezando por el contenido, la jugabilidad, el game feel, los controles de movimiento y acciones y la UX/UI.
+
+**Qué se hizo**
+- `docs/RUTA.md`: ruta completa en 8 fases (0 a 7), con 35 tareas hasta la publicación. Cada tarea dice qué se podrá probar en el teléfono. La ruta incluye:
+  - el diagnóstico de la versión actual, hecho con capturas de todas las pantallas;
+  - qué se toma de la vida real y qué se comprime;
+  - el diseño de los controles (cámara, tocar objetos y personaje que camina);
+  - el catálogo de game feel;
+  - los cambios de UX/UI, entre ellos una navegación nueva;
+  - las metas de contenido y de ritmo;
+  - las decisiones que necesita el dueño.
+- `docs/REFERENCIAS.md`: nueva sección "Datos reales para el diseño", con fuentes: materiales e insumos para después del MVP, velocidad, fallos, precios de venta y cómo cobra un taller, electricidad, mantenimiento, humedad, impresión por lotes y envíos a Latinoamérica.
+- Enlaces a la ruta en `README.md` y `CLAUDE.md`.
+
+**Verificado**
+- Solo cambió documentación. `check.sh` y `run_tests.sh` pasan (50 pruebas).
+- Con la fórmula de precios de un taller real, los pagos actuales de `data/orders.json` quedan dentro de lo real (`docs/RUTA.md`, sección 3).
+
+**Pendiente**
+- El dueño debe responder las decisiones de la sección 11 de `docs/RUTA.md`. Hasta entonces no se cambian el GDD ni el plan de la Fase 1.

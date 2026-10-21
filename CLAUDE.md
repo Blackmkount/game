@@ -4,6 +4,7 @@ Juego móvil 3D de gestión (tycoon) para Android e iOS: un joven emprendedor em
 
 - **Qué es el juego:** `docs/GDD.md` (fuente de verdad del diseño).
 - **En qué vamos:** `docs/PROGRESO.md` (léelo antes de empezar cualquier tarea).
+- **Hacia dónde vamos:** `docs/RUTA.md` (fases, tareas y su orden).
 - **Por qué se decidió algo técnico:** `docs/DECISIONES.md`.
 - **Cómo se ve:** `docs/ESTILO.md` (guía de estilo visual). Todo lo visual nuevo debe seguirla.
 
