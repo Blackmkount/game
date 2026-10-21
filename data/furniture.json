@@ -1,5 +1,5 @@
 [
-	{"id": "escritorio", "name_key": "FURNITURE_ESCRITORIO", "purchasable": false, "price": 0, "unlock_level": 1, "shipping_days": [0, 0], "floor_slots": 1, "printer_slots": 1, "storage_grams": 0, "reliability_bonus": 0.0, "max_owned": 1},
+	{"id": "mesa_computador", "name_key": "FURNITURE_MESA_COMPUTADOR", "purchasable": false, "price": 0, "unlock_level": 1, "shipping_days": [0, 0], "floor_slots": 1, "printer_slots": 0, "storage_grams": 0, "reliability_bonus": 0.0, "max_owned": 1},
 	{"id": "mesa_auxiliar", "name_key": "FURNITURE_MESA_AUXILIAR", "purchasable": true, "price": 25, "unlock_level": 1, "shipping_days": [3, 6], "floor_slots": 1, "printer_slots": 1, "storage_grams": 0, "reliability_bonus": 0.0, "max_owned": 0},
 	{"id": "mesa_trabajo", "name_key": "FURNITURE_MESA_TRABAJO", "purchasable": true, "price": 120, "unlock_level": 2, "shipping_days": [3, 6], "floor_slots": 1, "printer_slots": 2, "storage_grams": 0, "reliability_bonus": 0.0, "max_owned": 0},
 	{"id": "estanteria_metalica", "name_key": "FURNITURE_ESTANTERIA_METALICA", "purchasable": true, "price": 150, "unlock_level": 3, "shipping_days": [3, 6], "floor_slots": 1, "printer_slots": 3, "storage_grams": 0, "reliability_bonus": 0.0, "max_owned": 0},

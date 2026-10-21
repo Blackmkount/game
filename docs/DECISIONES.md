@@ -81,3 +81,43 @@ Registro de decisiones técnicas importantes: fecha, decisión y motivo. Las má
 ### Los datos se incluyen explícitamente en la exportación
 **Decisión:** el preset Web tiene `include_filter = "data/*.json"`.
 **Motivo:** garantiza que los JSON viajen en el paquete del juego aunque Godot no los considere recursos. Se verificó que `index.pck` los contiene.
+
+---
+
+## 2026-10-21 — Adelanto de la Fase 2: estilo visual y escena inicial
+
+### Pixel art hecho con 3D a media resolución
+**Decisión:** el estilo pixel art de la imagen de referencia se logra con el mismo mundo 3D de formas básicas, dibujado en un `SubViewport` a la mitad de la resolución con filtro `NEAREST`, sombreado por bandas (`DIFFUSE_TOON`), sombras duras y un contorno de 1 píxel.
+**Motivo:** pasar a pixel art 2D dibujado a mano obligaría a dibujar cada objeto en varias poses y ángulos, sin un artista en el equipo. Con esta técnica, cualquier objeto nuevo armado con `PropBuilder` sale automáticamente en el mismo estilo, se puede animar (la pieza que "crece" capa a capa) y se conserva la arquitectura 3D de `CLAUDE.md`. Además, dibujar a media resolución es más liviano para los teléfonos de gama baja.
+
+### Contorno con "inverted hull"
+**Decisión:** el contorno se dibuja con una segunda pasada de material (`outline.gdshader`) que agranda la forma y pinta solo su cara trasera.
+**Motivo:** un contorno por posprocesado necesitaría texturas de profundidad y de normales que el renderizador Compatibility no ofrece completas. Esta técnica funciona en web y en móviles de gama baja. A cambio, cada objeto se dibuja dos veces; para una habitación de unas 100 piezas es aceptable. Más adelante se puede usar `MultiMesh` si hace falta.
+
+### Texturas pixel art generadas por código
+**Decisión:** madera, ladrillo, ventana y pantallas se generan en `PixelTextures` con una paleta fija y azar con semilla fija.
+**Motivo:** no hacen falta archivos de imagen ni licencias, todas siguen la misma paleta y salen idénticas en cada ejecución.
+
+### Interfaz armada por código con un tema común
+**Decisión:** la interfaz se construye por código con `UiTheme` (colores, paneles, botones, barras) y `UiKit` (atajos). No se usan escenas `.tscn` para cada pantalla.
+**Motivo:** garantiza que todas las pantallas usen exactamente el mismo estilo, es más fácil de revisar en un PR y se puede probar con GUT. La escena principal (`main.tscn`) solo define la estructura: la vista 3D y el HUD.
+
+### Tipografía Nunito
+**Decisión:** se usa Nunito (SIL Open Font License 1.1), una sola familia con dos pesos.
+**Motivo:** es redondeada y muy legible en pantallas pequeñas, parecida a la de la referencia, y su licencia permite incluirla en un juego comercial. Está registrada en `assets/CREDITS.md`.
+
+### Sin gemas
+**Decisión:** el lugar que en la referencia ocupan las gemas lo ocupa la fecha del calendario del juego.
+**Motivo:** el GDD (sección 11) descarta la moneda premium. La fecha además es útil, porque los envíos se cuentan en días.
+
+### Dinero en centavos
+**Decisión:** `GameState.money_cents` guarda el dinero como entero en centavos.
+**Motivo:** con multiplicadores como "50% del pago por entrega tardía" o "ferretería 50% más cara" aparecen centavos. Los enteros evitan errores de redondeo acumulados.
+
+### Estado mínimo de la partida adelantado
+**Decisión:** se adelantó parte de la tarea 2 de la Fase 1 (`GameState`, `GameClock`, `LevelTable`, `Simulation` solo con el reloj, `WorkshopRules`) para que la interfaz muestre datos reales y no inventados.
+**Motivo:** la interfaz lee siempre del autoload `Game`, como pide la arquitectura. Cuando lleguen la tienda y los pedidos, la interfaz no tendrá que cambiar de fuente.
+
+### La escena principal reemplaza a la de prueba
+**Decisión:** se borró la escena de prueba de la Fase 0 (`test_scene`) y su prueba. La escena principal ahora es `game/scenes/main.tscn`.
+**Motivo:** la escena de prueba solo servía para comprobar la versión web, y ya cumplió su función.

@@ -64,9 +64,24 @@ func test_detects_bad_shipping_range() -> void:
 	_assert_error_mentions("'shipping_days' debe ser de tipo days")
 
 
-func test_detects_starting_printers_without_furniture() -> void:
-	_files["config"]["starting_state"]["furniture"] = []
-	_assert_error_mentions("no caben en los muebles iniciales")
+func test_detects_starting_printers_without_place() -> void:
+	_files["config"]["floor_printing"]["max_printers"] = 0
+	_assert_error_mentions("no caben en los muebles iniciales ni en el suelo")
+
+
+func test_detects_unknown_objective_target() -> void:
+	_files["objectives"][0]["target"] = "pedido_inventado"
+	_assert_error_mentions("'pedido_inventado' no existe en orders.json")
+
+
+func test_detects_unknown_spool_color() -> void:
+	_files["config"]["starting_state"]["spools"][0]["color"] = "fucsia"
+	_assert_error_mentions("el color 'fucsia' no existe")
+
+
+func test_detects_missing_description() -> void:
+	_keys.erase("FURNITURE_MESA_AUXILIAR_DESC")
+	_assert_error_mentions("FURNITURE_MESA_AUXILIAR_DESC")
 
 
 func test_detects_missing_file() -> void:
