@@ -1,0 +1,6 @@
+[
+	{"id": "pla", "name_key": "MATERIAL_PLA", "technology": "fdm", "price": 18, "unit_grams": 1000, "failure_multiplier": 1.0, "time_multiplier": 1.0, "unlock_level": 1, "shipping_days": [3, 5]},
+	{"id": "petg", "name_key": "MATERIAL_PETG", "technology": "fdm", "price": 20, "unit_grams": 1000, "failure_multiplier": 1.15, "time_multiplier": 1.0, "unlock_level": 1, "shipping_days": [3, 5]},
+	{"id": "tpu", "name_key": "MATERIAL_TPU", "technology": "fdm", "price": 28, "unit_grams": 1000, "failure_multiplier": 1.2, "time_multiplier": 1.6, "unlock_level": 3, "shipping_days": [3, 5]},
+	{"id": "resina", "name_key": "MATERIAL_RESINA", "technology": "resin", "price": 25, "unit_grams": 1000, "failure_multiplier": 1.0, "time_multiplier": 1.0, "unlock_level": 5, "shipping_days": [3, 5]}
+]

@@ -4,6 +4,8 @@ Juego móvil 3D de gestión (tycoon) para Android e iOS, hecho en Godot. Un jove
 
 Lo desarrolla una sola persona con ayuda de Claude.
 
+**Versión web de pruebas:** https://blackmkount.github.io/game/ (se actualiza sola con cada cambio en `main`).
+
 ## Documentación
 
 | Archivo | Para qué sirve |
@@ -12,6 +14,7 @@ Lo desarrolla una sola persona con ayuda de Claude.
 | [`docs/PROGRESO.md`](docs/PROGRESO.md) | En qué vamos y cuál es el siguiente paso. |
 | [`docs/DECISIONES.md`](docs/DECISIONES.md) | Por qué se tomó cada decisión técnica. |
 | [`CLAUDE.md`](CLAUDE.md) | Reglas técnicas del proyecto (las lee Claude en cada sesión). |
+| [`docs/PROMPTS.md`](docs/PROMPTS.md) | Mensajes listos para pedirle trabajo a Claude: empezar fase, continuar, reportar errores, balance... |
 
 ## Abrir el proyecto en tu computador
 

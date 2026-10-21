@@ -1,0 +1,411 @@
+class_name DataValidator
+extends RefCounted
+## Revisa que los datos de balance (data/*.json) estén completos y sean
+## coherentes: campos obligatorios, tipos, rangos y referencias entre archivos.
+##
+## Uso: DataValidator.validate(catalog.files, claves_de_traduccion) devuelve
+## la lista de problemas encontrados, vacía si todo está bien.
+
+const VOLUMES: Array[String] = ["S", "M", "L"]
+const TECHNOLOGIES: Array[String] = ["fdm", "resin"]
+const PRINT_MODES: Array[String] = ["draft", "normal", "fine"]
+const FAILURE_TYPES: Array[String] = ["spaghetti", "warping"]
+const MIN_QUALITY: int = 1
+const MAX_QUALITY: int = 5
+
+## Campos obligatorios de los archivos con forma de lista. Tipos: "string",
+## "number", "int", "bool", "ids" (lista de identificadores) y "days" (rango
+## [mínimo, máximo] de días de envío).
+const LIST_SCHEMAS: Dictionary[String, Dictionary] = {
+	"materials": {
+		"id": "string", "name_key": "string", "technology": "string", "price": "number",
+		"unit_grams": "int", "failure_multiplier": "number", "time_multiplier": "number",
+		"unlock_level": "int", "shipping_days": "days",
+	},
+	"printers": {
+		"id": "string", "name_key": "string", "technology": "string", "price": "number",
+		"speed": "number", "max_quality": "int", "volume": "string", "materials": "ids",
+		"multicolor": "bool", "enclosed": "bool", "reliability": "number",
+		"built_in_accessories": "ids", "unlock_level": "int", "shipping_days": "days",
+	},
+	"accessories": {
+		"id": "string", "name_key": "string", "technology": "string", "price": "number",
+		"unlock_level": "int", "shipping_days": "days", "warping_multiplier": "number",
+		"pauses_on_runout": "bool", "spaghetti_pause_progress": "number",
+	},
+	"furniture": {
+		"id": "string", "name_key": "string", "purchasable": "bool", "price": "number",
+		"unlock_level": "int", "shipping_days": "days", "floor_slots": "int",
+		"printer_slots": "int", "storage_grams": "int", "reliability_bonus": "number",
+		"max_owned": "int",
+	},
+	"spaces": {
+		"id": "string", "name_key": "string", "price": "number", "unlock_level": "int",
+		"floor_slots": "int",
+	},
+	"clients": {"id": "string", "name_key": "string"},
+	"orders": {
+		"id": "string", "name_key": "string", "client": "string", "size": "string",
+		"min_quality": "int", "materials": "ids", "multicolor": "bool", "pieces": "int",
+		"grams_per_piece": "number", "minutes_per_piece": "number", "payment": "number",
+		"xp": "int", "min_level": "int", "deadline_days": "number",
+	},
+}
+## Secciones de config.json. Tipos extra: "grams" (material -> gramos) y
+## "weights" (nombre -> peso).
+const CONFIG_SCHEMAS: Dictionary[String, Dictionary] = {
+	"starting_state": {
+		"money": "number", "level": "int", "space": "string", "printers": "ids",
+		"furniture": "ids", "materials": "grams",
+	},
+	"time": {"game_seconds_per_real_second": "number", "offline_limit_real_hours": "number"},
+	"order_board": {"slots": "int", "new_order_every_game_minutes": "number"},
+	"late_delivery": {"payment_multiplier": "number", "xp_multiplier": "number"},
+	"storage": {"base_capacity_grams": "int"},
+	"shipping": {"express_days": "int", "express_fee": "number"},
+	"local_store": {"materials": "ids", "price_multiplier": "number"},
+	"rescue": {"material": "string", "grams": "int"},
+	"failures": {"random_type_weights": "weights", "enclosed_warping_multiplier": "number"},
+}
+const PRINT_MODE_SCHEMA: Dictionary = {
+	"id": "string", "name_key": "string", "quality_delta": "int",
+	"time_multiplier": "number", "failure_multiplier": "number",
+}
+
+var _files: Dictionary[String, Variant]
+var _translation_keys: Array[String]
+var _errors: Array[String] = []
+## Entradas válidas de cada lista, por id: {"printers": {"cubo_uno": {...}}}.
+var _by_id: Dictionary[String, Dictionary] = {}
+var _max_level: int = 1
+
+
+static func validate(files: Dictionary[String, Variant], translation_keys: Array[String]) -> Array[String]:
+	var validator: DataValidator = DataValidator.new()
+	validator._files = files
+	validator._translation_keys = translation_keys
+	validator._run()
+	return validator._errors
+
+
+func _run() -> void:
+	_check_levels()
+	for list_name: String in LIST_SCHEMAS:
+		_check_list(list_name)
+	_check_materials()
+	_check_printers()
+	_check_accessories()
+	_check_furniture()
+	_check_spaces()
+	_check_orders()
+	_check_config()
+
+
+func _error(message: String) -> void:
+	_errors.append(message)
+
+
+# --- Estructura general ---------------------------------------------------
+
+func _check_levels() -> void:
+	var levels: Variant = _files.get("levels")
+	if not levels is Dictionary or not _matches(levels.get("xp_thresholds"), "ids_numbers"):
+		_error("levels: falta 'xp_thresholds' como lista de números")
+		return
+	var thresholds: Array = levels["xp_thresholds"]
+	if thresholds.is_empty() or thresholds[0] != 0:
+		_error("levels: el nivel 1 debe empezar con 0 de experiencia")
+	for i: int in range(1, thresholds.size()):
+		if thresholds[i] <= thresholds[i - 1]:
+			_error("levels: la experiencia del nivel %d debe ser mayor que la del nivel %d" % [i + 1, i])
+	_max_level = maxi(thresholds.size(), 1)
+
+
+func _check_list(list_name: String) -> void:
+	_by_id[list_name] = {}
+	var entries: Variant = _files.get(list_name)
+	if not entries is Array:
+		_error("%s: el archivo debe ser una lista" % list_name)
+		return
+	for index: int in (entries as Array).size():
+		var entry: Variant = entries[index]
+		var context: String = "%s[%d]" % [list_name, index]
+		if not entry is Dictionary:
+			_error("%s: cada elemento debe ser un objeto" % context)
+			continue
+		if not _check_fields(context, entry, LIST_SCHEMAS[list_name]):
+			continue
+		var id: String = entry["id"]
+		if _by_id[list_name].has(id):
+			_error("%s: el id '%s' está repetido" % [list_name, id])
+			continue
+		_check_translation(list_name + "." + id, entry["name_key"])
+		_by_id[list_name][id] = entry
+
+
+## Revisa que existan los campos del esquema con el tipo correcto.
+## Devuelve false si falta alguno o tiene otro tipo.
+func _check_fields(context: String, entry: Dictionary, schema: Dictionary) -> bool:
+	var ok: bool = true
+	for field: String in schema:
+		if not entry.has(field):
+			_error("%s: falta el campo '%s'" % [context, field])
+			ok = false
+		elif not _matches(entry[field], schema[field]):
+			_error("%s: el campo '%s' debe ser de tipo %s" % [context, field, schema[field]])
+			ok = false
+	return ok
+
+
+func _matches(value: Variant, type: String) -> bool:
+	match type:
+		"string":
+			return value is String and not (value as String).is_empty()
+		"number":
+			return value is float or value is int
+		"int":
+			return (value is float or value is int) and is_equal_approx(fmod(float(value), 1.0), 0.0)
+		"bool":
+			return value is bool
+		"ids":
+			return value is Array and (value as Array).all(func(item: Variant) -> bool: return item is String)
+		"ids_numbers":
+			return value is Array and (value as Array).all(func(item: Variant) -> bool: return item is float or item is int)
+		"days":
+			return value is Array and (value as Array).size() == 2 \
+				and _matches(value[0], "int") and _matches(value[1], "int") \
+				and value[0] >= 0 and value[0] <= value[1]
+		"grams", "weights":
+			if not value is Dictionary:
+				return false
+			for key: Variant in value:
+				if not key is String or not _matches(value[key], "number") or value[key] < 0:
+					return false
+			return true
+	return false
+
+
+func _check_translation(context: String, key: String) -> void:
+	if not _translation_keys.is_empty() and key not in _translation_keys:
+		_error("%s: la clave de texto '%s' no está en translations.csv" % [context, key])
+
+
+func _check_ref(context: String, list_name: String, id: String) -> void:
+	if not _by_id[list_name].has(id):
+		_error("%s: '%s' no existe en %s.json" % [context, id, list_name])
+
+
+func _check_range(context: String, value: float, min_value: float, max_value: float) -> void:
+	if value < min_value or value > max_value:
+		_error("%s: %s está fuera del rango [%s, %s]" % [context, value, min_value, max_value])
+
+
+## Revisa nivel de desbloqueo, precio y envío de algo que se vende en la tienda.
+func _check_shop_item(context: String, entry: Dictionary, purchasable: bool = true) -> void:
+	_check_range(context + ".unlock_level", entry["unlock_level"], 1, _max_level)
+	_check_range(context + ".price", entry["price"], 0, INF)
+	if purchasable and entry["shipping_days"][0] < 1:
+		_error("%s: lo que se compra en la tienda tarda al menos 1 día en llegar" % context)
+
+
+# --- Archivos con forma de lista ------------------------------------------
+
+func _check_materials() -> void:
+	for id: String in _by_id["materials"]:
+		var material: Dictionary = _by_id["materials"][id]
+		var context: String = "materials." + id
+		_check_shop_item(context, material)
+		if material["technology"] not in TECHNOLOGIES:
+			_error("%s: tecnología desconocida '%s'" % [context, material["technology"]])
+		_check_range(context + ".unit_grams", material["unit_grams"], 1, INF)
+		_check_range(context + ".failure_multiplier", material["failure_multiplier"], 0.01, 10)
+		_check_range(context + ".time_multiplier", material["time_multiplier"], 0.01, 10)
+
+
+func _check_printers() -> void:
+	for id: String in _by_id["printers"]:
+		var printer: Dictionary = _by_id["printers"][id]
+		var context: String = "printers." + id
+		_check_shop_item(context, printer)
+		_check_range(context + ".speed", printer["speed"], 0.01, 100)
+		_check_range(context + ".max_quality", printer["max_quality"], MIN_QUALITY, MAX_QUALITY)
+		_check_range(context + ".reliability", printer["reliability"], 0.01, 1)
+		if printer["volume"] not in VOLUMES:
+			_error("%s: volumen desconocido '%s'" % [context, printer["volume"]])
+		if printer["technology"] not in TECHNOLOGIES:
+			_error("%s: tecnología desconocida '%s'" % [context, printer["technology"]])
+		if (printer["materials"] as Array).is_empty():
+			_error("%s: debe aceptar al menos un material" % context)
+		for material_id: String in printer["materials"]:
+			_check_ref(context, "materials", material_id)
+			var material: Dictionary = _by_id["materials"].get(material_id, {})
+			if not material.is_empty() and material["technology"] != printer["technology"]:
+				_error("%s: no puede usar '%s' porque es de otra tecnología" % [context, material_id])
+		for accessory_id: String in printer["built_in_accessories"]:
+			_check_ref(context, "accessories", accessory_id)
+
+
+func _check_accessories() -> void:
+	for id: String in _by_id["accessories"]:
+		var accessory: Dictionary = _by_id["accessories"][id]
+		var context: String = "accessories." + id
+		_check_shop_item(context, accessory)
+		if accessory["technology"] not in TECHNOLOGIES:
+			_error("%s: tecnología desconocida '%s'" % [context, accessory["technology"]])
+		_check_range(context + ".warping_multiplier", accessory["warping_multiplier"], 0, 1)
+		_check_range(context + ".spaghetti_pause_progress", accessory["spaghetti_pause_progress"], 0, 0.99)
+
+
+func _check_furniture() -> void:
+	for id: String in _by_id["furniture"]:
+		var furniture: Dictionary = _by_id["furniture"][id]
+		var context: String = "furniture." + id
+		_check_shop_item(context, furniture, furniture["purchasable"])
+		_check_range(context + ".floor_slots", furniture["floor_slots"], 1, 100)
+		_check_range(context + ".printer_slots", furniture["printer_slots"], 0, 100)
+		_check_range(context + ".storage_grams", furniture["storage_grams"], 0, INF)
+		_check_range(context + ".reliability_bonus", furniture["reliability_bonus"], 0, 0.2)
+		_check_range(context + ".max_owned", furniture["max_owned"], 0, 100)
+
+
+func _check_spaces() -> void:
+	for id: String in _by_id["spaces"]:
+		var space: Dictionary = _by_id["spaces"][id]
+		var context: String = "spaces." + id
+		_check_range(context + ".unlock_level", space["unlock_level"], 1, _max_level)
+		_check_range(context + ".price", space["price"], 0, INF)
+		_check_range(context + ".floor_slots", space["floor_slots"], 1, 1000)
+
+
+func _check_orders() -> void:
+	for id: String in _by_id["orders"]:
+		var order: Dictionary = _by_id["orders"][id]
+		var context: String = "orders." + id
+		_check_ref(context, "clients", order["client"])
+		if order["size"] not in VOLUMES:
+			_error("%s: tamaño desconocido '%s'" % [context, order["size"]])
+		_check_range(context + ".min_quality", order["min_quality"], MIN_QUALITY, MAX_QUALITY)
+		_check_range(context + ".min_level", order["min_level"], 1, _max_level)
+		_check_range(context + ".pieces", order["pieces"], 1, 100)
+		_check_range(context + ".grams_per_piece", order["grams_per_piece"], 0.1, INF)
+		_check_range(context + ".minutes_per_piece", order["minutes_per_piece"], 0.1, INF)
+		_check_range(context + ".payment", order["payment"], 0.01, INF)
+		_check_range(context + ".xp", order["xp"], 0, INF)
+		_check_range(context + ".deadline_days", order["deadline_days"], 0, INF)
+		if (order["materials"] as Array).is_empty():
+			_error("%s: debe aceptar al menos un material" % context)
+		for material_id: String in order["materials"]:
+			_check_ref(context, "materials", material_id)
+		if order["size"] in VOLUMES and not _some_printer_can_make(order):
+			_error("%s: ninguna impresora puede imprimirlo (tamaño, calidad, material o multicolor)" % context)
+
+
+func _some_printer_can_make(order: Dictionary) -> bool:
+	var best_quality_delta: int = 0
+	var modes: Variant = (_files.get("config", {}) as Dictionary).get("print_modes", [])
+	if modes is Array:
+		for mode: Variant in modes:
+			if mode is Dictionary and _matches(mode.get("quality_delta"), "int"):
+				best_quality_delta = maxi(best_quality_delta, int(mode["quality_delta"]))
+	for printer: Dictionary in _by_id["printers"].values():
+		var fits: bool = VOLUMES.find(printer["volume"]) >= VOLUMES.find(order["size"])
+		var quality: int = mini(int(printer["max_quality"]) + best_quality_delta, MAX_QUALITY)
+		var shares_material: bool = (order["materials"] as Array).any(
+			func(material_id: String) -> bool: return material_id in printer["materials"])
+		var color_ok: bool = printer["multicolor"] or not order["multicolor"]
+		if fits and quality >= order["min_quality"] and shares_material and color_ok:
+			return true
+	return false
+
+
+# --- config.json ----------------------------------------------------------
+
+func _check_config() -> void:
+	var config: Variant = _files.get("config")
+	if not config is Dictionary:
+		_error("config: el archivo debe ser un objeto")
+		return
+	var sections_ok: bool = true
+	for section: String in CONFIG_SCHEMAS:
+		var value: Variant = config.get(section)
+		if not value is Dictionary:
+			_error("config: falta la sección '%s'" % section)
+			sections_ok = false
+		elif not _check_fields("config." + section, value, CONFIG_SCHEMAS[section]):
+			sections_ok = false
+	_check_print_modes(config.get("print_modes"))
+	if sections_ok:
+		_check_config_values(config)
+
+
+func _check_print_modes(modes: Variant) -> void:
+	if not modes is Array:
+		_error("config: falta la lista 'print_modes'")
+		return
+	var ids: Array[String] = []
+	for mode: Variant in modes:
+		if mode is Dictionary and _check_fields("config.print_modes", mode, PRINT_MODE_SCHEMA):
+			ids.append(mode["id"])
+			_check_translation("config.print_modes." + str(mode["id"]), mode["name_key"])
+			_check_range("config.print_modes.time_multiplier", mode["time_multiplier"], 0.01, 10)
+			_check_range("config.print_modes.failure_multiplier", mode["failure_multiplier"], 0.01, 10)
+	ids.sort()
+	var expected: Array[String] = PRINT_MODES.duplicate()
+	expected.sort()
+	if ids != expected:
+		_error("config.print_modes: debe tener exactamente los modos %s" % [PRINT_MODES])
+
+
+func _check_config_values(config: Dictionary) -> void:
+	var start: Dictionary = config["starting_state"]
+	_check_range("config.starting_state.money", start["money"], 0, INF)
+	_check_range("config.starting_state.level", start["level"], 1, _max_level)
+	_check_ref("config.starting_state.space", "spaces", start["space"])
+	for printer_id: String in start["printers"]:
+		_check_ref("config.starting_state.printers", "printers", printer_id)
+	for furniture_id: String in start["furniture"]:
+		_check_ref("config.starting_state.furniture", "furniture", furniture_id)
+	for material_id: String in start["materials"]:
+		_check_ref("config.starting_state.materials", "materials", material_id)
+	_check_starting_room(start)
+
+	_check_range("config.time.game_seconds_per_real_second", config["time"]["game_seconds_per_real_second"], 1, 10000)
+	_check_range("config.time.offline_limit_real_hours", config["time"]["offline_limit_real_hours"], 0, 72)
+	_check_range("config.order_board.slots", config["order_board"]["slots"], 1, 20)
+	_check_range("config.order_board.new_order_every_game_minutes", config["order_board"]["new_order_every_game_minutes"], 1, INF)
+	_check_range("config.late_delivery.payment_multiplier", config["late_delivery"]["payment_multiplier"], 0, 1)
+	_check_range("config.late_delivery.xp_multiplier", config["late_delivery"]["xp_multiplier"], 0, 1)
+	_check_range("config.storage.base_capacity_grams", config["storage"]["base_capacity_grams"], 0, INF)
+	_check_range("config.shipping.express_days", config["shipping"]["express_days"], 1, 30)
+	_check_range("config.shipping.express_fee", config["shipping"]["express_fee"], 0, INF)
+	_check_range("config.local_store.price_multiplier", config["local_store"]["price_multiplier"], 1, 10)
+	for material_id: String in config["local_store"]["materials"]:
+		_check_ref("config.local_store.materials", "materials", material_id)
+	_check_ref("config.rescue.material", "materials", config["rescue"]["material"])
+	_check_range("config.rescue.grams", config["rescue"]["grams"], 1, INF)
+	_check_range("config.failures.enclosed_warping_multiplier", config["failures"]["enclosed_warping_multiplier"], 0, 1)
+	var weights: Dictionary = config["failures"]["random_type_weights"]
+	var total_weight: float = 0.0
+	for failure_type: String in weights:
+		if failure_type not in FAILURE_TYPES:
+			_error("config.failures: tipo de fallo desconocido '%s'" % failure_type)
+		total_weight += weights[failure_type]
+	if total_weight <= 0.0:
+		_error("config.failures: los pesos de los tipos de fallo deben sumar más que 0")
+
+
+## Las impresoras iniciales deben caber en los muebles iniciales, y los
+## muebles iniciales en el espacio inicial.
+func _check_starting_room(start: Dictionary) -> void:
+	var printer_slots: int = 0
+	var floor_slots: int = 0
+	for furniture_id: String in start["furniture"]:
+		var furniture: Dictionary = _by_id["furniture"].get(furniture_id, {})
+		if not furniture.is_empty():
+			printer_slots += int(furniture["printer_slots"])
+			floor_slots += int(furniture["floor_slots"])
+	if (start["printers"] as Array).size() > printer_slots:
+		_error("config.starting_state: las impresoras iniciales no caben en los muebles iniciales")
+	var space: Dictionary = _by_id["spaces"].get(start["space"], {})
+	if not space.is_empty() and floor_slots > int(space["floor_slots"]):
+		_error("config.starting_state: los muebles iniciales no caben en el espacio inicial")

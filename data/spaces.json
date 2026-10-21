@@ -1,0 +1,4 @@
+[
+	{"id": "habitacion", "name_key": "SPACE_HABITACION", "price": 0, "unlock_level": 1, "floor_slots": 6},
+	{"id": "garaje", "name_key": "SPACE_GARAJE", "price": 2500, "unlock_level": 4, "floor_slots": 14}
+]

@@ -27,6 +27,7 @@ Las sesiones corren en un entorno en la nube donde Godot no viene instalado.
 | `tools/setup_godot.sh` | Descarga el Godot oficial para Linux de la versión en `.godot-version` desde los releases de `godotengine/godot-builds` en GitHub y lo deja en `.tools/` (ignorado por git). Si ya está, no hace nada |
 | `tools/check.sh` | Importa el proyecto en modo headless y falla si hay errores de scripts o escenas |
 | `tools/run_tests.sh` | Corre todas las pruebas GUT en modo headless |
+| `tools/export_web.sh` | Exporta la versión web a `build/web/`. Necesita las plantillas: `tools/setup_godot.sh --web-templates` |
 | `tools/simulate.sh` | Corre el simulador de balance (desde la fase 1) |
 
 - Al empezar una sesión, ejecuta `tools/setup_godot.sh`.
@@ -40,8 +41,9 @@ Las sesiones corren en un entorno en la nube donde Godot no viene instalado.
 ```
 res://  (raíz del repositorio)
 ├── core/          Lógica pura del juego. Sin nodos ni escenas.
+│   ├── data/      Lectura y validación de data/*.json (DataCatalog, DataValidator)
 │   └── sim/       GameState, Order, Printer, Inventory, Economy, Reputation...
-├── data/          Balance en JSON: printers, materials, orders, upgrades, spaces, config
+├── data/          Balance en JSON: config, levels, materials, printers, accessories, furniture, spaces, clients, orders
 ├── game/          Presentación: escenas 3D, interfaz, cámara, efectos
 │   ├── world/
 │   ├── ui/

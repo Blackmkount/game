@@ -49,3 +49,35 @@ Registro de decisiones técnicas importantes: fecha, decisión y motivo. Las má
 ### Actions fijadas por hash de commit
 **Decisión:** todas las actions de los workflows (también las oficiales `actions/*`) se fijan por el hash del commit, con la versión en un comentario.
 **Motivo:** `CLAUDE.md` lo exige para las de terceros; aplicarlo a todas es más seguro y evita cambios inesperados. Para actualizar una action hay que cambiar el hash a mano.
+
+### Repositorio público
+**Decisión:** el dueño hizo público el repositorio.
+**Motivo:** es la forma gratuita de publicar la versión web en GitHub Pages.
+**Consecuencias:**
+- Todo lo que se sube es visible para cualquiera. Ya era regla no subir secretos; ahora es aún más importante.
+- Sin un archivo `LICENSE`, el código queda con "todos los derechos reservados": se puede ver, pero nadie puede reutilizarlo legalmente sin permiso.
+- Cualquiera puede abrir un PR desde un fork. El workflow de validación corre esos PR sin acceso a secretos (comportamiento por defecto de `pull_request`). Cuando haya secretos (Fase 4), los workflows que los usen no deben ejecutarse con `pull_request_target` ni con código de forks.
+
+---
+
+## 2026-10-21 — Fase 1, tarea 1: diseño v2 y datos de balance
+
+### Nombres ficticios inspirados en productos reales
+**Decisión:** el dueño pidió impresoras como "Bambu Lab A1, P1S" y "Ender 3", y paneles "SKÅDIS". En el juego se usan nombres ficticios (Rayo X1, Bóveda P1, Cubo Uno, panel perforado...) con los precios y características de esos productos. La correspondencia está en `docs/REFERENCIAS.md`.
+**Motivo:** `CLAUDE.md` y el GDD prohíben marcas reales, y con razón: Google Play y la App Store pueden rechazar o retirar un juego si el dueño de una marca reclama. Los datos de `data/` solo contienen nombres ficticios porque se incluyen en el juego exportado.
+
+### Calendario de juego: 1 día = 1 hora real
+**Decisión:** el tiempo del juego corre 24 veces más rápido que el real (`config.time.game_seconds_per_real_second = 24`). Las duraciones de `data/` están en minutos y días de juego.
+**Motivo:** el dueño pidió envíos de 3 a 7 días. Con días reales serían esperas de una semana; con este calendario son de 3 a 7 horas reales, y llegan entre una sesión y la siguiente. Además, las duraciones de impresión pueden ser realistas: un llavero tarda 20 minutos de juego, es decir, 50 segundos reales. El valor se ajustará con el simulador.
+
+### Formato de los datos
+**Decisión:** un archivo JSON por tipo de dato (`config`, `levels`, `materials`, `printers`, `accessories`, `furniture`, `spaces`, `clients`, `orders`). Los nombres de los campos están en inglés, como el código. Los ids de contenido siguen los del GDD (`cubo_uno`, `llavero`...). Cada elemento tiene una `name_key` para su nombre traducido.
+**Motivo:** archivos pequeños y fáciles de editar a mano. Godot lee todos los números de JSON como decimales, así que el código los convierte a entero donde corresponde.
+
+### Validación de datos en `core/data/`
+**Decisión:** `DataCatalog` lee los archivos y `DataValidator` revisa campos obligatorios, tipos, rangos y referencias entre archivos. También revisa que cada `name_key` exista en `translations.csv` y que cada pedido lo pueda imprimir alguna impresora. Las pruebas `test_data_files.gd` y `test_data_validator.gd` lo cubren.
+**Motivo:** `CLAUDE.md` exige una prueba que valide todos los JSON. Hacer el validador una clase de `core/` permite usarlo también al iniciar el juego.
+
+### Los datos se incluyen explícitamente en la exportación
+**Decisión:** el preset Web tiene `include_filter = "data/*.json"`.
+**Motivo:** garantiza que los JSON viajen en el paquete del juego aunque Godot no los considere recursos. Se verificó que `index.pck` los contiene.
