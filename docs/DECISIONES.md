@@ -49,3 +49,11 @@ Registro de decisiones técnicas importantes: fecha, decisión y motivo. Las má
 ### Actions fijadas por hash de commit
 **Decisión:** todas las actions de los workflows (también las oficiales `actions/*`) se fijan por el hash del commit, con la versión en un comentario.
 **Motivo:** `CLAUDE.md` lo exige para las de terceros; aplicarlo a todas es más seguro y evita cambios inesperados. Para actualizar una action hay que cambiar el hash a mano.
+
+### Repositorio público
+**Decisión:** el dueño hizo público el repositorio.
+**Motivo:** es la forma gratuita de publicar la versión web en GitHub Pages.
+**Consecuencias:**
+- Todo lo que se sube es visible para cualquiera. Ya era regla no subir secretos; ahora es aún más importante.
+- Sin un archivo `LICENSE`, el código queda con "todos los derechos reservados": se puede ver, pero nadie puede reutilizarlo legalmente sin permiso.
+- Cualquiera puede abrir un PR desde un fork. El workflow de validación corre esos PR sin acceso a secretos (comportamiento por defecto de `pull_request`). Cuando haya secretos (Fase 4), los workflows que los usen no deben ejecutarse con `pull_request_target` ni con código de forks.
