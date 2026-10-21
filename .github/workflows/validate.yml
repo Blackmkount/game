@@ -1,0 +1,39 @@
+# Validación: en cada push y en cada PR descarga Godot, revisa que el proyecto
+# no tenga errores y corre todas las pruebas.
+name: Validación
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: validate-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Revisar y probar
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Caché de Godot
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .tools
+          key: godot-${{ runner.os }}-${{ hashFiles('.godot-version') }}
+
+      - name: Instalar Godot
+        run: tools/setup_godot.sh
+
+      - name: Revisar el proyecto (check.sh)
+        run: tools/check.sh
+
+      - name: Correr las pruebas (run_tests.sh)
+        run: tools/run_tests.sh
