@@ -1,0 +1,31 @@
+# Godot: caché e importaciones (se regeneran al abrir el proyecto)
+.godot/
+
+# Herramientas descargadas por tools/setup_godot.sh
+.tools/
+
+# Exportaciones locales (web, Android, iOS)
+build/
+/android/
+
+# Firmas, certificados y credenciales: NUNCA al repositorio.
+# Van en GitHub Secrets.
+*.keystore
+*.jks
+*.p12
+*.pem
+*.key
+*.mobileprovision
+*.cer
+*.certSigningRequest
+export_credentials.cfg
+.env
+.env.*
+
+# Archivos del sistema y de editores
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.vscode/
+.idea/

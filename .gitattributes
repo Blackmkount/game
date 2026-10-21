@@ -1,0 +1,26 @@
+# Normaliza los saltos de línea a LF en el repositorio para todos los archivos de texto.
+* text=auto eol=lf
+
+# Los scripts de shell deben tener LF siempre, o fallan en Linux.
+*.sh text eol=lf
+
+# Binarios: sin conversión de saltos de línea ni diffs de texto.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.glb binary
+*.gltf binary
+*.blend binary
+*.wav binary
+*.ogg binary
+*.mp3 binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.translation binary
+*.res binary
+*.scn binary
+*.zip binary
+*.tpz binary

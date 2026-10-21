@@ -1,0 +1,88 @@
+# Versión web: en cada push a main exporta el juego a web (sin hilos) y lo
+# publica en GitHub Pages.
+#
+# Si GitHub Pages no está activado en el repositorio, la exportación se hace
+# igual y se puede descargar desde la página de la ejecución, pero el paso de
+# publicar se salta en lugar de fallar.
+name: Versión web
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Una sola publicación a la vez; no se cancela una que ya empezó.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Exportar a web
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      pages: read
+    outputs:
+      pages_enabled: ${{ steps.pages.outcome == 'success' }}
+    steps:
+      - name: Descargar el repositorio
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Caché de Godot y plantillas web
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .tools
+          key: godot-web-${{ runner.os }}-${{ hashFiles('.godot-version') }}
+
+      - name: Instalar Godot y plantillas web
+        run: tools/setup_godot.sh --web-templates
+
+      - name: Revisar el proyecto (check.sh)
+        run: tools/check.sh
+
+      - name: Correr las pruebas (run_tests.sh)
+        run: tools/run_tests.sh
+
+      - name: Exportar a web
+        run: tools/export_web.sh
+
+      - name: Comprobar si GitHub Pages está activado
+        id: pages
+        continue-on-error: true
+        uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d # v6.0.0
+
+      - name: Aviso si GitHub Pages no está activado
+        if: steps.pages.outcome != 'success'
+        run: |
+          {
+            echo "### GitHub Pages no está activado"
+            echo "La versión web se exportó, pero no se publicó."
+            echo "Actívalo en Settings → Pages → Source: GitHub Actions (ver README.md)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Subir la versión web
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: build/web
+
+  deploy:
+    name: Publicar en GitHub Pages
+    needs: build
+    if: needs.build.outputs.pages_enabled == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Publicar
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
