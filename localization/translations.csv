@@ -7,3 +7,47 @@ COLOR_ORANGE,Naranja,Orange
 COLOR_TEAL,Turquesa,Teal
 COLOR_YELLOW,Amarillo,Yellow
 COLOR_PURPLE,Morado,Purple
+MODE_DRAFT,Borrador,Draft
+MODE_NORMAL,Normal,Normal
+MODE_FINE,Fino,Fine
+MATERIAL_PLA,PLA,PLA
+MATERIAL_PETG,PETG,PETG
+MATERIAL_TPU,TPU,TPU
+MATERIAL_RESINA,Resina,Resin
+PRINTER_CUBO_UNO,Cubo Uno,Cubo Uno
+PRINTER_RAYO_MINI,Rayo Mini,Rayo Mini
+PRINTER_RAYO_X1,Rayo X1,Rayo X1
+PRINTER_PRISMA_MC,Prisma MC,Prisma MC
+PRINTER_BOVEDA_P1,Bóveda P1,Vault P1
+PRINTER_GOTA_R1,Gota R1,Drop R1
+PRINTER_TITAN_PRO,Titán Pro,Titan Pro
+ACCESSORY_PEI_SHEET,Lámina PEI,PEI sheet
+ACCESSORY_FILAMENT_SENSOR,Sensor de filamento,Filament sensor
+ACCESSORY_CAMERA,Cámara de monitoreo,Monitoring camera
+FURNITURE_ESCRITORIO,Escritorio,Desk
+FURNITURE_MESA_AUXILIAR,Mesa auxiliar,Side table
+FURNITURE_MESA_TRABAJO,Mesa de trabajo,Workbench
+FURNITURE_ESTANTERIA_METALICA,Estantería metálica,Metal rack
+FURNITURE_REPISA_FILAMENTO,Repisa de filamento,Filament shelf
+FURNITURE_ESTANTERIA_CUBOS,Estantería de cubos,Cube shelf
+FURNITURE_PANEL_HERRAMIENTAS,Panel perforado de herramientas,Tool pegboard
+SPACE_HABITACION,Habitación,Bedroom
+SPACE_GARAJE,Garaje,Garage
+CLIENT_AMIGOS,Amigos y familia,Friends and family
+CLIENT_VECINOS,Vecinos,Neighbors
+CLIENT_TIENDAS,Tiendas del barrio,Local shops
+CLIENT_MAKERS,Makers,Makers
+CLIENT_COSPLAYERS,Cosplayers,Cosplayers
+CLIENT_TALLERES,Talleres de reparación,Repair shops
+ORDER_LLAVERO,Llavero con nombre,Name keychain
+ORDER_SOPORTE_CELULAR,Soporte para celular,Phone stand
+ORDER_MACETA,Maceta decorativa,Decorative planter
+ORDER_FIGURA,Figura de colección,Collectible figure
+ORDER_PERILLA,Perilla de lavadora,Washing machine knob
+ORDER_ORGANIZADOR,Organizador de escritorio,Desk organizer
+ORDER_LETRERO,Letrero para negocio,Shop sign
+ORDER_FUNDA_FLEXIBLE,Funda flexible para celular,Flexible phone case
+ORDER_CARCASA,Carcasa para electrónica,Electronics enclosure
+ORDER_CASCO_COSPLAY,Casco de cosplay por partes,Cosplay helmet in parts
+ORDER_ENGRANAJE,Engranajes de repuesto,Replacement gears
+ORDER_MINIATURA,Miniatura de alto detalle,High-detail miniature

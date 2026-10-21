@@ -1,0 +1,8 @@
+[
+	{"id": "amigos", "name_key": "CLIENT_AMIGOS"},
+	{"id": "vecinos", "name_key": "CLIENT_VECINOS"},
+	{"id": "tiendas", "name_key": "CLIENT_TIENDAS"},
+	{"id": "makers", "name_key": "CLIENT_MAKERS"},
+	{"id": "cosplayers", "name_key": "CLIENT_COSPLAYERS"},
+	{"id": "talleres", "name_key": "CLIENT_TALLERES"}
+]

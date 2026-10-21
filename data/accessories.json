@@ -1,0 +1,5 @@
+[
+	{"id": "pei_sheet", "name_key": "ACCESSORY_PEI_SHEET", "technology": "fdm", "price": 30, "unlock_level": 1, "shipping_days": [3, 7], "warping_multiplier": 0.5, "pauses_on_runout": false, "spaghetti_pause_progress": 0.0},
+	{"id": "filament_sensor", "name_key": "ACCESSORY_FILAMENT_SENSOR", "technology": "fdm", "price": 12, "unlock_level": 1, "shipping_days": [3, 7], "warping_multiplier": 1.0, "pauses_on_runout": true, "spaghetti_pause_progress": 0.0},
+	{"id": "camera", "name_key": "ACCESSORY_CAMERA", "technology": "fdm", "price": 35, "unlock_level": 1, "shipping_days": [3, 7], "warping_multiplier": 1.0, "pauses_on_runout": false, "spaghetti_pause_progress": 0.1}
+]

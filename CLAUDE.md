@@ -41,8 +41,9 @@ Las sesiones corren en un entorno en la nube donde Godot no viene instalado.
 ```
 res://  (raíz del repositorio)
 ├── core/          Lógica pura del juego. Sin nodos ni escenas.
+│   ├── data/      Lectura y validación de data/*.json (DataCatalog, DataValidator)
 │   └── sim/       GameState, Order, Printer, Inventory, Economy, Reputation...
-├── data/          Balance en JSON: printers, materials, orders, upgrades, spaces, config
+├── data/          Balance en JSON: config, levels, materials, printers, accessories, furniture, spaces, clients, orders
 ├── game/          Presentación: escenas 3D, interfaz, cámara, efectos
 │   ├── world/
 │   ├── ui/
