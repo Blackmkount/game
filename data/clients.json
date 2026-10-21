@@ -1,8 +1,8 @@
 [
-	{"id": "amigos", "name_key": "CLIENT_AMIGOS"},
-	{"id": "vecinos", "name_key": "CLIENT_VECINOS"},
-	{"id": "tiendas", "name_key": "CLIENT_TIENDAS"},
-	{"id": "makers", "name_key": "CLIENT_MAKERS"},
-	{"id": "cosplayers", "name_key": "CLIENT_COSPLAYERS"},
-	{"id": "talleres", "name_key": "CLIENT_TALLERES"}
+	{"id": "amigos", "name_key": "CLIENT_AMIGOS", "delivery_key": "DELIVERY_PICKUP", "thanks_keys": ["THANKS_AMIGOS_1", "THANKS_AMIGOS_2"]},
+	{"id": "vecinos", "name_key": "CLIENT_VECINOS", "delivery_key": "DELIVERY_NEIGHBOR", "thanks_keys": ["THANKS_VECINOS_1", "THANKS_VECINOS_2"]},
+	{"id": "tiendas", "name_key": "CLIENT_TIENDAS", "delivery_key": "DELIVERY_COURIER", "thanks_keys": ["THANKS_TIENDAS_1", "THANKS_TIENDAS_2"]},
+	{"id": "makers", "name_key": "CLIENT_MAKERS", "delivery_key": "DELIVERY_PARCEL", "thanks_keys": ["THANKS_MAKERS_1", "THANKS_MAKERS_2"]},
+	{"id": "cosplayers", "name_key": "CLIENT_COSPLAYERS", "delivery_key": "DELIVERY_PARCEL", "thanks_keys": ["THANKS_COSPLAYERS_1", "THANKS_COSPLAYERS_2"]},
+	{"id": "talleres", "name_key": "CLIENT_TALLERES", "delivery_key": "DELIVERY_COURIER", "thanks_keys": ["THANKS_TALLERES_1", "THANKS_TALLERES_2"]}
 ]

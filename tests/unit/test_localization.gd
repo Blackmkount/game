@@ -1,9 +1,47 @@
 extends GutTest
-## Prueba de ejemplo: revisa que el archivo de traducciones esté completo y
-## que Godot lo cargue.
+## Revisa que el archivo de traducciones esté completo, que sus textos se
+## puedan formatear y que Godot lo cargue.
 
 const CSV_PATH: String = "res://localization/translations.csv"
 const REQUIRED_LOCALES: Array[String] = ["es", "en"]
+## Piezas con "%" de un texto, de izquierda a derecha: "%%" (porcentaje
+## literal), un argumento de formato ("%d", "%s", "%02d"...) o un "%" suelto.
+const PERCENT_TOKENS: String = "%%|%[0-9]*(\\.[0-9]+)?[dsf]|%"
+
+
+func test_keys_are_unique() -> void:
+	var seen: Array[String] = []
+	var repeated: Array[String] = []
+	for row: PackedStringArray in _read_rows().slice(1):
+		if row[0] in seen:
+			repeated.append(row[0])
+		seen.append(row[0])
+	assert_eq(repeated, [] as Array[String], "Hay claves repetidas")
+
+
+## Un texto con argumentos escribe el porcentaje literal como "%%". Un texto
+## sin argumentos no se formatea, así que nunca lleva "%%" (se vería doble).
+func test_percent_signs_match_format_arguments() -> void:
+	var tokens: RegEx = RegEx.create_from_string(PERCENT_TOKENS)
+	var problems: Array[String] = []
+	for row: PackedStringArray in _read_rows().slice(1):
+		for column: int in range(1, row.size()):
+			var literals: int = 0
+			var arguments: int = 0
+			var loose: int = 0
+			for token: RegExMatch in tokens.search_all(row[column]):
+				match token.get_string():
+					"%%":
+						literals += 1
+					"%":
+						loose += 1
+					_:
+						arguments += 1
+			if literals > 0 and arguments == 0:
+				problems.append(row[0] + ": usa %% sin argumentos de formato")
+			if arguments > 0 and loose > 0:
+				problems.append(row[0] + ": tiene argumentos y un % suelto (debe ser %%)")
+	assert_eq(problems, [] as Array[String])
 
 
 func test_csv_has_required_language_columns() -> void:

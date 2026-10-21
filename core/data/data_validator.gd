@@ -10,6 +10,8 @@ const VOLUMES: Array[String] = ["S", "M", "L"]
 const TECHNOLOGIES: Array[String] = ["fdm", "resin"]
 const PRINT_MODES: Array[String] = ["draft", "normal", "fine"]
 const FAILURE_TYPES: Array[String] = ["spaghetti", "warping"]
+## Cómo se consigue el modelo 3D de un pedido (cambia cuánto tarda modelarlo).
+const DESIGN_KINDS: Array[String] = ["template", "custom", "measure", "client_file"]
 ## Tipos de objetivo y el archivo al que apunta su "target" ("" = ninguno).
 const OBJECTIVE_TARGETS: Dictionary[String, String] = {
 	"deliver_orders": "orders",
@@ -55,34 +57,46 @@ const LIST_SCHEMAS: Dictionary[String, Dictionary] = {
 		"id": "string", "name_key": "string", "price": "number", "unlock_level": "int",
 		"floor_slots": "int",
 	},
-	"clients": {"id": "string", "name_key": "string"},
+	"clients": {"id": "string", "name_key": "string", "delivery_key": "string", "thanks_keys": "ids"},
 	"orders": {
 		"id": "string", "name_key": "string", "client": "string", "size": "string",
 		"min_quality": "int", "materials": "ids", "multicolor": "bool", "pieces": "int",
 		"grams_per_piece": "number", "minutes_per_piece": "number", "payment": "number",
 		"xp": "int", "min_level": "int", "deadline_days": "number",
+		"design_kind": "string", "design_minutes": "number", "ask_key": "string",
 	},
 	"objectives": {
 		"id": "string", "name_key": "string", "type": "string", "target": "text",
 		"count": "int", "reward_money": "number", "reward_xp": "int",
 	},
 }
-## Secciones de config.json. Tipos extra: "list" (lista de objetos) y
-## "weights" (nombre -> peso).
+## Secciones de config.json. Tipos extra: "list" (lista de objetos),
+## "weights" (nombre -> peso) y "ranges" (nombre -> [mínimo, máximo]).
+## Los segundos de juego por segundo real deben ser enteros: el reloj de la
+## simulación cuenta segundos enteros.
 const CONFIG_SCHEMAS: Dictionary[String, Dictionary] = {
 	"starting_state": {
 		"money": "number", "xp": "int", "start_hour": "number", "space": "string",
 		"printers": "ids", "furniture": "ids", "spools": "list",
 	},
-	"time": {"game_seconds_per_real_second": "number", "offline_limit_real_hours": "number"},
-	"order_board": {"slots": "int", "new_order_every_game_minutes": "number"},
+	"time": {"game_seconds_per_real_second": "int", "offline_limit_real_hours": "number"},
+	"order_board": {
+		"slots": "int", "new_order_every_game_minutes": "number", "max_active_orders": "int",
+		"starting_offers": "ids", "first_offer_after_game_minutes": "number",
+		"starting_offer_gap_game_minutes": "number",
+	},
+	"design": {"focus_multiplier": "number"},
+	"printing": {"prep_minutes_per_piece": "number"},
 	"late_delivery": {"payment_multiplier": "number", "xp_multiplier": "number"},
 	"storage": {"base_capacity_grams": "int"},
 	"floor_printing": {"max_printers": "int", "reliability_penalty": "number"},
 	"shipping": {"express_days": "int", "express_fee": "number"},
-	"local_store": {"materials": "ids", "price_multiplier": "number"},
+	"local_store": {"materials": "ids", "price_multiplier": "number", "color": "string", "grams": "int"},
 	"rescue": {"material": "string", "color": "string", "grams": "int"},
-	"failures": {"random_type_weights": "weights", "enclosed_warping_multiplier": "number"},
+	"failures": {
+		"random_type_weights": "weights", "enclosed_warping_multiplier": "number",
+		"max_chance": "number", "grace_pieces": "int", "stop_progress": "ranges",
+	},
 }
 const PRINT_MODE_SCHEMA: Dictionary = {
 	"id": "string", "name_key": "string", "quality_delta": "int",
@@ -98,6 +112,8 @@ var _errors: Array[String] = []
 var _by_id: Dictionary[String, Dictionary] = {}
 var _max_level: int = 1
 var _color_ids: Array[String] = []
+## Mayor mejora de calidad que da un modo de impresión ("fino").
+var _best_quality_delta: int = 0
 
 
 static func validate(files: Dictionary[String, Variant], translation_keys: Array[String]) -> Array[String]:
@@ -112,11 +128,13 @@ func _run() -> void:
 	_check_levels()
 	for list_name: String in LIST_SCHEMAS:
 		_check_list(list_name)
+	_best_quality_delta = _read_best_quality_delta()
 	_check_materials()
 	_check_printers()
 	_check_accessories()
 	_check_furniture()
 	_check_spaces()
+	_check_clients()
 	_check_orders()
 	_check_objectives()
 	_check_config()
@@ -199,9 +217,7 @@ func _matches(value: Variant, type: String) -> bool:
 		"ids_numbers":
 			return value is Array and (value as Array).all(func(item: Variant) -> bool: return item is float or item is int)
 		"days":
-			return value is Array and (value as Array).size() == 2 \
-				and _matches(value[0], "int") and _matches(value[1], "int") \
-				and value[0] >= 0 and value[0] <= value[1]
+			return _is_ordered_pair(value, "int") and value[0] >= 0
 		"weights":
 			if not value is Dictionary:
 				return false
@@ -209,7 +225,21 @@ func _matches(value: Variant, type: String) -> bool:
 				if not key is String or not _matches(value[key], "number") or value[key] < 0:
 					return false
 			return true
+		"ranges":
+			if not value is Dictionary:
+				return false
+			for key: Variant in value:
+				if not key is String or not _is_ordered_pair(value[key], "number"):
+					return false
+			return true
 	return false
+
+
+## Lista [a, b] de dos valores del tipo indicado con a <= b.
+func _is_ordered_pair(value: Variant, item_type: String) -> bool:
+	return value is Array and (value as Array).size() == 2 \
+		and _matches(value[0], item_type) and _matches(value[1], item_type) \
+		and value[0] <= value[1]
 
 
 func _check_translation(context: String, key: String) -> void:
@@ -304,11 +334,26 @@ func _check_spaces() -> void:
 		_check_range(context + ".floor_slots", space["floor_slots"], 1, 1000)
 
 
+func _check_clients() -> void:
+	for id: String in _by_id["clients"]:
+		var client: Dictionary = _by_id["clients"][id]
+		var context: String = "clients." + id
+		_check_translation(context, client["delivery_key"])
+		if (client["thanks_keys"] as Array).is_empty():
+			_error("%s: necesita al menos un agradecimiento en 'thanks_keys'" % context)
+		for key: String in client["thanks_keys"]:
+			_check_translation(context, key)
+
+
 func _check_orders() -> void:
 	for id: String in _by_id["orders"]:
 		var order: Dictionary = _by_id["orders"][id]
 		var context: String = "orders." + id
 		_check_ref(context, "clients", order["client"])
+		_check_translation(context, order["ask_key"])
+		if order["design_kind"] not in DESIGN_KINDS:
+			_error("%s: tipo de diseño desconocido '%s'" % [context, order["design_kind"]])
+		_check_range(context + ".design_minutes", order["design_minutes"], 0.5, 1440)
 		if order["size"] not in VOLUMES:
 			_error("%s: tamaño desconocido '%s'" % [context, order["size"]])
 		_check_range(context + ".min_quality", order["min_quality"], MIN_QUALITY, MAX_QUALITY)
@@ -327,22 +372,33 @@ func _check_orders() -> void:
 			_error("%s: ninguna impresora puede imprimirlo (tamaño, calidad, material o multicolor)" % context)
 
 
-func _some_printer_can_make(order: Dictionary) -> bool:
+func _read_best_quality_delta() -> int:
 	var best_quality_delta: int = 0
-	var modes: Variant = (_files.get("config", {}) as Dictionary).get("print_modes", [])
+	var config: Variant = _files.get("config", {})
+	var modes: Variant = (config as Dictionary).get("print_modes", []) if config is Dictionary else []
 	if modes is Array:
 		for mode: Variant in modes:
 			if mode is Dictionary and _matches(mode.get("quality_delta"), "int"):
 				best_quality_delta = maxi(best_quality_delta, int(mode["quality_delta"]))
+	return best_quality_delta
+
+
+func _some_printer_can_make(order: Dictionary) -> bool:
 	for printer: Dictionary in _by_id["printers"].values():
-		var fits: bool = VOLUMES.find(printer["volume"]) >= VOLUMES.find(order["size"])
-		var quality: int = mini(int(printer["max_quality"]) + best_quality_delta, MAX_QUALITY)
-		var shares_material: bool = (order["materials"] as Array).any(
-			func(material_id: String) -> bool: return material_id in printer["materials"])
-		var color_ok: bool = printer["multicolor"] or not order["multicolor"]
-		if fits and quality >= order["min_quality"] and shares_material and color_ok:
+		if _printer_can_make(printer, order):
 			return true
 	return false
+
+
+## La impresora puede hacer el pedido: tamaño, calidad (con el mejor modo),
+## algún material en común y multicolor si hace falta.
+func _printer_can_make(printer: Dictionary, order: Dictionary) -> bool:
+	var fits: bool = VOLUMES.find(printer["volume"]) >= VOLUMES.find(order["size"])
+	var quality: int = mini(int(printer["max_quality"]) + _best_quality_delta, MAX_QUALITY)
+	var shares_material: bool = (order["materials"] as Array).any(
+		func(material_id: String) -> bool: return material_id in printer["materials"])
+	var color_ok: bool = printer["multicolor"] or not order["multicolor"]
+	return fits and quality >= order["min_quality"] and shares_material and color_ok
 
 
 func _check_objectives() -> void:
@@ -443,8 +499,9 @@ func _check_config_values(config: Dictionary) -> void:
 
 	_check_range("config.time.game_seconds_per_real_second", config["time"]["game_seconds_per_real_second"], 1, 10000)
 	_check_range("config.time.offline_limit_real_hours", config["time"]["offline_limit_real_hours"], 0, 72)
-	_check_range("config.order_board.slots", config["order_board"]["slots"], 1, 20)
-	_check_range("config.order_board.new_order_every_game_minutes", config["order_board"]["new_order_every_game_minutes"], 1, INF)
+	_check_order_board(config["order_board"], start)
+	_check_range("config.design.focus_multiplier", config["design"]["focus_multiplier"], 0.1, 1.0)
+	_check_range("config.printing.prep_minutes_per_piece", config["printing"]["prep_minutes_per_piece"], 0, 60)
 	_check_range("config.late_delivery.payment_multiplier", config["late_delivery"]["payment_multiplier"], 0, 1)
 	_check_range("config.late_delivery.xp_multiplier", config["late_delivery"]["xp_multiplier"], 0, 1)
 	_check_range("config.storage.base_capacity_grams", config["storage"]["base_capacity_grams"], 0, INF)
@@ -455,18 +512,84 @@ func _check_config_values(config: Dictionary) -> void:
 	_check_range("config.local_store.price_multiplier", config["local_store"]["price_multiplier"], 1, 10)
 	for material_id: String in config["local_store"]["materials"]:
 		_check_ref("config.local_store.materials", "materials", material_id)
+	_check_color_ref("config.local_store.color", config["local_store"]["color"])
+	_check_range("config.local_store.grams", config["local_store"]["grams"], 1, INF)
 	_check_ref("config.rescue.material", "materials", config["rescue"]["material"])
 	_check_color_ref("config.rescue.color", config["rescue"]["color"])
 	_check_range("config.rescue.grams", config["rescue"]["grams"], 1, INF)
-	_check_range("config.failures.enclosed_warping_multiplier", config["failures"]["enclosed_warping_multiplier"], 0, 1)
-	var weights: Dictionary = config["failures"]["random_type_weights"]
+	_check_failures(config["failures"])
+
+
+## Tablero de pedidos y pedidos del primer mensaje. Cada pedido inicial debe
+## poder hacerse con lo que se tiene al empezar la partida.
+func _check_order_board(board: Dictionary, start: Dictionary) -> void:
+	_check_range("config.order_board.slots", board["slots"], 1, 20)
+	_check_range("config.order_board.new_order_every_game_minutes", board["new_order_every_game_minutes"], 1, INF)
+	_check_range("config.order_board.max_active_orders", board["max_active_orders"], 1, 20)
+	_check_range("config.order_board.first_offer_after_game_minutes", board["first_offer_after_game_minutes"], 0.1, 1440)
+	_check_range("config.order_board.starting_offer_gap_game_minutes", board["starting_offer_gap_game_minutes"], 1, INF)
+	var context: String = "config.order_board.starting_offers"
+	var offers: Array = board["starting_offers"]
+	if offers.size() > int(board["slots"]):
+		_error("%s: hay más pedidos iniciales que lugares en el tablero" % context)
+	var seen: Array[String] = []
+	for order_id: String in offers:
+		if order_id in seen:
+			_error("%s: '%s' está repetido" % [context, order_id])
+		seen.append(order_id)
+		_check_ref(context, "orders", order_id)
+		var order: Dictionary = _by_id["orders"].get(order_id, {})
+		if order.is_empty():
+			continue
+		if int(order["min_level"]) != 1:
+			_error("%s: '%s' es de nivel %d y debe ser de nivel 1" % [context, order_id, order["min_level"]])
+		if not _starting_state_can_make(start, order):
+			_error("%s: '%s' no se puede hacer con las impresoras y el material iniciales" % [context, order_id])
+
+
+## Alguna impresora inicial puede hacer el pedido y tiene un carrete inicial
+## de un material que aceptan los dos, con gramos para todas las piezas.
+func _starting_state_can_make(start: Dictionary, order: Dictionary) -> bool:
+	var needed_grams: int = int(order["pieces"]) * ceili(float(order["grams_per_piece"]))
+	for printer_id: String in start["printers"]:
+		var printer: Dictionary = _by_id["printers"].get(printer_id, {})
+		if printer.is_empty() or not _printer_can_make(printer, order):
+			continue
+		for spool: Dictionary in start["spools"]:
+			var material_id: Variant = spool.get("material")
+			if material_id in order["materials"] and material_id in printer["materials"] \
+					and _matches(spool.get("grams"), "number") and spool["grams"] >= needed_grams:
+				return true
+	return false
+
+
+func _check_failures(failures: Dictionary) -> void:
+	_check_range("config.failures.enclosed_warping_multiplier", failures["enclosed_warping_multiplier"], 0, 1)
+	_check_range("config.failures.max_chance", failures["max_chance"], 0.01, 1)
+	_check_range("config.failures.grace_pieces", failures["grace_pieces"], 0, 100)
+	var weights: Dictionary = failures["random_type_weights"]
+	_check_failure_types("config.failures.random_type_weights", weights)
 	var total_weight: float = 0.0
 	for failure_type: String in weights:
-		if failure_type not in FAILURE_TYPES:
-			_error("config.failures: tipo de fallo desconocido '%s'" % failure_type)
 		total_weight += weights[failure_type]
 	if total_weight <= 0.0:
 		_error("config.failures: los pesos de los tipos de fallo deben sumar más que 0")
+	var stop_progress: Dictionary = failures["stop_progress"]
+	_check_failure_types("config.failures.stop_progress", stop_progress)
+	for failure_type: String in stop_progress:
+		var context: String = "config.failures.stop_progress." + failure_type
+		_check_range(context, stop_progress[failure_type][0], 0.01, 0.99)
+		_check_range(context, stop_progress[failure_type][1], 0.01, 0.99)
+
+
+## Las claves deben ser exactamente los tipos de fallo conocidos.
+func _check_failure_types(context: String, by_type: Dictionary) -> void:
+	for failure_type: String in by_type:
+		if failure_type not in FAILURE_TYPES:
+			_error("%s: tipo de fallo desconocido '%s'" % [context, failure_type])
+	for failure_type: String in FAILURE_TYPES:
+		if not by_type.has(failure_type):
+			_error("%s: falta el tipo de fallo '%s'" % [context, failure_type])
 
 
 ## Las impresoras iniciales deben caber en los muebles iniciales (o en el

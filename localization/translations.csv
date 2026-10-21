@@ -31,6 +31,22 @@ CLIENT_TIENDAS,Tiendas del barrio,Local shops
 CLIENT_MAKERS,Makers,Makers
 CLIENT_COSPLAYERS,Cosplayers,Cosplayers
 CLIENT_TALLERES,Talleres de reparación,Repair shops
+THANKS_AMIGOS_1,¡Quedó genial! Ya todos me preguntan dónde lo hice.,It's great! Everyone asks where I got it.
+THANKS_AMIGOS_2,¡Gracias! Te debo una pizza.,Thanks! I owe you a pizza.
+THANKS_VECINOS_1,¡Qué maravilla! Te guardo un pedazo de torta.,Wonderful! I'm saving you a slice of cake.
+THANKS_VECINOS_2,Funciona perfecto. Le voy a contar a todo el edificio.,Works perfectly. I'll tell the whole building.
+THANKS_TIENDAS_1,Llegó justo para abrir. ¡Gracias!,Just in time to open. Thanks!
+THANKS_TIENDAS_2,Los clientes ya lo están mirando.,Customers are already looking at it.
+THANKS_MAKERS_1,Medidas perfectas: encajó al primer intento.,Perfect measurements: it fit on the first try.
+THANKS_MAKERS_2,"Buenas capas, buen ajuste. Te vuelvo a escribir.","Nice layers, good fit. I'll write again."
+THANKS_COSPLAYERS_1,¡Llegó! Ya estoy lijando y pintando.,It's here! Already sanding and painting.
+THANKS_COSPLAYERS_2,"Con esto gano el concurso, seguro.",I'm winning the contest with this.
+THANKS_TALLERES_1,La máquina volvió a andar. Eres un salvavidas.,The machine runs again. You're a lifesaver.
+THANKS_TALLERES_2,Mejor que el repuesto original.,Better than the original part.
+DELIVERY_PICKUP,Pasan a buscarlo,They pick it up
+DELIVERY_NEIGHBOR,Se lo llevas a la vuelta,You drop it off around the corner
+DELIVERY_COURIER,Lo retira un mensajero en moto,A motorbike courier picks it up
+DELIVERY_PARCEL,Va por encomienda,It goes by parcel post
 ORDER_LLAVERO,Llavero con nombre,Name keychain
 ORDER_SOPORTE_CELULAR,Soporte para celular,Phone stand
 ORDER_MACETA,Maceta decorativa,Decorative planter
@@ -43,6 +59,22 @@ ORDER_CARCASA,Carcasa para electrónica,Electronics enclosure
 ORDER_CASCO_COSPLAY,Casco de cosplay por partes,Cosplay helmet in parts
 ORDER_ENGRANAJE,Engranajes de repuesto,Replacement gears
 ORDER_MINIATURA,Miniatura de alto detalle,High-detail miniature
+ORDER_LLAVERO_ASK,¿Me haces un llavero con mi nombre? Es para la mochila.,Can you make me a keychain with my name? It's for my backpack.
+ORDER_SOPORTE_CELULAR_ASK,Necesito un soporte para ver series mientras cocino.,I need a stand to watch shows while I cook.
+ORDER_MACETA_ASK,¿Una maceta bonita para mi suculenta? La pobre vive en un vaso.,A nice planter for my succulent? The poor thing lives in a cup.
+ORDER_FIGURA_ASK,Encontré el archivo de mi personaje favorito. ¿Lo imprimes?,I found a file of my favorite character. Can you print it?
+ORDER_PERILLA_ASK,Se rompió la perilla de la lavadora y ya no la venden. ¡Ayuda!,My washing machine knob broke and nobody sells it anymore. Help!
+ORDER_ORGANIZADOR_ASK,Quiero un organizador para el mostrador: los lápices andan por todos lados.,I want an organizer for the counter: pens are everywhere.
+ORDER_LETRERO_ASK,"Un letrero a dos colores para la vitrina, que se vea desde la calle.","A two-color sign for the window, visible from the street."
+ORDER_FUNDA_FLEXIBLE_ASK,¿Una funda flexible? La mía ya parece queso rallado.,A flexible case? Mine looks like grated cheese.
+ORDER_CARCASA_ASK,Te mando las medidas de mi placa. Necesito una carcasa que cierre bien.,I'm sending my board's measurements. I need an enclosure that closes well.
+ORDER_CASCO_COSPLAY_ASK,¡La convención es en 10 días! Te mando el casco en partes.,The convention is in 10 days! I'm sending the helmet in parts.
+ORDER_ENGRANAJE_ASK,Se gastaron los engranajes de una máquina. Te dejo uno de muestra.,A machine's gears wore out. I'll leave you one as a sample.
+ORDER_MINIATURA_ASK,"Necesito una miniatura con todo el detalle. Sí, hasta las pestañas.","I need a miniature with every detail. Yes, even the eyelashes."
+DESIGN_KIND_TEMPLATE,Plantilla: solo hay que adaptarla,Template: just adapt it
+DESIGN_KIND_CUSTOM,Diseño a medida desde cero,Custom design from scratch
+DESIGN_KIND_MEASURE,Hay que medir con pie de rey y modelar,"Measure with calipers, then model"
+DESIGN_KIND_CLIENT_FILE,El cliente mandó el archivo: solo revisarlo,The client sent the file: just check it
 FORMAT_DATE,Día %d · %02d:%02d,Day %d · %02d:%02d
 FORMAT_DAYS,%d días,%d days
 FORMAT_DAY_RANGE,%d a %d días,%d to %d days
@@ -51,6 +83,8 @@ FORMAT_HOURS,%d h,%d h
 FORMAT_HOURS_MINUTES,%d h %d min,%d h %d min
 FORMAT_KG_OF,%s / %s kg,%s / %s kg
 FORMAT_MINUTES,%d min,%d min
+FORMAT_SECONDS,%d s,%d s
+FORMAT_MINUTES_SECONDS,%d min %d s,%d min %d s
 FORMAT_XP_REWARD,+%d XP,+%d XP
 HUD_LEVEL,Nivel %d,Level %d
 HUD_OBJECTIVES,Objetivos,Objectives
@@ -113,6 +147,27 @@ ORDERS_COMING_SOON,"Muy pronto tus amigos te escribirán con pedidos. Por ahora,
 ORDERS_PIECE,%d pieza,%d piece
 ORDERS_PIECES,%d piezas,%d pieces
 ORDERS_LOCKED_MORE,Hay %d pedidos más que se desbloquean al subir de nivel.,%d more orders unlock as you level up.
+ORDERS_SECTION_NEW,Mensajes nuevos (%d),New messages (%d)
+ORDERS_SECTION_ACTIVE,En curso (%d de %d),In progress (%d of %d)
+ORDERS_SECTION_DONE,Entregados,Delivered
+ORDERS_NEXT_OFFER,Llega un mensaje nuevo en %s,A new message arrives in %s
+ORDERS_BOARD_FULL,Responde un mensaje para recibir más.,Answer a message to get more.
+ORDERS_NONE_MAKEABLE,Ahora nadie te pide algo que puedas hacer. Revisa tu material.,Nobody is asking for something you can make right now. Check your material.
+ORDERS_NO_ACTIVE,No tienes pedidos en curso.,No orders in progress.
+ORDERS_ACCEPT,Aceptar,Accept
+ORDERS_REJECT,Rechazar,Decline
+ORDERS_CANCEL,Cancelar pedido,Cancel order
+ORDERS_CANCEL_CONFIRM,¿Seguro? Toca otra vez,Sure? Tap again
+ORDERS_SIZE,Tamaño %s,Size %s
+ORDERS_QUALITY,Calidad %d,Quality %d
+ORDERS_MULTICOLOR,Multicolor,Multicolor
+ORDERS_NO_DEADLINE,Sin plazo,No deadline
+ORDERS_DEADLINE_DAYS,Plazo: %s,Deadline: %s
+ORDERS_DEADLINE,Entregar antes del %s,Deliver before %s
+ORDERS_LATE,Atrasado: cobras la mitad y sin XP,Late: half pay and no XP
+ORDERS_ESTIMATE,Modelar %s · Imprimir %s,Model %s · Print %s
+ORDERS_REWARD,%s · +%d XP · Ganancia ≈ %s,%s · +%d XP · Profit ≈ %s
+ORDERS_DELIVERED_LINE,%s · %s · +%d XP,%s · %s · +%d XP
 TASKS_INTRO,Completa objetivos para ganar dinero y experiencia. Sin prisa: van a tu ritmo.,Complete objectives to earn money and experience. No rush: go at your own pace.
 TASKS_REWARD,Recompensa: %s,Reward: %s
 MAP_SLOTS,%d lugares para muebles,%d furniture spots
@@ -122,6 +177,8 @@ SETTINGS_SPANISH,Español,Español
 SETTINGS_ENGLISH,English,English
 SETTINGS_CREDITS,Créditos,Credits
 SETTINGS_CREDITS_TEXT,"Hecho con Godot Engine. Tipografía Nunito (SIL Open Font License 1.1). Pruebas con GUT (MIT). Modelos, texturas e iconos hechos para este juego.","Made with Godot Engine. Nunito typeface (SIL Open Font License 1.1). Tests with GUT (MIT). Models, textures and icons made for this game."
+SETTINGS_NEW_GAME,Empezar partida nueva,Start a new game
+SETTINGS_NEW_GAME_CONFIRM,¿Seguro? Se borra tu partida. Toca otra vez,Sure? Your game will be erased. Tap again
 COLOR_BLANCO,Blanco,White
 COLOR_NEGRO,Negro,Black
 COLOR_GRIS,Gris,Gray
@@ -165,6 +222,7 @@ SHEET_BUY_TABLE,Ver mesas en la tienda,See tables in the shop
 SHEET_SEE_ORDERS,Ver pedidos,See orders
 SHEET_FURNITURE_PRINTERS,Impresoras: %d de %d,Printers: %d of %d
 SHEET_COMPUTER_MESSAGES,Aquí te llegan los mensajes de tus clientes.,Your clients' messages arrive here.
+SHEET_COMPUTER_IDLE,"El computador está libre. Cuando aceptas un pedido, se pone a modelar solo.","The computer is free. When you accept an order, it starts modeling on its own."
 SHEET_SEE_INVENTORY,Ver inventario,See inventory
 SHEET_SLOT_TITLE,Lugar libre,Free spot
 SHEET_SLOT_TEXT,"Aquí cabe un mueble: sostiene impresoras, guarda material o te ayuda a imprimir mejor.","A piece of furniture fits here: it holds printers, stores material or helps you print better."
@@ -183,3 +241,112 @@ HINT_TAP,Toca un objeto para verlo,Tap an object to see it
 ZOOM_FAR,Lejos,Far
 ZOOM_NORMAL,Normal,Normal
 ZOOM_NEAR,Cerca,Near
+STEP_CONFIRM,Confirmar,Confirm
+STEP_DESIGN,Modelar,Model
+STEP_PRINT,Imprimir,Print
+STEP_REMOVE,Retirar,Remove
+STEP_PACK,Embalar,Pack
+STEP_DISPATCH,Despachar,Dispatch
+STEP_NOW,Paso %d de 6: %s,Step %d of 6: %s
+STAGE_WAITING_DESIGN,En cola para modelar · empieza en %s,Queued for modeling · starts in %s
+STAGE_DESIGNING,Modelando en el computador · listo en %s,Modeling on the computer · ready in %s
+STAGE_READY,Modelo listo: falta imprimir,Model ready: print it
+STAGE_PRINTING,Imprimiendo en la %s · lista en %s,Printing on the %s · ready in %s
+STAGE_PRINTING_PIECES,Pieza %d de %d en la %s · el pedido estará listo en %s,Piece %d of %d on the %s · the order is ready in %s
+STAGE_FAILED,Falló la pieza %d de %d en la %s,Piece %d of %d failed on the %s
+STAGE_PRINTED,Impreso: retíralo de la %s,Printed: take it off the %s
+STAGE_TO_PACK,En el rincón de despacho: embálalo,At the dispatch corner: pack it
+STAGE_PACKED,Embalado: listo para despachar,Packed: ready to dispatch
+ACTION_FOCUS,Concentrarse,Focus
+ACTION_PRINT,Imprimir,Print
+ACTION_REMOVE,Retirar pieza,Take the piece off
+ACTION_REMOVE_N,Retirar %d piezas,Take %d pieces off
+ACTION_PACK,Embalar,Pack
+ACTION_DISPATCH,Despachar,Dispatch
+ACTION_DISPATCH_N,Despachar (%d),Dispatch (%d)
+ACTION_RETRY,Limpiar y reintentar,Clean and retry
+ACTION_CLEAN,Limpiar,Clean
+ACTION_SEE_PRINTER,Ver impresora,See printer
+ACTION_GO_PACK,Ir a embalar,Go pack
+ACTION_QUEUED,En cola para modelar,Queued for modeling
+NOTE_STARTS_IN,Empieza en %s,Starts in %s
+PLAN_TITLE,Imprimir: %s,Print: %s
+PLAN_TIME,Lista en %s (%s de juego),Ready in %s (%s game time)
+PLAN_TIME_PIECES,"%d piezas, una tras otra · lista en %s (%s de juego)","%d pieces, one after another · ready in %s (%s game time)"
+PLAN_QUALITY_RISK,Calidad %d (pide %d) · Riesgo de fallo %d%%,Quality %d (needs %d) · Failure risk %d%%
+PLAN_QUALITY_RISK_PIECES,Calidad %d (pide %d) · Riesgo de fallo %d%% por pieza,Quality %d (needs %d) · Failure risk %d%% per piece
+PLAN_QUALITY_GRACE,Calidad %d (pide %d) · Riesgo de fallo 0%% (Don Ernesto la dejó recién calibrada),Quality %d (needs %d) · Failure risk 0%% (Don Ernesto just calibrated it)
+PLAN_MATERIAL,%s de %s (quedan %s),%s of %s (%s left)
+PLAN_MONEY,Material %s · Ganancia %s,Material %s · Profit %s
+MATERIAL_COLOR,%s %s,%s %s
+CHIP_MODE_LOW_QUALITY,%s · calidad %d: no alcanza,%s · quality %d: too low
+CHIP_SPOOL,%s · %s,%s · %s
+PRINTING_LINE,Imprimiendo: %s,Printing: %s
+PRINTING_PIECE,Pieza %d de %d,Piece %d of %d
+PRINTING_READY_IN,Lista en %s,Ready in %s
+PRINTING_SETTINGS,%s · %s · calidad %d,%s · %s · quality %d
+DONE_LINE,¡Listo! %s · %s,Done! %s · %s
+FAILED_TITLE,Falló: %s al %d%%,Failed: %s at %d%%
+FAILURE_SPAGHETTI,espagueti,spaghetti
+FAILURE_WARPING,warping,warping
+FAILED_LOST,Se perdieron %s de %s,%s of %s lost
+FAILED_KEPT,Las piezas terminadas se guardan (%d de %d),Finished pieces are kept (%d of %d)
+FAILED_TIP_SPAGHETTI,Le pasa a los mejores. Limpia la cama y dale otra vez.,Happens to the best. Clean the bed and go again.
+FAILED_TIP_WARPING,Una mesa y una lámina PEI reducen el warping.,A table and a PEI sheet reduce warping.
+DESK_DESIGNING,Modelando: %s · %s,Modeling: %s · %s
+DESK_READY_IN,Listo en %s,Ready in %s
+DESK_QUEUE,En cola: %s,Queued: %s
+DESK_READY,Modelo listo: %s,Model ready: %s
+DESK_FOCUS_TIP,"Si te concentras, te ahorras el %d%% del tiempo que falta (una vez por pedido).",Focus to save %d%% of the remaining time (once per order).
+DESK_FOCUSED,¡Concentrado! Sin celular hasta terminar.,Focused! No phone until it's done.
+DISPATCH_TITLE,Rincón de despacho,Dispatch corner
+DISPATCH_DESC,Aquí embalas los pedidos y salen por la puerta.,Pack orders here and they go out the door.
+DISPATCH_EMPTY,Aquí llegan las piezas que retiras de la impresora.,Pieces you take off the printer land here.
+DISPATCH_TO_PACK,Por embalar: %s,To pack: %s
+DISPATCH_PACKED,Para despachar: %s · %s · %s · +%d XP,To dispatch: %s · %s · %s · +%d XP
+DISPATCH_LATE,"%s: atrasado, cobras la mitad y sin XP","%s: late, half pay and no XP"
+STATUS_PIECES,%d/%d · %s,%d/%d · %s
+FEEDBACK_MONEY,+%s,+%s
+FEEDBACK_THANKS,%s: «%s»,%s: “%s”
+FEEDBACK_LATE,Entrega atrasada: la mitad del pago y sin XP,Late delivery: half pay and no XP
+SPEECH_NEW_MESSAGE,¡Me escribieron! Lo veo en Pedidos.,Someone wrote! I'll check Orders.
+SPEECH_LEVEL_UP,¡Subí al nivel %d!,I reached level %d!
+SPEECH_FAILED,¡Nooo! Un %s.,Nooo! A %s.
+NUDGE_PRINT,El modelo está listo: ¡a imprimir!,The model is ready: let's print!
+NUDGE_REMOVE,¡Terminó! Voy a sacar la pieza.,Done! Let me take the piece off.
+NUDGE_PACK,Hay que embalar el pedido.,Time to pack the order.
+NUDGE_DISPATCH,¡Listo para despachar!,Ready to dispatch!
+NUDGE_FAILED,Hay que limpiar la impresora.,I need to clean the printer.
+NUDGE_WAIT,Mi impresora está libre: espero un mensaje.,My printer is free: waiting for a message.
+NUDGE_NO_MAKEABLE,Nadie me pide algo que pueda hacer. Tengo que revisar mi material.,Nobody asks for something I can make. I should check my material.
+OBJECTIVE_REWARD_SOON,premio pronto,reward coming soon
+ERR_NO_GAME,No hay partida cargada.,No game loaded.
+ERR_OFFER_GONE,Ese mensaje ya no está.,That message is gone.
+ERR_TOO_MANY_ORDERS,Tienes %d pedidos en curso: termina uno antes.,You have %d orders in progress: finish one first.
+ERR_NO_MATERIAL_FOR_ORDER,No tienes material para este pedido.,You have no material for this order.
+ERR_ORDER_GONE,Ese pedido ya no está.,That order is gone.
+ERR_NOT_DESIGNING,Ese pedido no se está modelando ahora.,That order isn't being modeled right now.
+ERR_ALREADY_FOCUSED,Ya te concentraste en este pedido.,You already focused on this order.
+ERR_NOT_MODELED,Primero hay que terminar de modelarlo.,It needs to be modeled first.
+ERR_ALREADY_PRINTING,Ese pedido ya se está imprimiendo.,That order is already printing.
+ERR_PRINTER_GONE,Esa impresora ya no está.,That printer is gone.
+ERR_PRINTER_DONE,Primero retira la pieza terminada de la %s.,Take the finished piece off the %s first.
+ERR_PRINTER_FAILED,La %s falló: límpiala primero.,The %s failed: clean it first.
+ERR_PRINTER_BUSY,La %s está ocupada: se libera en %s.,The %s is busy: free in %s.
+ERR_TOO_BIG,No cabe: la %s es tamaño %s.,Doesn't fit: the %s is size %s.
+ERR_NOT_MULTICOLOR,Necesita una impresora multicolor.,Needs a multicolor printer.
+ERR_SPOOL_GONE,Ese carrete ya no está.,That spool is gone.
+ERR_MATERIAL_NOT_ACCEPTED,El cliente no lo quiere en %s.,The client doesn't want it in %s.
+ERR_PRINTER_MATERIAL,La %s no imprime %s.,The %s can't print %s.
+ERR_MODE_UNKNOWN,Ese modo no existe.,That mode doesn't exist.
+ERR_QUALITY,No alcanza la calidad: da %d y pide %d.,"Quality too low: gives %d, needs %d."
+ERR_NOT_ENOUGH_MATERIAL,No alcanza el material: quedan %s y hacen falta %s.,"Not enough material: %s left, %s needed."
+ERR_NOT_FAILED,Esa impresora no necesita limpieza.,That printer doesn't need cleaning.
+ERR_NOTHING_TO_REMOVE,No hay piezas para retirar.,No pieces to take off.
+ERR_NOTHING_TO_PACK,No hay nada para embalar.,Nothing to pack.
+ERR_NOTHING_TO_DISPATCH,No hay nada para despachar.,Nothing to dispatch.
+LOCAL_STORE_TITLE,"Ferretería: al instante, %d%% más cara","Hardware store: instant, %d%% pricier"
+LOCAL_STORE_BUY,%s · %s · %s,%s · %s · %s
+ERR_NOT_IN_LOCAL_STORE,La ferretería no vende eso.,The hardware store doesn't sell that.
+ERR_NO_MONEY,Te falta dinero: cuesta %s.,Not enough money: it costs %s.
+ERR_NO_STORAGE,No cabe: tu espacio guarda hasta %s.,It doesn't fit: your space holds up to %s.
