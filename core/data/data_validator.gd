@@ -10,12 +10,24 @@ const VOLUMES: Array[String] = ["S", "M", "L"]
 const TECHNOLOGIES: Array[String] = ["fdm", "resin"]
 const PRINT_MODES: Array[String] = ["draft", "normal", "fine"]
 const FAILURE_TYPES: Array[String] = ["spaghetti", "warping"]
+## Tipos de objetivo y el archivo al que apunta su "target" ("" = ninguno).
+const OBJECTIVE_TARGETS: Dictionary[String, String] = {
+	"deliver_orders": "orders",
+	"own_furniture": "furniture",
+	"own_printers": "printers",
+	"own_space": "spaces",
+	"install_accessory": "accessories",
+	"buy_material": "materials",
+	"reach_level": "",
+}
+## Listas cuyos elementos necesitan además una descripción "<name_key>_DESC".
+const DESCRIBED_LISTS: Array[String] = ["accessories", "furniture"]
 const MIN_QUALITY: int = 1
 const MAX_QUALITY: int = 5
 
 ## Campos obligatorios de los archivos con forma de lista. Tipos: "string",
-## "number", "int", "bool", "ids" (lista de identificadores) y "days" (rango
-## [mínimo, máximo] de días de envío).
+## "text" (puede estar vacío), "number", "int", "bool", "ids" (lista de
+## identificadores) y "days" (rango [mínimo, máximo] de días de envío).
 const LIST_SCHEMAS: Dictionary[String, Dictionary] = {
 	"materials": {
 		"id": "string", "name_key": "string", "technology": "string", "price": "number",
@@ -50,27 +62,34 @@ const LIST_SCHEMAS: Dictionary[String, Dictionary] = {
 		"grams_per_piece": "number", "minutes_per_piece": "number", "payment": "number",
 		"xp": "int", "min_level": "int", "deadline_days": "number",
 	},
+	"objectives": {
+		"id": "string", "name_key": "string", "type": "string", "target": "text",
+		"count": "int", "reward_money": "number", "reward_xp": "int",
+	},
 }
-## Secciones de config.json. Tipos extra: "grams" (material -> gramos) y
+## Secciones de config.json. Tipos extra: "list" (lista de objetos) y
 ## "weights" (nombre -> peso).
 const CONFIG_SCHEMAS: Dictionary[String, Dictionary] = {
 	"starting_state": {
-		"money": "number", "level": "int", "space": "string", "printers": "ids",
-		"furniture": "ids", "materials": "grams",
+		"money": "number", "xp": "int", "start_hour": "number", "space": "string",
+		"printers": "ids", "furniture": "ids", "spools": "list",
 	},
 	"time": {"game_seconds_per_real_second": "number", "offline_limit_real_hours": "number"},
 	"order_board": {"slots": "int", "new_order_every_game_minutes": "number"},
 	"late_delivery": {"payment_multiplier": "number", "xp_multiplier": "number"},
 	"storage": {"base_capacity_grams": "int"},
+	"floor_printing": {"max_printers": "int", "reliability_penalty": "number"},
 	"shipping": {"express_days": "int", "express_fee": "number"},
 	"local_store": {"materials": "ids", "price_multiplier": "number"},
-	"rescue": {"material": "string", "grams": "int"},
+	"rescue": {"material": "string", "color": "string", "grams": "int"},
 	"failures": {"random_type_weights": "weights", "enclosed_warping_multiplier": "number"},
 }
 const PRINT_MODE_SCHEMA: Dictionary = {
 	"id": "string", "name_key": "string", "quality_delta": "int",
 	"time_multiplier": "number", "failure_multiplier": "number",
 }
+const COLOR_SCHEMA: Dictionary = {"id": "string", "name_key": "string", "hex": "string"}
+const SPOOL_SCHEMA: Dictionary = {"material": "string", "color": "string", "grams": "int"}
 
 var _files: Dictionary[String, Variant]
 var _translation_keys: Array[String]
@@ -78,6 +97,7 @@ var _errors: Array[String] = []
 ## Entradas válidas de cada lista, por id: {"printers": {"cubo_uno": {...}}}.
 var _by_id: Dictionary[String, Dictionary] = {}
 var _max_level: int = 1
+var _color_ids: Array[String] = []
 
 
 static func validate(files: Dictionary[String, Variant], translation_keys: Array[String]) -> Array[String]:
@@ -98,6 +118,7 @@ func _run() -> void:
 	_check_furniture()
 	_check_spaces()
 	_check_orders()
+	_check_objectives()
 	_check_config()
 
 
@@ -140,6 +161,8 @@ func _check_list(list_name: String) -> void:
 			_error("%s: el id '%s' está repetido" % [list_name, id])
 			continue
 		_check_translation(list_name + "." + id, entry["name_key"])
+		if list_name in DESCRIBED_LISTS:
+			_check_translation(list_name + "." + id, entry["name_key"] + "_DESC")
 		_by_id[list_name][id] = entry
 
 
@@ -161,6 +184,10 @@ func _matches(value: Variant, type: String) -> bool:
 	match type:
 		"string":
 			return value is String and not (value as String).is_empty()
+		"text":
+			return value is String
+		"list":
+			return value is Array and (value as Array).all(func(item: Variant) -> bool: return item is Dictionary)
 		"number":
 			return value is float or value is int
 		"int":
@@ -175,7 +202,7 @@ func _matches(value: Variant, type: String) -> bool:
 			return value is Array and (value as Array).size() == 2 \
 				and _matches(value[0], "int") and _matches(value[1], "int") \
 				and value[0] >= 0 and value[0] <= value[1]
-		"grams", "weights":
+		"weights":
 			if not value is Dictionary:
 				return false
 			for key: Variant in value:
@@ -318,6 +345,25 @@ func _some_printer_can_make(order: Dictionary) -> bool:
 	return false
 
 
+func _check_objectives() -> void:
+	for id: String in _by_id["objectives"]:
+		var objective: Dictionary = _by_id["objectives"][id]
+		var context: String = "objectives." + id
+		var type: String = objective["type"]
+		var target: String = objective["target"]
+		_check_range(context + ".count", objective["count"], 1, 1000)
+		_check_range(context + ".reward_money", objective["reward_money"], 0, INF)
+		_check_range(context + ".reward_xp", objective["reward_xp"], 0, INF)
+		if not OBJECTIVE_TARGETS.has(type):
+			_error("%s: tipo de objetivo desconocido '%s'" % [context, type])
+		elif type == "reach_level":
+			_check_range(context + ".count", objective["count"], 2, _max_level)
+		elif not target.is_empty():
+			_check_ref(context, OBJECTIVE_TARGETS[type], target)
+		elif type in ["own_space", "buy_material", "install_accessory"]:
+			_error("%s: este tipo de objetivo necesita un 'target'" % context)
+
+
 # --- config.json ----------------------------------------------------------
 
 func _check_config() -> void:
@@ -334,6 +380,7 @@ func _check_config() -> void:
 		elif not _check_fields("config." + section, value, CONFIG_SCHEMAS[section]):
 			sections_ok = false
 	_check_print_modes(config.get("print_modes"))
+	_check_colors(config.get("filament_colors"))
 	if sections_ok:
 		_check_config_values(config)
 
@@ -356,18 +403,43 @@ func _check_print_modes(modes: Variant) -> void:
 		_error("config.print_modes: debe tener exactamente los modos %s" % [PRINT_MODES])
 
 
+func _check_colors(colors: Variant) -> void:
+	if not colors is Array or (colors as Array).is_empty():
+		_error("config: falta la lista 'filament_colors'")
+		return
+	for color: Variant in colors:
+		if not color is Dictionary or not _check_fields("config.filament_colors", color, COLOR_SCHEMA):
+			continue
+		var context: String = "config.filament_colors." + str(color["id"])
+		if color["id"] in _color_ids:
+			_error("%s: el id está repetido" % context)
+		_color_ids.append(color["id"])
+		_check_translation(context, color["name_key"])
+		if not Color.html_is_valid(color["hex"]):
+			_error("%s: '%s' no es un color válido" % [context, color["hex"]])
+
+
+func _check_color_ref(context: String, color_id: String) -> void:
+	if color_id not in _color_ids:
+		_error("%s: el color '%s' no existe en config.filament_colors" % [context, color_id])
+
+
 func _check_config_values(config: Dictionary) -> void:
 	var start: Dictionary = config["starting_state"]
 	_check_range("config.starting_state.money", start["money"], 0, INF)
-	_check_range("config.starting_state.level", start["level"], 1, _max_level)
+	_check_range("config.starting_state.xp", start["xp"], 0, INF)
+	_check_range("config.starting_state.start_hour", start["start_hour"], 0, 23)
 	_check_ref("config.starting_state.space", "spaces", start["space"])
 	for printer_id: String in start["printers"]:
 		_check_ref("config.starting_state.printers", "printers", printer_id)
 	for furniture_id: String in start["furniture"]:
 		_check_ref("config.starting_state.furniture", "furniture", furniture_id)
-	for material_id: String in start["materials"]:
-		_check_ref("config.starting_state.materials", "materials", material_id)
-	_check_starting_room(start)
+	for spool: Dictionary in start["spools"]:
+		if _check_fields("config.starting_state.spools", spool, SPOOL_SCHEMA):
+			_check_ref("config.starting_state.spools", "materials", spool["material"])
+			_check_color_ref("config.starting_state.spools", spool["color"])
+			_check_range("config.starting_state.spools.grams", spool["grams"], 1, INF)
+	_check_starting_room(start, config["floor_printing"])
 
 	_check_range("config.time.game_seconds_per_real_second", config["time"]["game_seconds_per_real_second"], 1, 10000)
 	_check_range("config.time.offline_limit_real_hours", config["time"]["offline_limit_real_hours"], 0, 72)
@@ -376,12 +448,15 @@ func _check_config_values(config: Dictionary) -> void:
 	_check_range("config.late_delivery.payment_multiplier", config["late_delivery"]["payment_multiplier"], 0, 1)
 	_check_range("config.late_delivery.xp_multiplier", config["late_delivery"]["xp_multiplier"], 0, 1)
 	_check_range("config.storage.base_capacity_grams", config["storage"]["base_capacity_grams"], 0, INF)
+	_check_range("config.floor_printing.max_printers", config["floor_printing"]["max_printers"], 0, 10)
+	_check_range("config.floor_printing.reliability_penalty", config["floor_printing"]["reliability_penalty"], 0, 0.5)
 	_check_range("config.shipping.express_days", config["shipping"]["express_days"], 1, 30)
 	_check_range("config.shipping.express_fee", config["shipping"]["express_fee"], 0, INF)
 	_check_range("config.local_store.price_multiplier", config["local_store"]["price_multiplier"], 1, 10)
 	for material_id: String in config["local_store"]["materials"]:
 		_check_ref("config.local_store.materials", "materials", material_id)
 	_check_ref("config.rescue.material", "materials", config["rescue"]["material"])
+	_check_color_ref("config.rescue.color", config["rescue"]["color"])
 	_check_range("config.rescue.grams", config["rescue"]["grams"], 1, INF)
 	_check_range("config.failures.enclosed_warping_multiplier", config["failures"]["enclosed_warping_multiplier"], 0, 1)
 	var weights: Dictionary = config["failures"]["random_type_weights"]
@@ -394,10 +469,10 @@ func _check_config_values(config: Dictionary) -> void:
 		_error("config.failures: los pesos de los tipos de fallo deben sumar más que 0")
 
 
-## Las impresoras iniciales deben caber en los muebles iniciales, y los
-## muebles iniciales en el espacio inicial.
-func _check_starting_room(start: Dictionary) -> void:
-	var printer_slots: int = 0
+## Las impresoras iniciales deben caber en los muebles iniciales (o en el
+## suelo), y los muebles iniciales en el espacio inicial.
+func _check_starting_room(start: Dictionary, floor_printing: Dictionary) -> void:
+	var printer_slots: int = int(floor_printing["max_printers"])
 	var floor_slots: int = 0
 	for furniture_id: String in start["furniture"]:
 		var furniture: Dictionary = _by_id["furniture"].get(furniture_id, {})
@@ -405,7 +480,7 @@ func _check_starting_room(start: Dictionary) -> void:
 			printer_slots += int(furniture["printer_slots"])
 			floor_slots += int(furniture["floor_slots"])
 	if (start["printers"] as Array).size() > printer_slots:
-		_error("config.starting_state: las impresoras iniciales no caben en los muebles iniciales")
+		_error("config.starting_state: las impresoras iniciales no caben en los muebles iniciales ni en el suelo")
 	var space: Dictionary = _by_id["spaces"].get(start["space"], {})
 	if not space.is_empty() and floor_slots > int(space["floor_slots"]):
 		_error("config.starting_state: los muebles iniciales no caben en el espacio inicial")

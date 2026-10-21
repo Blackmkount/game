@@ -25,4 +25,7 @@ func test_starting_state_matches_design() -> void:
 	var start: Dictionary = _catalog.files["config"]["starting_state"]
 	assert_eq(int(start["money"]), 250)
 	assert_eq(start["printers"], ["cubo_uno"])
-	assert_eq(int(start["materials"]["pla"]), 1000)
+	assert_eq(start["furniture"], ["mesa_computador"])
+	assert_eq(start["spools"][0]["material"], "pla")
+	assert_eq(start["spools"][0]["color"], "blanco")
+	assert_eq(int(start["spools"][0]["grams"]), 1000)

@@ -2,13 +2,13 @@
 
 > Este documento es la fuente de verdad sobre **qué** es el juego. Las reglas técnicas sobre **cómo** se construye están en `CLAUDE.md`. Los números de este documento son valores iniciales para balancear, no definitivos: los valores reales viven en `data/*.json`.
 >
-> **Versión 2** (2026-10-21). Los cambios respecto a la versión 1 están resumidos en la sección 16.
+> **Versión 2.1** (2026-10-21). Los cambios están resumidos en la sección 16. El estilo visual se detalla en `docs/ESTILO.md`.
 
 ---
 
 ## 1. Concepto
 
-Un joven emprendedor recibe de su vecino una impresora 3D vieja y, con $250 ahorrados, empieza a imprimir llaveros para sus amigos desde su habitación. Pedido a pedido, compra mejores máquinas, materiales y muebles, sube de nivel, consigue clientes más exigentes y convierte su pasatiempo en un taller de fabricación.
+Un joven emprendedor recibe de su vecino una impresora 3D vieja y, con $250 ahorrados, una mesa, un computador viejo y un carrete de PLA blanco, empieza a imprimir llaveros para sus amigos desde su habitación, con la impresora en el suelo. Pedido a pedido, compra mejores máquinas, materiales y muebles, sube de nivel, consigue clientes más exigentes y convierte su pasatiempo en un taller de fabricación.
 
 **Género:** simulador de gestión / tycoon en 3D, con progreso mientras el jugador no está.
 **Plataformas:** Android e iOS. Versión web solo para pruebas internas.
@@ -28,7 +28,7 @@ Cada función nueva debe apoyar al menos uno de estos pilares. Si no apoya ningu
 ## 3. Ambientación y tono
 
 - Ciudad latinoamericana ficticia, ambiente cálido y cercano.
-- El protagonista es joven; el jugador elige su nombre. Aparece en la escena 3D (ver 5.10).
+- El protagonista es joven; el jugador elige su nombre. Aparece en la escena 3D (ver 5.10): pelo café alborotado, buzo negro con capucha, jeans y zapatillas blancas.
 - **Don Ernesto**, el vecino que le regala su vieja impresora, funciona como guía del tutorial y aparece de vez en cuando con consejos.
 - Los pedidos llegan como mensajes de clientes en una **app de mensajería ficticia** dentro del teléfono del protagonista. Cada cliente tiene personalidad propia y frases con humor local, sin caer en estereotipos.
 - **Todas las marcas son ficticias**: impresoras, filamentos, muebles, apps y tiendas. Nunca se usan nombres reales como Prusa, Bambu Lab, Creality, IKEA o WhatsApp, ni nombres de productos reales (Ender, A1, SKÅDIS...).
@@ -126,6 +126,7 @@ La calidad final es la calidad máxima de la impresora ajustada por el modo, sin
 - **Almacenamiento:** la habitación guarda hasta 4 kg de material. Las repisas y estanterías aumentan ese límite (ver 5.9). No se puede comprar más de lo que cabe, contando lo que viene en camino.
 - **Si el material no alcanza:** se puede empezar igual, con un aviso. La impresión se detiene justo donde se acaba el material, y eso se sabe desde el inicio. Sin sensor de filamento, la pieza falla; con sensor, se pausa y continúa al reponer material.
 - **Don Ernesto al rescate:** si el jugador no tiene material, ni dinero para un carrete, ni impresiones en curso, ni piezas por entregar, ni envíos en camino, Don Ernesto le regala un carrete de PLA. Así nunca se queda atascado.
+- **Colores:** cada carrete tiene un color (9 colores en `config.filament_colors`). Por ahora es solo visual: la pieza sale del color del carrete. Los pedidos que exigen un color son posteriores al MVP.
 - Mejora posterior: compra automática de material cuando se acaba.
 
 ### 5.6 Tienda y envíos
@@ -174,13 +175,14 @@ Posteriores al MVP: turno nocturno (amplía el progreso fuera del juego de 8 a 1
 
 ### 5.9 Muebles y espacios
 
-- La **habitación** es amplia: tiene **6 lugares** en el piso para muebles, además de la cama y la decoración. El escritorio inicial ocupa uno y sostiene una impresora.
+- La **habitación** es amplia: tiene **6 lugares** en el piso para muebles. Al empezar está casi vacía: solo la mesa con el computador viejo ocupa un lugar. La imagen `docs/referencias/taller_final.webp` muestra cómo puede verse al final.
+- **Imprimir en el suelo:** al empezar, la impresora está en el suelo porque la mesa la ocupa el computador. En el suelo cabe una impresora, que pierde un 5% de fiabilidad (polvo, vibraciones y algún pisotón). Comprar una mesa la saca del suelo; es el primer objetivo de mejora.
 - Cada mueble ocupa un lugar. Hay muebles para impresoras, para guardar material y para herramientas.
 - Los muebles se ven en la escena 3D: comprarlos hace crecer el taller (pilar 1).
 
 | Mueble | Función | Precio | Nivel |
 |---|---|---|---|
-| Escritorio (inicial) | 1 impresora | — | — |
+| Mesa con computador viejo (inicial) | Aquí está el computador; no le cabe una impresora | — | — |
 | Mesa auxiliar | 1 impresora | $25 | 1 |
 | Mesa de trabajo | 2 impresoras | $120 | 2 |
 | Estantería metálica | 3 impresoras | $150 | 3 |
@@ -241,6 +243,13 @@ Propuesta inicial, que se ajustará al balancear:
 
 Primera venta, primer espagueti, primeros $1.000, primera impresora comprada, primer mueble, mudanza al garaje, 100 pedidos entregados. Dan pequeñas recompensas y marcan el avance.
 
+### 5.14 Objetivos
+
+- Una cadena de objetivos guía al jugador y le da una meta clara en cada sesión: "Entrega 3 llaveros", "Saca la impresora del suelo: compra una mesa auxiliar", "Instala una lámina PEI", "Llega al nivel 2"...
+- Cada objetivo da dinero o experiencia. Viven en `data/objectives.json`.
+- **No vencen ni castigan** (pilar 4): no son "diarios" con fecha límite, sino una lista que avanza al ritmo del jugador.
+- El HUD muestra los dos siguientes; la pantalla Tareas muestra la lista completa con su avance y recompensa.
+
 ## 6. Datos iniciales
 
 ### 6.1 Impresoras
@@ -275,25 +284,32 @@ Primera venta, primer espagueti, primeros $1.000, primera impresora comprada, pr
 ### 6.3 Estado inicial
 
 - Dinero: $250
-- Una impresora Cubo Uno (regalo de Don Ernesto) sobre el escritorio de la habitación
-- Un carrete de PLA (1 kg)
+- Una mesa con un computador viejo (monitor de tubo, torre beige) y una caja de cartón como silla
+- Una impresora Cubo Uno (regalo de Don Ernesto, inspirada en la Ender 3) **en el suelo**
+- Un carrete de PLA blanco (1 kg), montado en la impresora
 - Nivel 1, sin experiencia
+- Día 1, 08:00
 - El tutorial con Don Ernesto empieza al abrir el juego por primera vez
 
 ## 7. Interfaz y controles
 
 - **Cámara:** vista isométrica fija sobre el espacio actual. Pellizcar para hacer zoom, arrastrar para desplazarse dentro de límites.
 - **Tocar una impresora:** abre un panel inferior con su estado y acciones (asignar pedido, limpiar, instalar accesorio).
-- **Barra inferior:** Pedidos (teléfono con mensajes), Tienda, Taller (muebles y accesorios), Inventario (material y envíos en camino).
-- **Barra superior:** retrato del personaje con su nivel y barra de experiencia, dinero y fecha del juego.
+- **Distribución** (como la imagen de referencia; detalle en `docs/ESTILO.md`):
+  - **Barra superior:** tarjeta del personaje (retrato, nivel y barra de experiencia), dinero, fecha del juego y ajustes.
+  - **Derecha:** panel de objetivos.
+  - **Izquierda:** accesos a Pedidos (mensajes de clientes), Tareas (objetivos) y Mapa (espacios).
+  - **Barra inferior:** Inicio, Taller (muebles y accesorios), Inventario (material, impresoras y envíos), Tienda y Perfil.
+- Las secciones se abren como un panel sobre la habitación, que sigue visible detrás.
 - **Retroalimentación:** cada acción importante tiene sonido, animación y vibración ligera. Cobrar dinero y subir de nivel deben sentirse muy bien.
 - Diseño para pulgares: botones grandes en la mitad inferior de la pantalla, respetando las áreas seguras (notch y barra de gestos).
 
 ## 8. Arte
 
-- **Estilo:** low-poly con colores cálidos y saturados, luz suave y sin texturas complejas.
-- **Fuentes de recursos gratuitos:** Kenney, Quaternius y Poly Pizza. Revisar la licencia de cada recurso y registrarla en `assets/CREDITS.md`.
-- **Mientras tanto:** las impresoras, los muebles y el personaje se arman con formas básicas (cajas, cilindros y cápsulas) para probar la jugabilidad antes de invertir en arte.
+- **Estilo: pixel art isométrico cálido**, según la imagen de referencia del dueño (`docs/referencias/taller_final.webp`). La guía completa está en `docs/ESTILO.md`.
+- **Técnica:** el mundo es 3D, armado con formas básicas, y se dibuja a la mitad de la resolución con píxeles nítidos, contorno oscuro de 1 píxel, sombreado por bandas y texturas pixel art generadas por código. Así parece pixel art sin necesitar miles de dibujos a mano, y se puede animar.
+- **Interfaz:** paneles azul marino con bordes y brillos cian, tipografía Nunito e iconos propios.
+- **Recursos de terceros:** si más adelante se usan modelos (Kenney, Quaternius, Poly Pizza), deben pasar por el mismo render pixel art. Se revisa la licencia de cada uno y se registra en `assets/CREDITS.md`.
 - Las impresoras deben verse claramente distintas entre sí, aun siendo sencillas.
 - La pieza que se imprime debe "crecer" capa a capa dentro de la impresora. Es el detalle visual más importante del juego.
 
@@ -319,7 +335,7 @@ Propuesta:
 - Una compra única para quitar anuncios con algún extra cosmético.
 - Sin moneda premium, sin cajas de botín y sin mecánicas que bloqueen el progreso si no se paga.
 
-El dinero del juego se muestra en dólares, pero es solo moneda del juego: no se compra con dinero real.
+El dinero del juego se muestra en dólares, pero es solo moneda del juego: no se compra con dinero real. La imagen de referencia muestra gemas como segunda moneda; el juego no las tiene y en su lugar muestra la fecha del calendario.
 
 El MVP no incluye monetización.
 
@@ -342,6 +358,7 @@ El MVP no incluye monetización.
 - Fallos: espagueti, warping y fin de filamento.
 - Accesorios: lámina PEI, sensor de filamento y cámara.
 - Los muebles de la sección 5.9.
+- Cadena de objetivos (sección 5.14).
 - Personaje con nivel del 1 al 5 y barra de experiencia.
 - Progreso fuera del juego con límite de 8 horas y resumen al volver.
 - Guardado automático.
@@ -400,3 +417,16 @@ Cada fase termina con algo que se puede probar. No se avanza a la siguiente sin 
 - Plazos congelados mientras el jugador no está, pedidos impresos pieza por pieza, fin de filamento cuando el material no alcanza, y Don Ernesto regala un carrete si el jugador se queda atascado.
 - La reputación de la versión 1 pasa a ser el nivel del personaje (5.10).
 - El MVP llega hasta el nivel 5 para incluir la resina.
+
+### Versión 2.1 (2026-10-21)
+
+**Pedidos del dueño:**
+- Estilo gráfico según su imagen de referencia, coherente en todo el juego.
+- Inicio con solo una mesa, un computador viejo y la impresora en el suelo, con 1 kg de PLA blanco. La imagen de referencia es el taller final de ese espacio.
+
+**Diseño propuesto por Claude:**
+- Pixel art isométrico hecho con 3D a media resolución (sección 8) y guía de estilo en `docs/ESTILO.md`.
+- Imprimir en el suelo con una pequeña penalización de fiabilidad, para que la primera mejora sea comprar una mesa (5.9).
+- Colores de filamento, por ahora solo visuales (5.5).
+- Cadena de objetivos sin vencimiento (5.14) y distribución de la interfaz según la referencia (7).
+- Sin gemas ni moneda premium: en su lugar se muestra la fecha (11).

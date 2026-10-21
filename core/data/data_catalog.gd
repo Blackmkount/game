@@ -17,6 +17,7 @@ const FILE_NAMES: Array[String] = [
 	"spaces",
 	"clients",
 	"orders",
+	"objectives",
 ]
 const DEFAULT_DIR: String = "res://data"
 

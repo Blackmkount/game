@@ -13,6 +13,7 @@ Lo desarrolla una sola persona con ayuda de Claude.
 | [`docs/GDD.md`](docs/GDD.md) | Qué es el juego: diseño, sistemas, datos y fases. Es la fuente de verdad del diseño. |
 | [`docs/PROGRESO.md`](docs/PROGRESO.md) | En qué vamos y cuál es el siguiente paso. |
 | [`docs/DECISIONES.md`](docs/DECISIONES.md) | Por qué se tomó cada decisión técnica. |
+| [`docs/ESTILO.md`](docs/ESTILO.md) | Guía de estilo visual: pixel art, paleta, luz, interfaz e iconos. |
 | [`CLAUDE.md`](CLAUDE.md) | Reglas técnicas del proyecto (las lee Claude en cada sesión). |
 | [`docs/PROMPTS.md`](docs/PROMPTS.md) | Mensajes listos para pedirle trabajo a Claude: empezar fase, continuar, reportar errores, balance... |
 

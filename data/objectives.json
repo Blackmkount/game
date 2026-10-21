@@ -1,0 +1,14 @@
+[
+	{"id": "primeros_llaveros", "name_key": "OBJECTIVE_PRIMEROS_LLAVEROS", "type": "deliver_orders", "target": "llavero", "count": 3, "reward_money": 10, "reward_xp": 10},
+	{"id": "impresora_del_suelo", "name_key": "OBJECTIVE_IMPRESORA_DEL_SUELO", "type": "own_furniture", "target": "mesa_auxiliar", "count": 1, "reward_money": 0, "reward_xp": 15},
+	{"id": "primera_pei", "name_key": "OBJECTIVE_PRIMERA_PEI", "type": "install_accessory", "target": "pei_sheet", "count": 1, "reward_money": 0, "reward_xp": 15},
+	{"id": "diez_pedidos", "name_key": "OBJECTIVE_DIEZ_PEDIDOS", "type": "deliver_orders", "target": "", "count": 10, "reward_money": 25, "reward_xp": 20},
+	{"id": "primer_petg", "name_key": "OBJECTIVE_PRIMER_PETG", "type": "buy_material", "target": "petg", "count": 1, "reward_money": 0, "reward_xp": 10},
+	{"id": "nivel_dos", "name_key": "OBJECTIVE_NIVEL_DOS", "type": "reach_level", "target": "", "count": 2, "reward_money": 20, "reward_xp": 0},
+	{"id": "segunda_impresora", "name_key": "OBJECTIVE_SEGUNDA_IMPRESORA", "type": "own_printers", "target": "", "count": 2, "reward_money": 0, "reward_xp": 30},
+	{"id": "repisa_filamento", "name_key": "OBJECTIVE_REPISA_FILAMENTO", "type": "own_furniture", "target": "repisa_filamento", "count": 1, "reward_money": 0, "reward_xp": 15},
+	{"id": "panel_herramientas", "name_key": "OBJECTIVE_PANEL_HERRAMIENTAS", "type": "own_furniture", "target": "panel_herramientas", "count": 1, "reward_money": 0, "reward_xp": 15},
+	{"id": "nivel_tres", "name_key": "OBJECTIVE_NIVEL_TRES", "type": "reach_level", "target": "", "count": 3, "reward_money": 50, "reward_xp": 0},
+	{"id": "primer_cosplay", "name_key": "OBJECTIVE_PRIMER_COSPLAY", "type": "deliver_orders", "target": "casco_cosplay", "count": 1, "reward_money": 40, "reward_xp": 40},
+	{"id": "garaje", "name_key": "OBJECTIVE_GARAJE", "type": "own_space", "target": "garaje", "count": 1, "reward_money": 100, "reward_xp": 50}
+]

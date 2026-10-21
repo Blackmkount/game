@@ -1,12 +1,5 @@
 keys,es,en
 GAME_TITLE,Capa a Capa,Layer by Layer
-TEST_SCENE_SUBTITLE,Escena de prueba,Test scene
-TEST_CHANGE_COLOR,Cambiar color,Change color
-TEST_PRINTER_COLOR,Color de la impresora: %s,Printer color: %s
-COLOR_ORANGE,Naranja,Orange
-COLOR_TEAL,Turquesa,Teal
-COLOR_YELLOW,Amarillo,Yellow
-COLOR_PURPLE,Morado,Purple
 MODE_DRAFT,Borrador,Draft
 MODE_NORMAL,Normal,Normal
 MODE_FINE,Fino,Fine
@@ -24,7 +17,6 @@ PRINTER_TITAN_PRO,Titán Pro,Titan Pro
 ACCESSORY_PEI_SHEET,Lámina PEI,PEI sheet
 ACCESSORY_FILAMENT_SENSOR,Sensor de filamento,Filament sensor
 ACCESSORY_CAMERA,Cámara de monitoreo,Monitoring camera
-FURNITURE_ESCRITORIO,Escritorio,Desk
 FURNITURE_MESA_AUXILIAR,Mesa auxiliar,Side table
 FURNITURE_MESA_TRABAJO,Mesa de trabajo,Workbench
 FURNITURE_ESTANTERIA_METALICA,Estantería metálica,Metal rack
@@ -51,3 +43,114 @@ ORDER_CARCASA,Carcasa para electrónica,Electronics enclosure
 ORDER_CASCO_COSPLAY,Casco de cosplay por partes,Cosplay helmet in parts
 ORDER_ENGRANAJE,Engranajes de repuesto,Replacement gears
 ORDER_MINIATURA,Miniatura de alto detalle,High-detail miniature
+FORMAT_DATE,Día %d · %02d:%02d,Day %d · %02d:%02d
+FORMAT_DAYS,%d días,%d days
+FORMAT_DAY_RANGE,%d a %d días,%d to %d days
+FORMAT_GRAMS,%s g,%s g
+FORMAT_HOURS,%d h,%d h
+FORMAT_HOURS_MINUTES,%d h %d min,%d h %d min
+FORMAT_KG_OF,%s / %s kg,%s / %s kg
+FORMAT_MINUTES,%d min,%d min
+FORMAT_XP_REWARD,+%d XP,+%d XP
+HUD_LEVEL,Nivel %d,Level %d
+HUD_OBJECTIVES,Objetivos,Objectives
+HUD_XP,%s / %s XP,%s / %s XP
+HUD_XP_MAX,Nivel máximo,Max level
+NAV_HOME,Inicio,Home
+NAV_WORKSHOP,Taller,Workshop
+NAV_INVENTORY,Inventario,Inventory
+NAV_SHOP,Tienda,Shop
+NAV_PROFILE,Perfil,Profile
+SIDE_ORDERS,Pedidos,Orders
+SIDE_TASKS,Tareas,Tasks
+SIDE_MAP,Mapa,Map
+SCREEN_SHOP,Tienda,Shop
+SCREEN_INVENTORY,Inventario,Inventory
+SCREEN_WORKSHOP,Taller,Workshop
+SCREEN_PROFILE,Perfil,Profile
+SCREEN_ORDERS,Pedidos,Orders
+SCREEN_TASKS,Tareas,Tasks
+SCREEN_MAP,Mapa,Map
+SCREEN_SETTINGS,Ajustes,Settings
+SHOP_COMING_SOON,Don Ernesto todavía está armando la caja registradora: muy pronto podrás comprar.,Don Ernesto is still setting up the cash register: you'll be able to buy soon.
+SHOP_TAB_PRINTERS,Impresoras,Printers
+SHOP_TAB_MATERIALS,Material,Material
+SHOP_TAB_ACCESSORIES,Accesorios,Add-ons
+SHOP_TAB_FURNITURE,Muebles,Furniture
+SHOP_BUY,Comprar,Buy
+SHOP_LEVEL_REQUIRED,Nivel %d,Level %d
+SHOP_PRINTER_STATS,Velocidad %s× · Calidad %d · Tamaño %s,Speed %s× · Quality %d · Size %s
+SHOP_MULTICOLOR,Multicolor,Multicolor
+SHOP_SHIPPING,Envío: %s,Shipping: %s
+SHOP_MATERIAL_UNIT,%s kg,%s kg
+SHOP_FAILURES,Fallos ×%s,Failures ×%s
+SHOP_TIME,Tiempo ×%s,Time ×%s
+SHOP_FURNITURE_PRINTER,Lugar para %d impresora,Room for %d printer
+SHOP_FURNITURE_PRINTERS,Lugar para %d impresoras,Room for %d printers
+SHOP_FURNITURE_STORAGE,+%s kg de material,+%s kg of material
+SHOP_FURNITURE_RELIABILITY,+%d%% de fiabilidad en todas las impresoras,+%d%% reliability on every printer
+INVENTORY_MATERIALS,Material,Material
+INVENTORY_STORAGE,Almacenamiento,Storage
+INVENTORY_PRINTERS,Impresoras,Printers
+INVENTORY_FURNITURE,Muebles,Furniture
+INVENTORY_ON_FLOOR,En el suelo: pierde un poco de fiabilidad,On the floor: loses a bit of reliability
+INVENTORY_ON_FURNITURE,Sobre un mueble,On a piece of furniture
+WORKSHOP_SLOTS,Lugares para muebles,Furniture spots
+WORKSHOP_FLOOR_PRINTERS,Impresoras en el suelo,Printers on the floor
+WORKSHOP_TIP_FLOOR,Consejo: una mesa auxiliar saca tu impresora del suelo.,Tip: a side table gets your printer off the floor.
+WORKSHOP_FLOOR_PENALTY,"Imprimir en el suelo resta %d%% de fiabilidad: polvo, vibraciones y algún pisotón.","Printing on the floor costs %d%% reliability: dust, vibration and the odd stomp."
+WORKSHOP_PLACED,Muebles colocados,Placed furniture
+WORKSHOP_FREE_SLOTS,Te quedan %d lugares libres: son las marcas que brillan en el piso. Llénalos con muebles de la Tienda.,You have %d free spots: they're the glowing marks on the floor. Fill them with furniture from the Shop.
+PROFILE_DEFAULT_NAME,Maker,Maker
+PROFILE_STATS,Estadísticas,Stats
+PROFILE_DAY,Día,Day
+PROFILE_MONEY,Dinero,Money
+PROFILE_PRINTERS,Impresoras,Printers
+PROFILE_ORDERS,Pedidos entregados,Orders delivered
+PROFILE_OBJECTIVES,Objetivos cumplidos,Objectives done
+PROFILE_MATERIAL,Material,Material
+ORDERS_COMING_SOON,"Muy pronto tus amigos te escribirán con pedidos. Por ahora, mira lo que podrás imprimir a tu nivel.","Soon your friends will message you with orders. For now, here's what you'll be able to print at your level."
+ORDERS_PIECE,%d pieza,%d piece
+ORDERS_PIECES,%d piezas,%d pieces
+ORDERS_LOCKED_MORE,Hay %d pedidos más que se desbloquean al subir de nivel.,%d more orders unlock as you level up.
+TASKS_INTRO,Completa objetivos para ganar dinero y experiencia. Sin prisa: van a tu ritmo.,Complete objectives to earn money and experience. No rush: go at your own pace.
+TASKS_REWARD,Recompensa: %s,Reward: %s
+MAP_SLOTS,%d lugares para muebles,%d furniture spots
+MAP_YOU_ARE_HERE,Estás aquí,You are here
+SETTINGS_LANGUAGE,Idioma,Language
+SETTINGS_SPANISH,Español,Español
+SETTINGS_ENGLISH,English,English
+SETTINGS_CREDITS,Créditos,Credits
+SETTINGS_CREDITS_TEXT,"Hecho con Godot Engine. Tipografía Nunito (SIL Open Font License 1.1). Pruebas con GUT (MIT). Modelos, texturas e iconos hechos para este juego.","Made with Godot Engine. Nunito typeface (SIL Open Font License 1.1). Tests with GUT (MIT). Models, textures and icons made for this game."
+COLOR_BLANCO,Blanco,White
+COLOR_NEGRO,Negro,Black
+COLOR_GRIS,Gris,Gray
+COLOR_ROJO,Rojo,Red
+COLOR_NARANJA,Naranja,Orange
+COLOR_AMARILLO,Amarillo,Yellow
+COLOR_VERDE,Verde,Green
+COLOR_AZUL,Azul,Blue
+COLOR_MORADO,Morado,Purple
+FURNITURE_MESA_COMPUTADOR,Mesa con computador viejo,Table with an old computer
+FURNITURE_MESA_COMPUTADOR_DESC,Aquí diseñas y preparas tus impresiones. No le cabe una impresora.,Where you design and slice your prints. No room for a printer.
+FURNITURE_MESA_AUXILIAR_DESC,Mesa pequeña y liviana para una impresora.,"Small, light table for one printer."
+FURNITURE_MESA_TRABAJO_DESC,Mesa firme con cajones: caben dos impresoras.,Sturdy table with drawers: fits two printers.
+FURNITURE_ESTANTERIA_METALICA_DESC,Tres niveles: tres impresoras en un solo lugar.,Three levels: three printers in a single spot.
+FURNITURE_REPISA_FILAMENTO_DESC,Carretes ordenados y a la vista.,Spools neatly in sight.
+FURNITURE_ESTANTERIA_CUBOS_DESC,Mucho espacio para guardar material.,Lots of room to store material.
+FURNITURE_PANEL_HERRAMIENTAS_DESC,Cada herramienta en su lugar: menos fallos por apuro.,Every tool in its place: fewer rushed mistakes.
+ACCESSORY_PEI_SHEET_DESC,Las piezas se pegan mejor a la cama: warping −50%.,Parts stick better to the bed: warping −50%.
+ACCESSORY_FILAMENT_SENSOR_DESC,Si se acaba el filamento la impresión se pausa en vez de fallar.,If the filament runs out the print pauses instead of failing.
+ACCESSORY_CAMERA_DESC,Vigila tus impresiones: un espagueti las pausa al 10%.,Watches your prints: spaghetti pauses them at 10%.
+OBJECTIVE_PRIMEROS_LLAVEROS,Entrega 3 llaveros,Deliver 3 keychains
+OBJECTIVE_IMPRESORA_DEL_SUELO,Saca la impresora del suelo: compra una mesa auxiliar,Get your printer off the floor: buy a side table
+OBJECTIVE_PRIMERA_PEI,Instala una lámina PEI,Install a PEI sheet
+OBJECTIVE_DIEZ_PEDIDOS,Entrega 10 pedidos,Deliver 10 orders
+OBJECTIVE_PRIMER_PETG,Compra tu primer carrete de PETG,Buy your first PETG spool
+OBJECTIVE_NIVEL_DOS,Llega al nivel 2,Reach level 2
+OBJECTIVE_SEGUNDA_IMPRESORA,Consigue tu segunda impresora,Get your second printer
+OBJECTIVE_REPISA_FILAMENTO,Ordena tus carretes en una repisa,Put your spools on a shelf
+OBJECTIVE_PANEL_HERRAMIENTAS,Cuelga un panel de herramientas,Hang a tool pegboard
+OBJECTIVE_NIVEL_TRES,Llega al nivel 3,Reach level 3
+OBJECTIVE_PRIMER_COSPLAY,Entrega tu primer casco de cosplay,Deliver your first cosplay helmet
+OBJECTIVE_GARAJE,Múdate al garaje,Move to the garage
