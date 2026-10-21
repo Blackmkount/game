@@ -19,22 +19,43 @@ const PRIORITY: Dictionary[Kind, int] = {
 var kind: Kind
 ## uid de la impresora o del mueble en el estado, o índice del lugar libre.
 var ref: int
-## Caja en coordenadas del mundo. Se calcula al armar la habitación.
+## Caja del modelo en sus propias coordenadas y dónde está el modelo. Para
+## saber si un toque le da se usa esta caja, girada con el modelo.
+var local_bounds: AABB
+var transform: Transform3D
+## Caja alineada con el mundo que contiene a la girada: para el piso, la
+## cercanía y el marco. En un objeto girado es más grande que el objeto.
 var bounds: AABB
 ## Si se resalta cuando el personaje está cerca. Los lugares libres y el
 ## personaje no: solo se tocan.
 var reachable: bool
 
 
-func _init(p_kind: Kind, p_ref: int, p_bounds: AABB) -> void:
+func _init(p_kind: Kind, p_ref: int, p_local_bounds: AABB, p_transform: Transform3D = Transform3D.IDENTITY) -> void:
 	kind = p_kind
 	ref = p_ref
-	bounds = p_bounds
+	place(p_local_bounds, p_transform)
 	reachable = p_kind in [Kind.PRINTER, Kind.FURNITURE, Kind.DOOR]
+
+
+func place(p_local_bounds: AABB, p_transform: Transform3D) -> void:
+	local_bounds = p_local_bounds
+	transform = p_transform
+	bounds = p_transform * p_local_bounds
 
 
 func priority() -> int:
 	return PRIORITY[kind]
+
+
+## Distancia desde `origin` hasta donde el rayo toca la caja girada, agrandada
+## `margin` metros por lado. INF si no la toca.
+func ray_distance(origin: Vector3, direction: Vector3, margin: float) -> float:
+	var inverse: Transform3D = transform.affine_inverse()
+	var hit: Variant = local_bounds.grow(margin).intersects_ray(inverse * origin, inverse.basis * direction)
+	if hit == null:
+		return INF
+	return origin.distance_to(transform * (hit as Vector3))
 
 
 ## Rectángulo que ocupa en el piso, en el plano XZ.

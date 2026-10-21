@@ -70,21 +70,15 @@ func step(delta: float) -> void:
 func pick(view_position: Vector2, min_hit_px: float) -> WorldInteractable:
 	if _character_item != null:
 		# El personaje se mueve: su caja se calcula de nuevo en cada toque.
-		_character_item.bounds = _character_bounds()
+		_character_item.place(PropBounds.local_aabb(character.model), character.model.global_transform)
 	var origin: Vector3 = camera.project_ray_origin(view_position)
 	var direction: Vector3 = camera.project_ray_normal(view_position)
-	var best: WorldInteractable = null
-	var best_distance: float = INF
-	for item: WorldInteractable in interactables:
-		var hit: Variant = item.bounds.grow(PICK_MARGIN).intersects_ray(origin, direction)
-		if hit == null:
-			continue
-		var distance: float = origin.distance_to(hit)
-		# Si dos están casi a la misma distancia, gana el de más prioridad.
-		if best == null or distance < best_distance - 0.05 \
-				or (distance <= best_distance + 0.05 and item.priority() > best.priority()):
-			best = item
-			best_distance = minf(distance, best_distance)
+	# Primero lo que está justo bajo el dedo. Solo si no hay nada se acepta un
+	# toque un poco al lado de un objeto: así el margen de uno no le gana a lo
+	# que se ve detrás.
+	var best: WorldInteractable = _ray_pick(origin, direction, 0.0)
+	if best == null:
+		best = _ray_pick(origin, direction, PICK_MARGIN)
 	if best != null:
 		return best
 	var best_center: float = INF
@@ -246,9 +240,9 @@ func _build_contents() -> void:
 			var marker: Node3D = SlotMarker.build(self, "FreeSlot%d" % slot, _marker_material)
 			marker.transform = layout.slots[slot]
 			# Se toca la marca que se ve, con un poco de alto para el rayo.
-			var touch_area: AABB = marker.global_transform * PropBounds.local_aabb(marker)
+			var touch_area: AABB = PropBounds.local_aabb(marker)
 			touch_area.size.y = SLOT_TOUCH_HEIGHT
-			interactables.append(WorldInteractable.new(WorldInteractable.Kind.SLOT, slot, touch_area))
+			interactables.append(WorldInteractable.new(WorldInteractable.Kind.SLOT, slot, touch_area, marker.global_transform))
 	_pulse_markers()
 
 	var door: Node3D = get_node("RoomShell/Door")
@@ -260,22 +254,33 @@ func _build_contents() -> void:
 	character.name = "CharacterController"
 	add_child(character)
 	character.setup(model, grid, layout.character_spot)
-	_character_item = WorldInteractable.new(WorldInteractable.Kind.CHARACTER, 0, _character_bounds())
+	_character_item = WorldInteractable.new(WorldInteractable.Kind.CHARACTER, 0, PropBounds.local_aabb(model), model.global_transform)
 	interactables.append(_character_item)
 
 
 ## Agrega un objeto que se puede tocar y, si ocupa lugar, lo marca como
 ## obstáculo para caminar.
 func _register(kind: WorldInteractable.Kind, ref: int, node: Node3D, blocks: bool) -> void:
-	var bounds: AABB = node.global_transform * PropBounds.local_aabb(node)
-	interactables.append(WorldInteractable.new(kind, ref, bounds))
+	var item: WorldInteractable = WorldInteractable.new(kind, ref, PropBounds.local_aabb(node), node.global_transform)
+	interactables.append(item)
 	if blocks:
-		var footprint: Rect2 = Rect2(bounds.position.x, bounds.position.z, bounds.size.x, bounds.size.z)
-		grid.add_obstacle(footprint.grow(OBSTACLE_MARGIN))
+		grid.add_obstacle(item.footprint().grow(OBSTACLE_MARGIN))
 
 
-func _character_bounds() -> AABB:
-	return character.model.global_transform * PropBounds.local_aabb(character.model)
+## El objeto más cercano que toca el rayo. Si dos están casi a la misma
+## distancia, gana el de más prioridad.
+func _ray_pick(origin: Vector3, direction: Vector3, margin: float) -> WorldInteractable:
+	var best: WorldInteractable = null
+	var best_distance: float = INF
+	for item: WorldInteractable in interactables:
+		var distance: float = item.ray_distance(origin, direction, margin)
+		if distance == INF:
+			continue
+		if best == null or distance < best_distance - 0.05 \
+				or (distance <= best_distance + 0.05 and item.priority() > best.priority()):
+			best = item
+			best_distance = minf(distance, best_distance)
+	return best
 
 
 func _build_destination() -> void:
