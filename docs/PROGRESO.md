@@ -2,12 +2,12 @@
 
 ## Estado actual
 
-- **Fase actual:** 0. Base (código terminado y fusionado en `main`). Falta que el dueño confirme que la versión web abre en su teléfono.
-- **Siguiente paso:** activar GitHub Pages (Settings → Pages → Source: GitHub Actions), volver a correr el workflow "Versión web", abrir https://blackmkount.github.io/game/ en el teléfono y, si todo está bien, empezar la **Fase 1: Simulación** (sección 15 del GDD).
+- **Fase actual:** 0. Base — **completada** el 2026-10-21.
+- **Siguiente paso:** **Fase 1: Simulación** (sección 15 del GDD). Primero se propone un plan de tareas y se espera la aprobación del dueño.
 
 | Fase | Estado |
 |---|---|
-| 0. Base | Código terminado; pendiente la prueba en el teléfono |
+| 0. Base | Completada (2026-10-21) |
 | 1. Simulación | Sin empezar |
 | 2. Prototipo gris | Sin empezar |
 | 3. MVP completo | Sin empezar |
@@ -42,9 +42,9 @@
 - El dueño hizo público el repositorio para poder usar GitHub Pages gratis (ver `docs/DECISIONES.md`).
 - La primera ejecución de "Versión web" en `main` exportó bien; la publicación se saltó porque Pages aún no estaba activado.
 - Se agregó `docs/PROMPTS.md` (mensajes para trabajar con Claude), el enlace a la versión web en `README.md` y `tools/export_web.sh` a la tabla de scripts de `CLAUDE.md`.
+- El dueño activó GitHub Pages. La versión web quedó publicada en https://blackmkount.github.io/game/ y **el dueño confirmó que funciona en su teléfono**. Con eso se cumple el criterio de terminado de la Fase 0.
 
 **Problemas conocidos**
-- Mientras GitHub Pages no esté activado con origen "GitHub Actions", el workflow web exporta pero no publica.
 - El botón usa el estilo gris por defecto de Godot. El estilo visual de la interfaz se define en fases posteriores.
 - La versión web pesa unos 40 MB, casi todo el motor. La primera carga con datos móviles puede tardar.
 - Si el teléfono está en inglés, el juego se ve en inglés (ya hay traducción). En cualquier otro idioma se ve en español.
