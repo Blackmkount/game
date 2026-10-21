@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://game/world/room_view.gd" id="1_room"]
 [ext_resource type="Script" path="res://game/ui/hud/hud.gd" id="2_hud"]
+[ext_resource type="Script" path="res://game/world/world_controls.gd" id="3_controls"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -18,6 +19,10 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_left = -4.0
+offset_top = -4.0
+offset_right = 4.0
+offset_bottom = 4.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
@@ -32,6 +37,15 @@ render_target_update_mode = 4
 
 [node name="Room" type="Node3D" parent="WorldView/SubViewport"]
 script = ExtResource("1_room")
+
+[node name="WorldControls" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("3_controls")
 
 [node name="Hud" type="Control" parent="."]
 layout_mode = 1

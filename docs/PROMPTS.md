@@ -60,24 +60,26 @@ Primero propón un plan dividido en tareas pequeñas, donde cada tarea termine e
 
 ### Notas extra por fase (agrégalas al prompt anterior)
 
-**Fase 1 — Simulación**
-```
-Recuerda: solo lógica en core/, sin gráficos. Todos los números en data/*.json, con una prueba que valide esos archivos. Los fallos se deciden al iniciar cada impresión, y advance() debe dar el mismo resultado en un paso grande que en muchos pequeños, con una prueba que lo demuestre.
+Las fases y sus tareas están en `docs/RUTA.md`.
 
-La fase incluye tools/simulate.sh: un jugador automático sencillo que juega 7 días virtuales y genera un informe con dinero, nivel de reputación, impresoras compradas y el momento de cada desbloqueo, para revisar el balance.
+**Fase 1 — Ciclo jugable**
 ```
+Recuerda: la lógica va en core/ con pruebas, y cada tarea la conecta con la interfaz para que yo pueda probarla en el teléfono. Todos los números en data/*.json. Los fallos se deciden al iniciar cada impresión, y advance() debe dar el mismo resultado en un paso grande que en muchos pequeños, con una prueba que lo demuestre. La pieza debe verse "crecer" dentro de la impresora aunque sea un cubo que sube de altura.
 
-**Fase 2 — Prototipo gris**
-```
-Todo con formas básicas, sin buscar arte todavía. Lo importante es que el ciclo completo (aceptar pedido, asignar impresora, imprimir, entregar, cobrar, comprar) se pueda jugar con el dedo en el navegador del teléfono. La pieza debe verse "crecer" dentro de la impresora aunque sea un cubo que sube de altura.
+La fase termina con tools/simulate.sh: un jugador automático sencillo que juega 7 días y genera un informe con dinero, nivel, impresoras compradas y el momento de cada desbloqueo, para revisar el balance.
 ```
 
-**Fase 4 — Móvil y pulido**
+**Fase 2 — Personaje vivo y game feel**
+```
+Cada acción tiene que responder en menos de 0,1 segundos con imagen, sonido y, donde corresponda, vibración. Usa solo sonidos con licencia clara (preferiblemente CC0) y regístralos en assets/CREDITS.md. Dime exactamente qué revisar en el teléfono.
+```
+
+**Fase 5 — Móvil y rendimiento**
 ```
 En esta fase necesitaremos mi cuenta de Google Play, mi cuenta de Apple Developer y firmar las apps. Antes de cada cosa que dependa de mí, explícame paso a paso qué tengo que hacer, qué secretos crear en GitHub y cómo. Nunca subas keystores, certificados ni contraseñas al repositorio.
 ```
 
-**Fase 5 — Publicación**
+**Fase 6 — Publicación**
 ```
 Ayúdame a preparar todo lo de las tiendas: textos de la ficha en español e inglés, lista de capturas necesarias, política de privacidad, formularios de privacidad de cada tienda, clasificación por edad y el plan para la prueba cerrada de Google Play (12 testers durante 14 días seguidos).
 ```

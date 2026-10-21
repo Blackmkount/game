@@ -3,6 +3,7 @@ extends ScreenBase
 ## Tienda: catálogo completo por categoría, con precio, desbloqueo por nivel
 ## y días de envío. La compra se activa en la tarea 3 de la Fase 1.
 
+const DEFAULT_CATEGORY: String = "printers"
 const CATEGORIES: Array[Dictionary] = [
 	{"id": "printers", "text": "SHOP_TAB_PRINTERS"},
 	{"id": "materials", "text": "SHOP_TAB_MATERIALS"},
@@ -10,12 +11,14 @@ const CATEGORIES: Array[Dictionary] = [
 	{"id": "furniture", "text": "SHOP_TAB_FURNITURE"},
 ]
 
-var _category: String = "printers"
+var _category: String = DEFAULT_CATEGORY
 var _tabs: Dictionary[String, Button] = {}
 
 
-func _init() -> void:
+## `category`: con qué pestaña se abre ("printers", "furniture"...).
+func _init(category: String = DEFAULT_CATEGORY) -> void:
 	super("cart", "SCREEN_SHOP")
+	_category = category
 
 
 func _build_header(column: VBoxContainer) -> void:

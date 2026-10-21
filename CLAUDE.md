@@ -4,6 +4,7 @@ Juego móvil 3D de gestión (tycoon) para Android e iOS: un joven emprendedor em
 
 - **Qué es el juego:** `docs/GDD.md` (fuente de verdad del diseño).
 - **En qué vamos:** `docs/PROGRESO.md` (léelo antes de empezar cualquier tarea).
+- **Hacia dónde vamos:** `docs/RUTA.md` (fases, tareas y su orden).
 - **Por qué se decidió algo técnico:** `docs/DECISIONES.md`.
 - **Cómo se ve:** `docs/ESTILO.md` (guía de estilo visual). Todo lo visual nuevo debe seguirla.
 
@@ -30,6 +31,7 @@ Las sesiones corren en un entorno en la nube donde Godot no viene instalado.
 | `tools/run_tests.sh` | Corre todas las pruebas GUT en modo headless |
 | `tools/export_web.sh` | Exporta la versión web a `build/web/`. Necesita las plantillas: `tools/setup_godot.sh --web-templates` |
 | `tools/simulate.sh` | Corre el simulador de balance (desde la fase 1) |
+| `tools/screenshots.sh` | Saca capturas de la escena principal en varias situaciones en `build/screenshots/`, con `xvfb-run`. Úsalo para revisar la interfaz antes de abrir un PR. Las situaciones están en `tools/screenshot_runner.gd` |
 
 - Al empezar una sesión, ejecuta `tools/setup_godot.sh`.
 - Si una descarga falla por restricciones de red, díselo al dueño. No busques rutas alternativas.

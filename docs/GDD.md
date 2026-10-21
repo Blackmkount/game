@@ -2,7 +2,7 @@
 
 > Este documento es la fuente de verdad sobre **qué** es el juego. Las reglas técnicas sobre **cómo** se construye están en `CLAUDE.md`. Los números de este documento son valores iniciales para balancear, no definitivos: los valores reales viven en `data/*.json`.
 >
-> **Versión 2.1** (2026-10-21). Los cambios están resumidos en la sección 16. El estilo visual se detalla en `docs/ESTILO.md`.
+> **Versión 2.2** (2026-10-21). Los cambios están resumidos en la sección 16. El estilo visual se detalla en `docs/ESTILO.md` y el orden de trabajo en `docs/RUTA.md`.
 
 ---
 
@@ -58,6 +58,7 @@ Subir de nivel, desbloquear impresoras, materiales y clientes, llenar la habitac
 - Así las duraciones pueden ser realistas: un llavero tarda 20 minutos de juego (50 segundos reales) y un envío de 3 días tarda 3 horas reales.
 - La velocidad del tiempo vive en `data/config.json`, para ajustarla con el simulador.
 - **Todas las duraciones de este documento están en tiempo de juego**, salvo que se diga lo contrario.
+- **Cómo se muestran los tiempos al jugador:** lo que el jugador va a esperar de verdad se cuenta en **tiempo real** ("Lista en 3 min"). Las fechas van en el **calendario del juego** ("Llega el día 6", "Entregar antes del día 9"). La duración de un pedido muestra las dos: "≈ 5 min (2 h de juego)". Así nadie cree que una maceta tarda dos horas de verdad.
 
 ### 5.2 Pedidos
 
@@ -205,6 +206,7 @@ Posteriores al MVP: turno nocturno (amplía el progreso fuera del juego de 8 a 1
 ### 5.10 Personaje y nivel
 
 - **El personaje** aparece en la escena 3D, en su habitación. Al principio se arma con formas básicas; su apariencia definitiva se define en la fase de arte.
+- **Se maneja con un joystick** y camina por el espacio (sección 7.1). Su posición es solo presentación: no se guarda en la partida y al abrir el juego aparece junto a su escritorio.
 - **Experiencia y nivel:** entregar pedidos a tiempo da experiencia (XP). La barra superior muestra siempre el retrato del personaje, su nivel y una **barra de progreso** hacia el siguiente nivel.
 - Entregar tarde no da experiencia.
 - Cada nivel desbloquea clientes, pedidos, impresoras, materiales y muebles:
@@ -248,7 +250,31 @@ Primera venta, primer espagueti, primeros $1.000, primera impresora comprada, pr
 - Una cadena de objetivos guía al jugador y le da una meta clara en cada sesión: "Entrega 3 llaveros", "Saca la impresora del suelo: compra una mesa auxiliar", "Instala una lámina PEI", "Llega al nivel 2"...
 - Cada objetivo da dinero o experiencia. Viven en `data/objectives.json`.
 - **No vencen ni castigan** (pilar 4): no son "diarios" con fecha límite, sino una lista que avanza al ritmo del jugador.
-- El HUD muestra los dos siguientes; la pantalla Tareas muestra la lista completa con su avance y recompensa.
+- El HUD muestra el siguiente en una sola línea compacta; la pantalla Tareas muestra la lista completa con su avance y recompensa.
+
+### 5.15 Ritmo del juego
+
+Metas para el balance, jugando sesiones cortas de 2 a 5 minutos varias veces al día. Se comprueban con el simulador y con pruebas con personas; no son reglas fijas.
+
+| Momento | Meta |
+|---|---|
+| Primera venta | Menos de 2 minutos desde que se abre el juego por primera vez |
+| Comprar la mesa auxiliar | En la primera sesión (llega en la siguiente) |
+| Nivel 2 | Primer día |
+| Segunda impresora | Día 1 o 2 |
+| Nivel 3 | Día 3 o 4 |
+| Nivel 4 y mudanza al garaje | Día 7 a 10 |
+| Nivel 5 y resina | Día 10 a 14 |
+| Quedarse atascado | Nunca (rescate de Don Ernesto) |
+
+### 5.16 Realismo por validar
+
+Propuestas aprobadas por el dueño, basadas en datos reales (`docs/REFERENCIAS.md`, sección "Datos reales para el diseño"). Se prueban con el simulador (Fase 1, tarea 10) antes de pasar a `data/*.json`:
+
+- **Preparación de cada pieza:** unos 5 minutos de juego extra por pieza, por calentar la cama, nivelar y retirar la pieza. En la vida real son de 3 a 8 minutos.
+- **Costo y ganancia a la vista:** al asignar un pedido se muestran el costo del material y la ganancia, como haría un taller real.
+- **Impresoras modernas más fiables:** de 92–94% a 95–97%. En la vida real fallan de 2 a 5% de las veces; las clásicas, de 10 a 20%.
+- **Aprender reduce fallos:** el Manual del maker (sección 7) da un pequeño bono de fiabilidad. En un estudio real, leer el material de capacitación bajó los fallos de 33% a 6%.
 
 ## 6. Datos iniciales
 
@@ -293,14 +319,31 @@ Primera venta, primer espagueti, primeros $1.000, primera impresora comprada, pr
 
 ## 7. Interfaz y controles
 
-- **Cámara:** vista isométrica fija sobre el espacio actual. Pellizcar para hacer zoom, arrastrar para desplazarse dentro de límites.
-- **Tocar una impresora:** abre un panel inferior con su estado y acciones (asignar pedido, limpiar, instalar accesorio).
-- **Distribución** (como la imagen de referencia; detalle en `docs/ESTILO.md`):
-  - **Barra superior:** tarjeta del personaje (retrato, nivel y barra de experiencia), dinero, fecha del juego y ajustes.
-  - **Derecha:** panel de objetivos.
-  - **Izquierda:** accesos a Pedidos (mensajes de clientes), Tareas (objetivos) y Mapa (espacios).
-  - **Barra inferior:** Inicio, Taller (muebles y accesorios), Inventario (material, impresoras y envíos), Tienda y Perfil.
-- Las secciones se abren como un panel sobre la habitación, que sigue visible detrás.
+### 7.1 Controles del mundo
+
+El dueño eligió que **el personaje se maneje con un joystick** (2026-10-21).
+
+- **Joystick flotante:** se apoya el pulgar en cualquier parte del mundo (fuera de los botones) y se arrastra. Aparece un aro bajo el dedo y el personaje camina hacia donde apunta el pulgar en la pantalla, también en diagonal. Se juega con una mano.
+- **Tocar un objeto** (impresora, mueble, lugar libre, puerta): abre al instante su **panel inferior**, desde cualquier parte del cuarto. El personaje se gira a mirarlo.
+- **Tocar el piso:** el personaje camina solo hasta ese punto, rodeando los muebles. Sirve también a quien no puede o no quiere usar el joystick.
+- **Tocar al personaje:** dice una frase graciosa.
+- **Cercanía:** al caminar junto a una impresora, un mueble o la puerta, el objeto se marca con un marco cian en el piso y aparece una burbuja encima. Tocar la burbuja abre su panel.
+- **Cámara:** sigue al personaje. Tiene tres niveles de zoom: **normal**, **cerca** y **lejos**, que muestra todo el espacio. Se cambian con el botón de abajo a la izquierda o pellizcando.
+- **Paneles inferiores:** se cierran con la X, deslizándolos hacia abajo, tocando el mundo o con el botón "atrás" de Android. Empezar a caminar también los cierra.
+- **Regla de diseño: caminar nunca es obligatorio para decidir.** El personaje es presentación. Toda la información y todas las decisiones (pedidos, tienda, asignar impresiones) se pueden hacer tocando. Caminar nunca bloquea los pagos ni el progreso fuera del juego. Si más adelante alguna acción pide ir hasta un lugar (por ejemplo, recoger piezas), será corta, dará gusto y se podrá automatizar.
+- **Para probar en el computador:** WASD o flechas para caminar, E o Enter para abrir lo resaltado, Z o la rueda del mouse para el zoom y Escape para cerrar el panel. Arrastrar con el mouse también mueve el joystick.
+
+### 7.2 Distribución
+
+Como la imagen de referencia; el detalle está en `docs/ESTILO.md`.
+
+- **Barra superior:** tarjeta del personaje (retrato, nivel y barra de experiencia), dinero, fecha del juego y ajustes.
+- **Barra inferior, al alcance del pulgar:** Inicio · Pedidos · Tienda · Inventario · Tareas. *(Aprobada; se implementa en la Fase 1, tarea 3. Hasta entonces sigue la distribución anterior: Pedidos, Tareas y Mapa a la izquierda, y Taller y Perfil abajo.)*
+- **Perfil:** al tocar el retrato. **Mapa:** al tocar la puerta y desde Perfil.
+- **Objetivos:** una línea compacta con el siguiente objetivo; al tocarla se abre Tareas.
+- **Inventario** reúne lo que antes estaba en "Taller": material, envíos en camino, impresoras con su estado y muebles con sus lugares libres.
+- **Burbujas de estado** sobre las impresoras (lista, fallo, sin material, avance), con icono y color.
+- Las secciones se abren como un panel sobre la habitación, que sigue visible detrás. La información de un objeto del mundo se abre como panel inferior.
 - **Retroalimentación:** cada acción importante tiene sonido, animación y vibración ligera. Cobrar dinero y subir de nivel deben sentirse muy bien.
 - Diseño para pulgares: botones grandes en la mitad inferior de la pantalla, respetando las áreas seguras (notch y barra de gestos).
 
@@ -326,6 +369,7 @@ Primera venta, primer espagueti, primeros $1.000, primera impresora comprada, pr
 - Los pedidos multicolor nunca dependen solo del color: siempre llevan icono y texto.
 - Tamaño de texto legible en pantallas pequeñas.
 - Ninguna mecánica exige reflejos rápidos.
+- El joystick no exige precisión: todo lo que se hace caminando también se puede hacer tocando (sección 7.1).
 
 ## 11. Monetización (a decidir antes de la fase de publicación)
 
@@ -353,7 +397,10 @@ El MVP no incluye monetización.
 - Impresoras: Cubo Uno, Rayo Mini, Rayo X1, Prisma MC, Bóveda P1 y Gota R1.
 - Materiales: PLA, PETG, TPU y resina, con inventario y almacenamiento.
 - Tienda con envíos de varios días, envío exprés y ferretería del barrio.
-- Los 12 pedidos de la sección 6.2.
+- Unos 36 pedidos: los 12 de la sección 6.2 y otros inspirados en precios reales (ideas en `docs/RUTA.md`, sección 8), con variantes automáticas de cantidad, color, plazo y pago (±15%).
+- 12 clientes con nombre, cara y personalidad (dos por cada tipo de cliente), y unas 40 frases de Don Ernesto.
+- Unos 30 objetivos y unos 20 logros (sección 5.13).
+- Manual del maker: glosario de impresión 3D real que se desbloquea al jugar.
 - Modos de impresión: Borrador, Normal y Fino.
 - Fallos: espagueti, warping y fin de filamento.
 - Accesorios: lámina PEI, sensor de filamento y cámara.
@@ -377,23 +424,26 @@ Lavado y curado de la resina, Titán Pro, local comercial y espacios mayores, em
 | Velocidad del tiempo | 1 día de juego = 1 hora real. Se ajusta con el simulador |
 | Duración de impresiones | Sección 5.12, a ajustar con el simulador y pruebas reales |
 | Apariencia del protagonista | Se define en la fase de arte |
-| Compilación de iOS | Mac propia o servicio en la nube, a decidir antes de la fase 4 |
+| Compilación de iOS | Mac propia o servicio en la nube, a decidir antes de la Fase 5 |
+| Entregar con el joystick | ¿Se cobra tocando la impresora terminada, o el personaje recoge la pieza y la lleva a una caja de despacho junto a la puerta? Se decide antes de la Fase 1, tarea 7, respetando la regla de la sección 7.1 |
 | Monetización | Sección 11 |
 
 ## 15. Fases de desarrollo
 
-Cada fase termina con algo que se puede probar. No se avanza a la siguiente sin cumplir su criterio de terminado.
+Cada fase termina con algo que se puede probar. No se avanza a la siguiente sin cumplir su criterio de terminado. **El detalle de cada fase, sus tareas y el porqué del orden están en `docs/RUTA.md`**, aprobada por el dueño el 2026-10-21.
 
 | Fase | Contenido | Criterio de terminado |
 |---|---|---|
-| **0. Base** | Proyecto Godot, estructura, pruebas automáticas, integración continua, versión web en GitHub Pages | Una escena 3D simple se abre desde un enlace en el navegador del teléfono |
-| **1. Simulación** | Lógica pura de tiempo de juego, pedidos, impresoras, materiales, modos, fallos, tienda y envíos, accesorios, muebles, dinero y nivel, con pruebas. Sin gráficos | Las pruebas pasan y un script simula 7 días reales de juego con un jugador automático |
-| **2. Prototipo gris** | Escena 3D de la habitación amplia con formas básicas: muebles, impresoras y personaje. Cámara, interfaz mínima (nivel con barra de experiencia, dinero, fecha), tienda, ciclo completo jugable y guardado | Se puede jugar el ciclo completo en el navegador del teléfono, incluida la tienda |
-| **3. MVP completo** | Garaje, todas las impresoras del MVP, accesorios y muebles visibles, fallos visibles, progreso fuera del juego, tutorial y balance con el simulador | El MVP de la sección 13.1 completo y jugable de principio a fin |
-| **4. Móvil y pulido** | Controles táctiles finos, áreas seguras, rendimiento, arte low-poly, sonido, inglés, notificaciones y builds de Android e iOS | Funciona fluido en un Android de gama baja y en un iPhone |
-| **5. Publicación** | Icono, capturas, textos de tienda, política de privacidad, prueba cerrada en Google Play (12 testers durante 14 días) y TestFlight en iOS | Publicado en ambas tiendas |
+| **0. Base** | Proyecto Godot, pruebas automáticas, integración continua y versión web en GitHub Pages | Hecha |
+| **1. Ciclo jugable** | Joystick, cámara y paneles; navegación nueva; guardado; tienda y envíos; pedidos; imprimir y entregar; fallos y accesorios; progreso fuera del juego; simulador de balance | En el teléfono se juega desde el día 1 hasta comprar una segunda impresora y llegar al nivel 2, cerrando y abriendo el juego entre sesiones |
+| **2. Personaje vivo y game feel** | Respuesta a cada toque, sonido, animaciones de acciones y emociones, mundo vivo y grandes momentos | Cada acción tiene imagen, sonido y vibración en menos de 0,1 s, y 60 fps en un teléfono de gama media |
+| **3. UX/UI y primera experiencia** | Panel y lista de impresoras, tienda mejorada, tutorial con Don Ernesto, Manual del maker y accesibilidad | 3 personas que nunca jugaron completan el primer pedido y compran la mesa sin ayuda en menos de 10 minutos |
+| **4. Contenido y MVP completo** | Garaje, garaje lleno y rendimiento, pedidos y clientes, objetivos y logros, balance final, prueba de una semana | El MVP de la sección 13.1 completo, del nivel 1 al 5, en unas 2 semanas de sesiones cortas |
+| **5. Móvil y rendimiento** | Builds de Android e iOS, áreas seguras, notificaciones, rendimiento en gama baja, inglés completo | Al menos 30 fps en un Android de gama baja y fluido en un iPhone |
+| **6. Publicación** | Identidad, textos de tienda, privacidad, prueba cerrada de Google Play y TestFlight | Publicado en ambas tiendas |
+| **7. Después del lanzamiento** | Actualizaciones de contenido (sección 13.2) | Continua |
 
-**Importante:** la prueba cerrada de Google Play exige 12 testers activos durante 14 días seguidos. Conviene empezar a reunir testers durante la fase 4.
+**Importante:** la prueba cerrada de Google Play exige 12 testers activos durante 14 días seguidos. Conviene empezar a reunir testers durante la Fase 5.
 
 ## 16. Historial de cambios del diseño
 
@@ -430,3 +480,16 @@ Cada fase termina con algo que se puede probar. No se avanza a la siguiente sin 
 - Colores de filamento, por ahora solo visuales (5.5).
 - Cadena de objetivos sin vencimiento (5.14) y distribución de la interfaz según la referencia (7).
 - Sin gemas ni moneda premium: en su lugar se muestra la fecha (11).
+
+### Versión 2.2 (2026-10-21)
+
+**Decisiones del dueño** (respuestas a `docs/RUTA.md`, sección 11):
+- Aprobó la ruta de desarrollo en 8 fases (sección 15 y `docs/RUTA.md`).
+- **El personaje se maneja con un joystick** (sección 7.1).
+- Aprobó la navegación nueva (sección 7.2), los tiempos en tiempo real (5.1), el realismo por validar (5.16), el contenido ampliado del MVP (13.1) y el ritmo meta (5.15).
+
+**Diseño propuesto por Claude para que el joystick encaje:**
+- Joystick flotante que aparece bajo el pulgar, con la dirección corregida para la vista isométrica.
+- Tocar un objeto abre su panel al instante, sin tener que caminar; tocar el piso hace caminar al personaje.
+- Resalte por cercanía con burbuja, cámara que sigue al personaje y tres niveles de zoom.
+- Regla de diseño: caminar nunca es obligatorio para decidir ni bloquea pagos ni progreso fuera del juego (7.1).

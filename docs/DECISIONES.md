@@ -121,3 +121,90 @@ Registro de decisiones técnicas importantes: fecha, decisión y motivo. Las má
 ### La escena principal reemplaza a la de prueba
 **Decisión:** se borró la escena de prueba de la Fase 0 (`test_scene`) y su prueba. La escena principal ahora es `game/scenes/main.tscn`.
 **Motivo:** la escena de prueba solo servía para comprobar la versión web, y ya cumplió su función.
+
+---
+
+## 2026-10-21 — Ruta de desarrollo y Fase 1, tarea 2: controles del mundo
+
+### Ruta de desarrollo aprobada
+**Decisión:** el orden de trabajo vive en `docs/RUTA.md`, con 8 fases (0 a 7). La sección 15 del GDD solo resume y apunta ahí.
+**Motivo:** el dueño la aprobó. La ruta reorganiza la Fase 1 para que cada tarea traiga lógica, interfaz y respuesta visual juntas, y se pueda probar en el teléfono después de cada PR.
+
+### Joystick, con la regla de que caminar nunca es obligatorio
+**Decisión:** el personaje se maneja con un joystick flotante (elección del dueño). Tocar un objeto abre su panel al instante, tocar el piso hace caminar al personaje y toda la información y las decisiones se pueden tomar sin caminar.
+**Motivo:** el joystick da vida, pero en un juego de gestión de sesiones cortas, obligar a caminar para leer o decidir sería tedioso con muchas impresoras. También chocaría con el progreso fuera del juego. Tres críticos independientes (ergonomía móvil, juegos con joystick y técnica en Godot) coincidieron. La regla quedó en el GDD (sección 7.1).
+
+### La entrada del mundo es un Control entre la vista y el HUD
+**Decisión:** `WorldControls` es un Control de pantalla completa con `MOUSE_FILTER_STOP`, puesto entre la vista del mundo y el HUD. Recibe los toques en `_gui_input`.
+**Motivo:**
+- Con `_unhandled_input`, los arrastres se pierden cuando el dedo pasa sobre un botón del HUD (comprobado en Godot 4.7.2).
+- Con un Control, Godot sigue mandando los arrastres de cada dedo al Control donde empezó.
+- El HUD, que va encima, se queda con los toques sobre sus botones.
+
+### Eventos de mouse inventados al tocar
+**Decisión:** `WorldControls` ignora los eventos de mouse con `device == InputEvent.DEVICE_ID_EMULATION` y trata al mouse real como un dedo más (índice reservado).
+**Motivo:** al tocar la pantalla, el sistema también genera un clic de mouse. Sin el filtro, cada toque contaría dos veces. Una prueba de integración lo verifica con `Input.parse_input_event`, que sí genera esos clics (`Viewport.push_input` no los genera).
+
+### Sin motor de física
+**Decisión:** el personaje es un círculo que se empuja fuera de los rectángulos de los muebles (`WalkGrid`). Los caminos se buscan con `AStarGrid2D` y se seleccionan objetos con un rayo contra cajas (`AABB.intersects_ray`).
+**Motivo:**
+- En un cuarto de 6×6 m con pocos objetos es simple, rápido y se puede probar con GUT.
+- Empujar desde el punto más cercano hace que las esquinas se comporten como redondeadas, así que el personaje no se traba.
+- El movimiento se reparte en pasos cortos, para que un cuadro largo (pestaña del navegador en segundo plano) no atraviese nada.
+
+### Cajas de los modelos calculadas con las medidas de las formas
+**Decisión:** `PropBounds` calcula la caja de cada modelo con `BoxMesh.size`, `CylinderMesh.radius`, etc., y no con `get_aabb()`.
+**Motivo:** sin pantalla (pruebas en modo headless) las mallas no tienen tamaño y `get_aabb()` devuelve cajas vacías.
+
+### Cámara que sigue, con tres niveles de zoom
+**Decisión:** `CameraRig` sigue al personaje con suavizado exponencial y no se sale del cuarto. Los niveles de zoom son 0,68×, 1× y 2×.
+**Motivo:**
+- La vista normal (6,8 m de ancho) no muestra el cuarto entero de lado a lado: mide 8,5 m en diagonal. En teléfonos alargados la puerta quedaba fuera de la pantalla.
+- El nivel "lejos" (unos 10 m) muestra todo el cuarto.
+- Se mantuvo la vista normal de siempre porque el personaje se lee mejor así.
+
+### Píxeles enteros para la cámara y el personaje, y la imagen se corre lo que falta
+**Decisión:**
+- La cámara y el personaje se colocan en píxeles enteros del dibujo a media resolución. El personaje se corre a lo largo de la mirada de la cámara para seguir apoyado en el piso.
+- La fracción de píxel que falta para la posición exacta se compensa corriendo la imagen de la vista del mundo, que es 4 px más grande que la pantalla por cada lado. El corrimiento usa el desplazamiento solo visual de Godot 4.7 (`offset_transform_position` con `offset_transform_visual_only`), porque Godot redondea a píxeles enteros la posición de los Controls.
+**Motivo:** si solo la cámara se ajusta a los píxeles, el personaje tiembla un píxel contra la habitación. Si nada se ajusta, los bordes del pixel art "titilan" al moverse. Así no hay temblor y el movimiento se ve suave.
+
+### Sombra ortogonal
+**Decisión:** la luz del sol usa `SHADOW_ORTHOGONAL` con 20 m de alcance.
+**Motivo:** con la cámara en movimiento, el modo por defecto (4 divisiones) recalcula sus divisiones cada cuadro y los bordes de las sombras tiemblan. Además, dibuja las sombras cuatro veces.
+
+### Valores de sensación en código, no en `data/`
+**Decisión:** velocidades, distancias del joystick y suavidad de la cámara viven en `ControlsTuning` (`game/world/input/`). Los principales se pueden mover en vivo desde Ajustes → Controles (pruebas), sin guardarse.
+**Motivo:** no son números de balance: no cambian la simulación ni la economía. Claude no puede jugar, así que el dueño los ajusta en el teléfono y avisa qué valores se sienten mejor. Esos valores pasan después al código.
+
+### Panel inferior que crece hacia arriba
+**Decisión:**
+- `BottomSheet` se ancla abajo y crece hacia arriba desde su borde inferior (`grow_vertical = GROW_DIRECTION_BEGIN`), con el borde de arriba igual al de abajo. Así su alto siempre es el que pide su contenido.
+- La entrada, la salida y el arrastre para cerrarlo solo mueven el dibujo (desplazamiento visual) y lo funden.
+**Motivo:** en Godot, el alto de un texto con salto de línea depende de su ancho, que vale 0 hasta que los contenedores se acomodan. Ese acomodo puede llegar después del primer cuadro; en los teléfonos de 90 o 120 Hz pasa a menudo. Medir el alto una sola vez dejaba a veces un panel de miles de píxeles.
+
+### Objetos chicos con zona de toque mínima
+**Decisión:** primero se busca el objeto con un rayo contra su caja. Si el rayo no toca nada, los objetos que en la pantalla miden menos de 88 px (de la interfaz) se agrandan hasta esa medida alrededor de su centro. Las marcas de lugares libres del piso y los objetos grandes no se agrandan.
+**Motivo:**
+- 88 px es más o menos la yema del pulgar en un teléfono; el personaje y la puerta, vistos de lejos, son más chicos que eso.
+- Las marcas del piso son planas y anchas: su rectángulo en la pantalla cubría mucho piso vacío, y tocar el piso para caminar abría el panel del lugar libre.
+
+### Preferencias del jugador aparte de la partida
+**Decisión:** qué pistas ya vio el jugador se guarda en `user://settings.cfg` (`UserSettings`), no en la partida.
+**Motivo:** no es estado del juego y no debe cambiar la simulación ni sus migraciones.
+
+### Botón "atrás" de Android
+**Decisión:** `get_tree().quit_on_go_back = false`. "Atrás" cierra el panel abierto, después la sección abierta, y recién entonces sale del juego.
+**Motivo:** por defecto, Godot cierra la app con "atrás".
+
+### `JoystickRing` y no el `VirtualJoystick` de Godot
+**Decisión:** el joystick se dibuja con un Control propio (`JoystickRing`) y los gestos los interpreta `TouchTracker`.
+**Motivo:** Godot 4.7 trae una clase `VirtualJoystick`, por eso el nombre. Se usa una propia porque el mismo dedo puede ser un toque, el joystick o parte de un pellizco, y eso lo decide `TouchTracker` en un solo lugar, con pruebas. Además, el aro sigue al dedo y respeta el estilo de `docs/ESTILO.md`.
+
+### Capturas automáticas en dos pasos
+**Decisión:** `tools/screenshots.gd` solo arranca y carga `tools/screenshot_runner.gd`, que arma la escena y saca las capturas.
+**Motivo:** el guion que se pasa con `-s` se compila antes de que existan los autoloads (`Game`, `Events`), y las clases del juego que los usan no compilan en ese momento.
+
+### `run_tests.sh` exige el resumen de GUT
+**Decisión:** además del código de salida, `run_tests.sh` falla si el registro de GUT no trae la línea `Totals`.
+**Motivo:** si una prueba cierra el juego antes de tiempo (por ejemplo, el botón "atrás" en la última pantalla), Godot sale con código 0 y nadie se entera de las pruebas que no corrieron. Por eso el cierre del juego en `WorldControls` pasa por `quit_game`, que las pruebas reemplazan.
