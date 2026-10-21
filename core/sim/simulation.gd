@@ -6,8 +6,8 @@ extends RefCounted
 ## El reloj cuenta segundos de juego enteros. advance() convierte el tiempo
 ## real y guarda la fracción de segundo que sobra en _carry, que no se guarda
 ## en la partida. Los eventos se procesan en su segundo exacto y en orden de
-## tiempo. Por ahora son el fin de modelado y el mensaje nuevo del tablero; el
-## fin de pieza se agrega en un paso siguiente del ciclo de pedidos.
+## tiempo: el fin de cada pieza en las impresoras, el fin de modelado en el
+## computador y el mensaje nuevo del tablero.
 
 ## Salvaguarda técnica para que un avance nunca quede dando vueltas sin fin.
 const MAX_EVENTS_PER_ADVANCE: int = 100000
@@ -86,6 +86,9 @@ func _move_to(t: int, live: bool) -> void:
 ## Segundo de juego del próximo evento pendiente, o NO_EVENT.
 func _scan_next_event_time() -> int:
 	var next: int = NO_EVENT
+	for printer: OwnedPrinter in state.printers:
+		if _is_printing(printer):
+			next = mini(next, printer.job.ends_at)
 	var designing: Order = _designing_order()
 	if designing != null:
 		next = mini(next, designing.design_ends_at)
@@ -94,14 +97,22 @@ func _scan_next_event_time() -> int:
 	return next
 
 
-## Procesa los eventos del segundo `t` en orden fijo: impresoras, computador y
-## tablero. Por ahora, computador y tablero.
+## Procesa los eventos del segundo `t` en orden fijo: las impresoras (en orden
+## de uid), el computador y el tablero.
 func _process_events_at(t: int) -> void:
+	for printer: OwnedPrinter in state.printers:
+		if _is_printing(printer) and printer.job.ends_at == t:
+			PrintFlow.on_piece_end(self, printer, t)
 	var designing: Order = _designing_order()
 	if designing != null and designing.design_ends_at == t:
 		DesignFlow.on_design_end(self, designing, t)
 	if state.next_offer_at == t:
 		OrderBoard.on_refill(self, t)
+
+
+## La impresora tiene una pieza en curso (su fin es un evento pendiente).
+func _is_printing(printer: OwnedPrinter) -> bool:
+	return printer.job != null and printer.job.status == PrintJob.Status.PRINTING
 
 
 ## Pedido que se está modelando, o null con el computador libre.

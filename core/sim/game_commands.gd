@@ -65,6 +65,46 @@ func focus_design(order_uid: int) -> CommandResult:
 	return result
 
 
+## Imprime el pedido con esa impresora, carrete y modo. Revisa con
+## PrintRules.check, igual que el plan que ve el jugador, así el motivo de un
+## error es el mismo. Aparta el material y empieza la primera pieza.
+func start_print(order_uid: int, printer_uid: int, spool_uid: int, mode_id: String) -> CommandResult:
+	var state: GameState = sim.state
+	var order: Order = state.find_order(order_uid)
+	var printer: OwnedPrinter = state.find_printer(printer_uid)
+	var spool: Spool = state.find_spool(spool_uid)
+	var result: CommandResult = PrintRules.check(state, sim.rules, order, printer, spool, mode_id)
+	if not result.ok:
+		return result
+	PrintFlow.start_job(sim, order, printer, spool, mode_id, state.game_seconds)
+	sim.mark_dirty()
+	return result
+
+
+## "Limpiar y reintentar": vuelve a imprimir la pieza que falló, con el modo
+## elegido y el mismo carrete. Todo se revisa antes de usar el azar.
+func retry_piece(printer_uid: int, mode_id: String) -> CommandResult:
+	var state: GameState = sim.state
+	var result: CommandResult = PrintFlow.check_retry(state, sim.rules, printer_uid, mode_id)
+	if not result.ok:
+		return result
+	PrintFlow.retry(sim, state.find_printer(printer_uid), mode_id, state.game_seconds)
+	sim.mark_dirty()
+	return result
+
+
+## "Limpiar": libera la impresora que falló; el pedido conserva sus piezas
+## terminadas y vuelve a esperar una impresora.
+func clean_printer(printer_uid: int) -> CommandResult:
+	var state: GameState = sim.state
+	var result: CommandResult = PrintFlow.check_failed(state, printer_uid)
+	if not result.ok:
+		return result
+	PrintFlow.clean(sim, state.find_printer(printer_uid))
+	sim.mark_dirty()
+	return result
+
+
 ## Cancela un pedido en cualquier etapa, sin castigo: solo se pierde el
 ## material que ya se usó. Si se estaba modelando, el computador sigue con el
 ## siguiente de la fila.
@@ -104,10 +144,4 @@ func _release_printer(order: Order) -> void:
 	var printer: OwnedPrinter = sim.state.find_printer(order.printer_uid)
 	if printer == null or printer.job == null:
 		return
-	var job: PrintJob = printer.job
-	if job.status != PrintJob.Status.DONE:
-		var spool: Spool = sim.state.find_spool(job.spool_uid)
-		spool.grams += (job.pieces_total - order.pieces_done - 1) * job.grams_per_piece
-		sim.changes.spools = true
-	printer.job = null
-	sim.changes.add_printer(printer.uid)
+	PrintFlow.release(sim, printer, order)

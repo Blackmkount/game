@@ -209,6 +209,64 @@ func test_an_invalid_plan_still_has_its_numbers() -> void:
 	assert_eq(no_spool.piece_seconds, 0, "Sin carrete no hay números")
 
 
+func test_plan_and_print_command_give_the_same_reason() -> void:
+	var commands: GameCommands = GameCommands.new(Simulation.new(_state, _rules))
+	var cubo: OwnedPrinter = _state.printers[0]
+	var pla: Spool = _state.spools[0]
+	var empty: Spool = _add_spool("pla", 0)
+	var resin: Spool = _add_spool("resina", 1000)
+	var mini: OwnedPrinter = _add_printer("rayo_mini")
+	var busy: OwnedPrinter = _add_printer("rayo_x1")
+	var done: OwnedPrinter = _add_printer("rayo_x1")
+	var failed: OwnedPrinter = _add_printer("rayo_x1")
+	var printing: Order = _order_on(busy, PrintJob.Status.PRINTING)
+	_order_on(done, PrintJob.Status.DONE)
+	_order_on(failed, PrintJob.Status.FAILED)
+	var waiting: Order = _ready_order("llavero")
+	waiting.stage = Order.Stage.WAITING_DESIGN
+	var designing: Order = _ready_order("llavero")
+	designing.stage = Order.Stage.DESIGNING
+	var keychain: Order = _ready_order("llavero")
+	# Cada fila: pedido, impresora, carrete, modo y el motivo esperado.
+	var setups: Array[Array] = [
+		[999, cubo.uid, pla.uid, "normal", "ERR_ORDER_GONE"],
+		[waiting.uid, cubo.uid, pla.uid, "normal", "ERR_NOT_MODELED"],
+		[designing.uid, cubo.uid, pla.uid, "normal", "ERR_NOT_MODELED"],
+		[printing.uid, cubo.uid, pla.uid, "normal", "ERR_ALREADY_PRINTING"],
+		[keychain.uid, 999, pla.uid, "normal", "ERR_PRINTER_GONE"],
+		[keychain.uid, done.uid, pla.uid, "normal", "ERR_PRINTER_DONE"],
+		[keychain.uid, failed.uid, pla.uid, "normal", "ERR_PRINTER_FAILED"],
+		[keychain.uid, busy.uid, pla.uid, "normal", "ERR_PRINTER_BUSY"],
+		[_ready_order("organizador").uid, mini.uid, pla.uid, "normal", "ERR_TOO_BIG"],
+		[_ready_order("letrero").uid, cubo.uid, pla.uid, "normal", "ERR_NOT_MULTICOLOR"],
+		[keychain.uid, cubo.uid, 999, "normal", "ERR_SPOOL_GONE"],
+		[keychain.uid, cubo.uid, resin.uid, "normal", "ERR_MATERIAL_NOT_ACCEPTED"],
+		[_ready_order("miniatura").uid, cubo.uid, resin.uid, "normal", "ERR_PRINTER_MATERIAL"],
+		[keychain.uid, cubo.uid, pla.uid, "turbo", "ERR_MODE_UNKNOWN"],
+		[_ready_order("maceta").uid, cubo.uid, pla.uid, "draft", "ERR_QUALITY"],
+		[keychain.uid, cubo.uid, empty.uid, "normal", "ERR_NOT_ENOUGH_MATERIAL"],
+	]
+	var before: String = JSON.stringify(SaveCodec.encode(_state), "", true)
+	var prints_state: int = _state.prints_rng.state
+	for setup: Array in setups:
+		var expected: String = setup[4]
+		var plan: PrintPlan = PrintPlanner.evaluate(_state, _rules, _state.find_order(setup[0]),
+				_state.find_printer(setup[1]), _state.find_spool(setup[2]), setup[3])
+		var result: CommandResult = commands.start_print(setup[0], setup[1], setup[2], setup[3])
+		assert_false(plan.ok, expected)
+		assert_eq(plan.reason.reason, expected)
+		assert_false(result.ok, expected)
+		assert_eq(result.reason, expected)
+		assert_eq(result.args, plan.reason.args, "Mismos datos del motivo en %s" % expected)
+	assert_eq(JSON.stringify(SaveCodec.encode(_state), "", true), before, "Un comando que falla no cambia nada")
+	assert_eq(_state.prints_rng.state, prints_state, "Ni usa el azar")
+	assert_true(commands.sim.changes.is_empty())
+	var valid: PrintPlan = PrintPlanner.evaluate(_state, _rules, keychain, cubo, pla, "normal")
+	assert_true(valid.ok)
+	assert_true(commands.start_print(keychain.uid, cubo.uid, pla.uid, "normal").ok,
+		"Lo que el plan da por válido se puede imprimir")
+
+
 func test_planning_changes_nothing() -> void:
 	var order: Order = _ready_order("llavero")
 	var twin: RandomNumberGenerator = RandomNumberGenerator.new()
@@ -284,6 +342,22 @@ func _add_petg_printer() -> OwnedPrinter:
 	_state.printers.append(rayo)
 	_add_spool("petg", 1000)
 	return rayo
+
+
+func _add_printer(printer_id: String) -> OwnedPrinter:
+	var printer: OwnedPrinter = OwnedPrinter.new(_state.take_uid(), printer_id)
+	_state.printers.append(printer)
+	return printer
+
+
+## Un llavero en la impresora, con su trabajo en ese estado.
+func _order_on(printer: OwnedPrinter, status: PrintJob.Status) -> Order:
+	var order: Order = _ready_order("llavero")
+	order.stage = Order.Stage.PRINTED if status == PrintJob.Status.DONE else Order.Stage.PRINTING
+	order.printer_uid = printer.uid
+	printer.job = _job_for(order, 1200)
+	printer.job.status = status
+	return order
 
 
 func _job_for(order: Order, piece_seconds: int) -> PrintJob:
