@@ -1,12 +1,12 @@
 # Ruta de desarrollo — "Capa a Capa"
 
-> **Propuesta v1 (2026-10-21), pendiente de aprobación del dueño.** Cuando se apruebe, reemplaza la tabla de fases del GDD (sección 15), que pasará a apuntar aquí.
+> **Versión 1.1 (2026-10-21), aprobada por el dueño.** Reemplaza la tabla de fases del GDD (sección 15), que ahora apunta aquí. Las respuestas del dueño están en la sección 11.
 >
 > - Qué es el juego: `docs/GDD.md`.
 > - En qué vamos: `docs/PROGRESO.md`.
 > - **Esta ruta:** hacia dónde vamos, en qué orden y por qué.
 >
-> Las propuestas que cambian el diseño están marcadas con **(cambia el GDD)** y no se aplican hasta que las apruebes (sección 11).
+> Lo marcado con **(cambia el GDD)** ya está aprobado y pasado al GDD (versión 2.2).
 
 ---
 
@@ -124,58 +124,50 @@ Lo real también da decisiones: **los pedidos cortos pagan más por hora pero ex
 
 ## 4. Controles: movimiento y acciones
 
-### 4.1 Decisión principal: ¿cómo se controla al personaje?
+### 4.1 Decisión: el personaje se maneja con un joystick
 
-| Opción | Cómo se juega | A favor | En contra |
-|---|---|---|---|
-| **A. Toca y el personaje lo hace** *(recomendada)* | Tocas un objeto (impresora, caja, lugar libre) y eliges una acción en un panel abajo. La acción ocurre al instante y el personaje camina hasta allá y la actúa: retira la pieza, limpia el espagueti, abre la caja. También puedes tocar el piso para que camine | Se juega con una mano y sin reflejos (GDD 10). Funciona igual con 1 o con 40 impresoras. La simulación sigue simple. El personaje da vida | El personaje no se maneja directamente |
-| B. Joystick virtual (como los juegos "arcade idle" en que caminas recogiendo cosas) | Mueves al personaje con un joystick para llevar piezas de la impresora a la puerta | Muy activo | Necesita más atención; choca con las sesiones cortas y el progreso fuera del juego; con 40 impresoras caminar aburre. Sería otro juego y obliga a rediseñar el ciclo |
-| C. Personaje decorativo | El personaje no se mueve; todo son botones | Lo más simple | Se pierde vida y el pilar 1 |
+Se propusieron tres opciones (A: tocar y el personaje lo hace; B: joystick; C: personaje decorativo). **El dueño eligió la B, el joystick.** Para que no traiga los problemas que se anotaron (sesiones cortas, una mano, muchas impresoras más adelante), se armó así, después de una revisión con tres críticos (ergonomía móvil, juegos con joystick y riesgos técnicos en Godot):
 
-**Recomiendo la A.** Toma lo mejor de la B (ver al personaje moverse y trabajar) sin sus problemas.
+- **Joystick flotante:** aparece donde se apoya el pulgar, así que se juega con una mano.
+- **Tocar un objeto abre su panel al instante**, sin caminar hasta él. Tocar el piso hace caminar solo al personaje (sirve a quien no quiere o no puede usar el joystick).
+- **Regla de diseño:** caminar nunca es obligatorio para decidir, ni bloquea pagos ni el progreso fuera del juego (GDD, sección 7.1). Si más adelante alguna acción pide ir hasta un lugar, será corta, dará gusto y se podrá automatizar: un ayudante, zapatillas más rápidas, recoger varias piezas de una pasada.
 
-### 4.2 Cámara
-- **Arrastrar con un dedo:** desplazar, con inercia y dentro de los límites del espacio.
-- **Pellizcar:** acercar o alejar, desde "cuarto completo" hasta "primer plano de una impresora". En el computador, con la rueda del mouse.
-- **Doble toque:** acercar donde tocaste, o volver a la vista completa.
-- **Enfoque automático:** al abrir el panel de una impresora, la cámara se acerca y la deja visible sobre el panel, para ver la pieza crecer.
-- **Botón "centrar"** cuando te alejas mucho.
-- **Pixel art nítido:** el zoom va por escalones con una transición animada, y la cámara se mueve de píxel en píxel. Así los bordes no "tiemblan", que es el defecto típico del pixel art en movimiento.
-- Sin rotación en el MVP: la vista isométrica fija mantiene el estilo de la referencia.
+### 4.2 Joystick y personaje (Fase 1, tarea 2)
+- **Aro bajo el pulgar:** aparece al arrastrar más de 16 px. El personaje llega a la velocidad máxima con unos 60 px de recorrido; desde el primer paso camina al 35%, para que no se sienta lento. Si el dedo se sale del aro, el aro lo sigue y cambiar de dirección es inmediato.
+- **Dirección corregida:** la vista inclinada aplasta la profundidad a la mitad. Sin corregir, un arrastre en diagonal movería al personaje unos 20° desviado; con la corrección va justo hacia donde apunta el pulgar.
+- **Choques sin motor de física:** el personaje es un círculo que no atraviesa muebles ni impresoras y los rodea por las esquinas sin trabarse.
+- **Animación por código:** piernas y brazos se mueven según la distancia caminada (los pies no patinan), se inclina un poco al caminar, respira quieto y mira lo que tiene cerca.
+- **Toques del sistema:** si el dedo sale de la pantalla, llega una notificación o la app pasa a segundo plano, el joystick se suelta solo. Los toques muy cerca de los bordes izquierdo y derecho no mueven al personaje, porque ahí están los gestos de "atrás" del teléfono.
 
-### 4.3 Tocar el mundo
+### 4.3 Tocar el mundo y cercanía
 
-| Objeto | Al tocarlo |
+| Gesto | Qué pasa |
 |---|---|
-| Impresora | Panel con estado, pieza, avance y tiempo restante. Acciones: imprimir pedido, retirar y entregar, limpiar y reintentar, cambiar material, instalar accesorio |
-| Lugar libre (marca cian) | "¿Qué pongo aquí?": muebles que caben y acceso a la tienda |
-| Computador | Pedidos: "aquí revisas los mensajes y preparas los archivos" |
-| Caja de envío en la puerta | Abrirla: lo comprado vuela a su lugar |
-| Puerta | Mapa (espacios), cuando el garaje esté cerca de desbloquearse |
-| Repisa o estantería | Material guardado |
-| Personaje | Perfil y una frase graciosa |
+| Tocar una impresora, un mueble, un lugar libre o la puerta | Se abre su panel inferior. El personaje se gira a mirarlo |
+| Tocar el piso | El personaje camina hasta ahí; un círculo cian marca el destino |
+| Tocar al personaje | Dice una frase graciosa |
+| Tocar el mundo con un panel abierto | Si es otro objeto, cambia el panel; si no, lo cierra (y no camina) |
+| Arrastrar con un panel abierto | Cierra el panel y camina |
+| Caminar cerca de una impresora, un mueble o la puerta | Marco cian en el piso y burbuja encima. Tocar la burbuja abre el panel |
 
-- Cada objeto tiene un **área de toque más grande que su dibujo**, pensada para dedos.
-- El objeto tocado se **resalta con contorno cian** y da un pequeño rebote.
-- Todo lo que se hace tocando el mundo también se puede hacer desde las pantallas (accesibilidad).
-- Si una acción no se puede hacer, se explica por qué ("Necesitas nivel 2", "No hay lugar: compra un mueble"). Nunca hay un toque sin respuesta.
+- Cada objeto se puede tocar aunque se vea pequeño: hay un área mínima de 88 px.
+- Una impresora gana sobre la mesa donde está, y el resalte no salta entre objetos vecinos: se mantiene hasta alejarse un poco más.
+- Los lugares libres no se resaltan al pasar (cubren mucho piso); solo se tocan.
+- Todo número que muestra un panel sale de `core/` y `data/` (por ejemplo, la fiabilidad con la penalización del suelo).
 
-### 4.4 Personaje que camina y actúa
-- Camina por la habitación esquivando los muebles.
-- **Acciones visuales:** ir a la impresora y trabajar, retirar la pieza, limpiar el espagueti, abrir cajas y celebrar.
-- **Emociones:** celebra al cobrar o subir de nivel y se agarra la cabeza con un espagueti.
-- **Vida propia:** se sienta en el computador, toma café, mira la impresora, bosteza de noche y se estira.
-- **Regla de oro: el personaje nunca demora al jugador.** Cuando tocas "Entregar", cobras al instante; la caminata y las monedas son el espectáculo. Si llega otra orden, la animación actual se acorta.
+### 4.4 Cámara
+- **Sigue al personaje** y lo deja un poco arriba del centro de la parte visible, para que el pulgar no lo tape.
+- **Tres niveles de zoom:** normal (la vista de siempre), cerca (el doble) y lejos (todo el cuarto). Con el botón de abajo a la izquierda, pellizcando o con la rueda del mouse.
+- **No se sale del cuarto.** Con un panel abierto, encuadra el objeto encima del panel.
+- **Pixel art sin temblor:** la cámara y el personaje se mueven de píxel en píxel del dibujo, y la fracción que falta se compensa corriendo la imagen. El movimiento se ve suave y los bordes no tiemblan.
 
 ### 4.5 Notas técnicas (para Claude)
-- **Entrada:** un nodo `WorldInput` en `game/world/input/` recibe `_unhandled_input`, así la interfaz consume primero. Distingue toque, arrastre, pellizco (dos `InputEventScreenTouch`) y doble toque, y acepta mouse para la versión web. Las coordenadas se dividen por el `stretch_shrink` (2) del `SubViewportContainer` antes de lanzar el rayo con `Camera3D.project_ray_origin/normal`.
-- **Selección sin motor de física:** prueba del rayo contra cajas simples (`AABB.intersects_ray`) registradas por cada objeto que se puede tocar. Son pocos objetos, así que es simple y rápido.
-- **Cámara:** `CameraRig` con objetivo, escalones de zoom, límites, inercia y ajuste a la cuadrícula de píxeles en los ejes de la cámara.
-- **Resaltado:** una segunda variante cian del material de contorno en `WorldPalette`.
-- **Personaje:** `CharacterController` en `game/world/character/`, con `AStarGrid2D` (incluido en Godot 4) sobre una cuadrícula de unos 25 cm, obstáculos según los muebles, una cola de acciones visuales y animaciones por código con `Tween`. Reacciona a las señales de `Events`.
-- **Panel inferior:** un componente `BottomSheet` reutilizable en `game/ui/components/`.
-
----
+- **Entrada:** `WorldControls` (`game/world/world_controls.gd`) es un Control de pantalla completa entre la vista del mundo y el HUD. Recibe los toques en `_gui_input`, porque `_unhandled_input` pierde los arrastres cuando el dedo pasa sobre un botón (comprobado en Godot 4.7.2). Ignora los eventos de mouse que el sistema inventa al tocar (`DEVICE_ID_EMULATION`) y trata al mouse real como un dedo más.
+- **Gestos:** `TouchTracker` (puro, con pruebas) decide si fue toque, joystick o pellizco.
+- **Personaje:** `CharacterController` con `WalkGrid` (choques círculo contra rectángulo y caminos con `AStarGrid2D`) y `ReachTracker` para la cercanía.
+- **Cámara:** `CameraRig`. Cada cuadro, `WorldControls` llama a `RoomView.step()`, que mueve al personaje, lo ajusta a los píxeles y después mueve la cámara.
+- **Selección:** rayo contra las cajas de cada objeto (`PropBounds`, calculadas con las medidas de las formas), sin motor de física.
+- **Valores de sensación:** todos en `ControlsTuning`, y los principales se pueden mover en vivo en Ajustes → Controles (pruebas).
 
 ## 5. Jugabilidad: el ciclo y sus decisiones
 
@@ -184,7 +176,7 @@ Lo real también da decisiones: **los pedidos cortos pagan más por hora pero ex
 2. **Lo abres:** tarjeta con los requisitos en iconos (tamaño, calidad, material, multicolor, plazo), el pago y la XP. Botones **Aceptar** y **Rechazar**.
 3. **Imprimir:** el juego **recomienda** impresora, material y modo y muestra: tiempo (en tiempo real), calidad, riesgo de fallo, costo del material y ganancia. Un toque en "Imprimir"; "Cambiar" para elegir otra cosa. Si algo no sirve, dice por qué ("No cabe: la Rayo Mini es tamaño S").
 4. **La pieza crece** capa a capa en la impresora, con una burbuja de avance encima.
-5. **Termina:** burbuja ✓ sobre la impresora. La tocas, el personaje retira la pieza y la entrega.
+5. **Termina:** burbuja ✓ sobre la impresora. **Pendiente de decidir antes de la tarea 7** (sección 11): o se cobra tocando la impresora, o el personaje recoge la pieza y la lleva a una caja de despacho junto a la puerta, al estilo de los juegos con joystick.
 6. **Cobras:** monedas que vuelan al contador, "+$6" flotante y la barra de XP que se llena.
 
 ### 5.2 Las decisiones que hacen el juego (pilar 2)
@@ -194,7 +186,7 @@ Lo real también da decisiones: **los pedidos cortos pagan más por hora pero ex
 - **En qué invertir:** otra impresora, un mueble para que quepa o un accesorio que evita fallos.
 
 ### 5.3 Ritmo: metas para el balance
-Son metas para el simulador, no reglas fijas. **(Necesitan tu aprobación, sección 11.)**
+Son metas para el simulador, no reglas fijas. Aprobadas por el dueño y pasadas al GDD (sección 5.15).
 
 | Momento | Meta (jugando sesiones cortas de 2 a 5 minutos) |
 |---|---|
@@ -328,7 +320,7 @@ Proyecto Godot, pruebas, integración continua y versión web en GitHub Pages.
 | # | Tarea | Qué podrás probar en el teléfono | Tamaño |
 |---|---|---|---|
 | 1 | Datos de balance y su validación | — | Hecha |
-| 2 | **Controles del mundo:** cámara (arrastrar, pellizcar, doble toque, enfoque), tocar objetos con resaltado y panel inferior de información; mouse en la web. Capturas automáticas para que Claude revise la interfaz | Mueves y acercas la habitación; tocas la impresora y ves su panel | M |
+| 2 | **Controles del mundo con joystick:** joystick flotante, personaje que camina con choques y animación, tocar objetos y piso, cercanía con resalte y burbuja, paneles inferiores, cámara que sigue con tres niveles de zoom, teclado y mouse en la web, ajustes de controles para probar. Capturas automáticas para que Claude revise la interfaz | Caminas con el pulgar, tocas la impresora y ves su panel, cambias el zoom | L |
 | 3 | **Navegación y HUD despejado** (sección 7.1): barra inferior nueva, objetivo compacto, sin botones laterales | Pedidos queda abajo y se ve más habitación | M |
 | 4 | **Guardado, azar reproducible y menú de pruebas:** guardar en `user://save.json` (versión, archivo temporal, guardado después de cada comando, cada cierto tiempo y al salir), semilla del azar en el estado, versión visible en Ajustes y menú de pruebas oculto | Cierras y abres el juego: sigue igual | M |
 | 5 | **Tienda y envíos:** comprar con confirmación, días de envío, exprés, ferretería, almacenamiento y desbloqueo por nivel; "En camino" en Inventario; la caja llega a la puerta, se abre al tocarla y el objeto aparece en su lugar | Compras la mesa auxiliar, llega días después, la abres y la impresora sube a la mesa | L |
@@ -347,7 +339,7 @@ Proyecto Godot, pruebas, integración continua y versión web en GitHub Pages.
 |---|---|---|---|
 | 1 | **Kit de respuesta:** botones que rebotan, números flotantes, monedas que vuelan, avisos arriba, vibración; ajustes de vibración y de reducir movimiento | Cada toque responde | M |
 | 2 | **Sonido:** buses de audio, efectos de interfaz, cobro, fallo y nivel, motores por familia de impresora y música tranquila; volúmenes en Ajustes; créditos | El taller suena | M |
-| 3 | **Personaje que camina y actúa:** caminos que esquivan muebles, animación de caminar, cola de acciones visuales, tocar el piso para caminar, reacciones | El personaje va a la impresora a retirar la pieza | L |
+| 3 | **Personaje que actúa:** animaciones de acciones (retirar la pieza, limpiar un espagueti, abrir cajas), emociones y rutinas; los muebles que lo tapan se vuelven transparentes. Caminar ya llegó en la Fase 1 | El personaje celebra al cobrar y se agarra la cabeza con un espagueti | M |
 | 4 | **Mundo vivo:** animación de cada familia de impresoras (cabezal, cama, resina), carrete que gira, burbujas de estado, día y noche en la ventana y la lámpara, rutinas del personaje | El cuarto se mueve solo | M |
 | 5 | **Grandes momentos:** celebración al subir de nivel, unboxing de impresoras, muebles que caen con rebote, primera venta | Subir de nivel se siente como un premio | M |
 
@@ -413,7 +405,7 @@ Actualizaciones de contenido, ordenadas por cuánto aportan contra cuánto cuest
 3. **Materiales técnicos:** ABS y ASA (necesitan impresora cerrada), fibra de carbono (boquilla endurecida) y nylon (secador).
 4. **Posprocesado:** lijar, pintar y lavar y curar la resina, para pedidos que pagan más.
 5. **Local comercial** con vitrina, Titán Pro, niveles 6 a 10 y clientes empresa.
-6. **Empleados** que automatizan tareas.
+6. **Empleados** que automatizan tareas, y herramientas para que caminar nunca aburra con muchas impresoras: un ayudante que recoge y entrega, más velocidad al caminar, recoger varias piezas de una pasada.
 7. **Temporadas y eventos** (sección 8.4).
 8. Monetización según la sección 11 del GDD, guardado en la nube y logros de las tiendas.
 
@@ -425,29 +417,31 @@ Actualizaciones de contenido, ordenadas por cuánto aportan contra cuánto cuest
 |---|---|---|
 | **Menú de pruebas oculto** (por ejemplo, tocar 7 veces la versión en Ajustes): acelerar el tiempo, dar dinero, subir de nivel, provocar un fallo | Probar en el teléfono lo avanzado sin jugar horas. Usa los mismos comandos de `Game` | Fase 1, tarea 4 |
 | **Versión visible en Ajustes** (fecha y número del cambio) | Saber si el teléfono ya cargó la versión nueva y no una guardada en caché | Fase 1, tarea 4 |
-| **Capturas automáticas** (`tools/screenshots.sh` con `xvfb-run`) | Que Claude revise cómo se ve cada pantalla antes de abrir un PR. Ya se probó que funciona en este entorno | Fase 1, tarea 2 |
+| **Capturas automáticas** (`tools/screenshots.sh` con `xvfb-run`) | Que Claude revise cómo se ve cada pantalla antes de abrir un PR. Hecho en la Fase 1, tarea 2 (`tools/screenshots.sh`) | Hecho |
 | **Versión de prueba por PR** *(opcional)* | Probar en el teléfono **antes** de fusionar, en un enlace como `.../game/pr-12/`. Requiere cambiar una opción de GitHub Pages | Cuando quieras |
 
 ---
 
-## 11. Decisiones que necesito de ti
+## 11. Decisiones del dueño
 
-Puedes responder con números, por ejemplo "1 sí, 2 A, 3 sí...".
+Respuestas del 2026-10-21:
 
-| # | Decisión | Mi recomendación |
+| # | Decisión | Respuesta |
 |---|---|---|
-| 1 | ¿Apruebas esta ruta? Reemplaza la tabla de fases del GDD (sección 15) y agrega la Fase 7 | Sí |
-| 2 | Control del personaje: A (tocar y el personaje lo hace), B (joystick) o C (decorativo) (sección 4.1) | A |
-| 3 | Navegación nueva: Inicio · Pedidos · Tienda · Inventario · Tareas; Perfil en el retrato; Mapa en la puerta; "Taller" se une a Inventario (sección 7.1) | Sí |
+| 1 | Aprobar esta ruta (reemplaza la tabla de fases del GDD y agrega la Fase 7) | Sí |
+| 2 | Control del personaje | **Joystick** (sección 4.1) |
+| 3 | Navegación nueva: Inicio · Pedidos · Tienda · Inventario · Tareas (sección 7.1) | Aprobada |
 | 4 | Cuentas regresivas en tiempo real y fechas en el calendario del juego (sección 7.2) | Sí |
-| 5 | Realismo: tiempo de preparación por pieza, mostrar costo y ganancia, subir la fiabilidad de las impresoras modernas y bono de fiabilidad del Manual del maker (sección 3). Se prueban con el simulador antes de aplicarlos | Sí |
-| 6 | Contenido del MVP de 12 a unos 36 pedidos, con clientes con nombre, y ritmo meta de nivel 5 y garaje en unas 2 semanas (secciones 5.3 y 8) | Sí |
-| 7 | Versión de prueba por PR (sección 10) | Opcional; útil si quieres probar antes de fusionar |
-| 8 | *(Antes de la Fase 5)* iOS: Mac propio o servicio en la nube. Las cuentas cuestan $25 una vez (Google Play) y $99 al año (Apple) | Decidir más adelante |
+| 5 | Realismo: preparación por pieza, costo y ganancia, fiabilidad de las modernas y bono del Manual del maker (sección 3), probados con el simulador antes de aplicarlos | Sí |
+| 6 | Contenido del MVP a unos 36 pedidos con clientes con nombre, y ritmo meta de unas 2 semanas (secciones 5.3 y 8) | Aprobado |
+| 7 | Versión de prueba por PR (sección 10) | Sin respuesta: queda para cuando la pidas |
+| 8 | *(Antes de la Fase 5)* iOS: Mac propio o servicio en la nube | Pendiente |
 
-**Siguiente paso:** con tus respuestas, actualizo el GDD y empiezo la **Fase 1, tarea 2: controles del mundo**. No depende de nada más y es lo primero que pediste.
+### Preguntas abiertas
 
----
+| Pregunta | Cuándo hace falta |
+|---|---|
+| **Entregar con el joystick:** ¿se cobra tocando la impresora terminada, o el personaje recoge la pieza y la lleva a una caja de despacho junto a la puerta? En el segundo caso, las impresoras guardan lo terminado mientras no estás (nada se pierde) y más adelante se puede automatizar | Antes de la Fase 1, tarea 7 |
 
 ## 12. Cómo se mantiene esta ruta
 - `docs/PROGRESO.md` dice en qué tarea vamos. Esta ruta solo cambia cuando cambia el plan.

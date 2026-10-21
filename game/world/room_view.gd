@@ -3,28 +3,169 @@ extends Node3D
 ## Escena 3D del espacio actual, armada a partir del estado de la partida:
 ## muebles en sus lugares, impresoras (en muebles o en el suelo), marcas de
 ## lugares libres y el personaje.
+##
+## También sabe qué se puede tocar (interactables), por dónde se puede
+## caminar (grid) y dónde está cada cosa en la pantalla. Los gestos del
+## jugador los interpreta WorldControls, desde la escena principal.
 
 const CAMERA_SIZE: float = 6.8
 const CAMERA_TARGET: Vector3 = Vector3(-0.15, 1.95, -0.15)
-const CAMERA_DISTANCE: float = 20.0
-const CAMERA_YAW: float = 45.0
-## Inclinación clásica del pixel art isométrico (proporción 2:1).
-const CAMERA_PITCH: float = -30.0
 ## Proporción de pantalla (alto / ancho) para la que está pensado CAMERA_SIZE.
 ## En teléfonos más altos se acerca un poco la cámara para llenar el espacio.
 const BASE_ASPECT: float = 16.0 / 9.0
 const MIN_ZOOM: float = 0.85
+## Margen extra alrededor de cada objeto al tocarlo, en metros.
+const PICK_MARGIN: float = 0.08
+## Las impresoras y los muebles ocupan un poco más en el piso que su dibujo.
+const OBSTACLE_MARGIN: float = 0.05
+## Alto de la zona que se toca en un lugar libre (la marca es casi plana).
+const SLOT_TOUCH_HEIGHT: float = 0.2
+## Altura del punto del personaje que sigue la cámara.
+const CHARACTER_FOCUS_HEIGHT: float = 0.7
 
-var _camera: Camera3D
+var camera: CameraRig
+var character: CharacterController
+var grid: WalkGrid
+var interactables: Array[WorldInteractable] = []
+
+var _character_item: WorldInteractable
 var _marker_material: StandardMaterial3D
+var _highlight: HighlightFrame
+var _destination: MeshInstance3D
+var _destination_material: StandardMaterial3D
+var _destination_tween: Tween
 
 
 func _ready() -> void:
 	_build_environment()
 	_build_camera()
 	RoomShell.build(self)
+	grid = WalkGrid.new(Rect2(-RoomShell.SIZE / 2.0, -RoomShell.SIZE / 2.0, RoomShell.SIZE, RoomShell.SIZE))
+	_highlight = HighlightFrame.build(self, "Highlight")
+	_build_destination()
 	if Game.state != null:
 		_build_contents()
+		# La cámara empieza ya encuadrando al personaje.
+		camera.follow_point = character_focus_point()
+	camera.snap_to_goal()
+
+
+## Avanza un cuadro: mueve al personaje, mueve la cámara y después ajusta al
+## personaje a la cuadrícula de píxeles de la cámara. Lo llama WorldControls, que decide el
+## orden de todo lo que pasa en cada cuadro.
+func step(delta: float) -> void:
+	if character != null:
+		character.step(delta)
+		camera.follow_velocity = character.velocity
+	camera.step(delta)
+	# Después de la cámara, que es la que actualiza el zoom de este cuadro.
+	if character != null:
+		_snap_to_pixels(character.model)
+
+
+## Objeto que está bajo un punto de la pantalla (píxeles del dibujo), o null.
+## Primero busca lo que el rayo toca más cerca. Si no toca nada, acepta
+## objetos que se ven pequeños si el dedo cae cerca: se los agranda hasta
+## `min_hit_px` de lado.
+func pick(view_position: Vector2, min_hit_px: float) -> WorldInteractable:
+	if _character_item != null:
+		# El personaje se mueve: su caja se calcula de nuevo en cada toque.
+		_character_item.bounds = _character_bounds()
+	var origin: Vector3 = camera.project_ray_origin(view_position)
+	var direction: Vector3 = camera.project_ray_normal(view_position)
+	var best: WorldInteractable = null
+	var best_distance: float = INF
+	for item: WorldInteractable in interactables:
+		var hit: Variant = item.bounds.grow(PICK_MARGIN).intersects_ray(origin, direction)
+		if hit == null:
+			continue
+		var distance: float = origin.distance_to(hit)
+		# Si dos están casi a la misma distancia, gana el de más prioridad.
+		if best == null or distance < best_distance - 0.05 \
+				or (distance <= best_distance + 0.05 and item.priority() > best.priority()):
+			best = item
+			best_distance = minf(distance, best_distance)
+	if best != null:
+		return best
+	var best_center: float = INF
+	for item: WorldInteractable in interactables:
+		# Las marcas del piso son planas y grandes: su rectángulo en la pantalla
+		# cubre mucho piso vacío. Solo se tocan con el rayo.
+		if item.kind == WorldInteractable.Kind.SLOT:
+			continue
+		var rect: Rect2 = screen_rect(item)
+		if rect.size.x >= min_hit_px and rect.size.y >= min_hit_px:
+			continue
+		var grow: Vector2 = (Vector2(min_hit_px, min_hit_px) - rect.size).max(Vector2.ZERO) / 2.0
+		rect = rect.grow_individual(grow.x, grow.y, grow.x, grow.y)
+		if not rect.has_point(view_position):
+			continue
+		var center_distance: float = rect.get_center().distance_to(view_position)
+		if best == null or item.priority() > best.priority() \
+				or (item.priority() == best.priority() and center_distance < best_center):
+			best = item
+			best_center = center_distance
+	return best
+
+
+## Punto del piso bajo un punto de la pantalla, o null si cae fuera del piso.
+func floor_point(view_position: Vector2) -> Variant:
+	var origin: Vector3 = camera.project_ray_origin(view_position)
+	var direction: Vector3 = camera.project_ray_normal(view_position)
+	if absf(direction.y) < 0.0001:
+		return null
+	var point: Vector3 = origin + direction * (-origin.y / direction.y)
+	var on_floor: Vector2 = Vector2(point.x, point.z)
+	return on_floor if grid.bounds.has_point(on_floor) else null
+
+
+## Rectángulo que ocupa un objeto en la pantalla (píxeles del dibujo).
+func screen_rect(item: WorldInteractable) -> Rect2:
+	var rect: Rect2 = Rect2(camera.unproject_position(item.bounds.get_endpoint(0)), Vector2.ZERO)
+	for i: int in range(1, 8):
+		rect = rect.expand(camera.unproject_position(item.bounds.get_endpoint(i)))
+	return rect
+
+
+## Resalta un objeto con un marco cian en el piso (null para quitarlo).
+func set_highlight(item: WorldInteractable) -> void:
+	if item == null:
+		_highlight.hide_frame()
+	else:
+		_highlight.show_around(item.footprint())
+
+
+## Marca por un momento el punto del piso adonde va a caminar el personaje.
+func show_destination(point: Vector2) -> void:
+	_destination.position = Vector3(point.x, 0.01, point.y)
+	_destination.visible = true
+	_destination.scale = Vector3.ONE * 0.6
+	_destination_material.albedo_color.a = 0.8
+	if _destination_tween != null:
+		_destination_tween.kill()
+	_destination_tween = create_tween().set_parallel().set_trans(Tween.TRANS_SINE)
+	_destination_tween.tween_property(_destination, "scale", Vector3.ONE, 0.45)
+	_destination_tween.tween_property(_destination_material, "albedo_color:a", 0.0, 0.45)
+	_destination_tween.chain().tween_callback(func() -> void: _destination.visible = false)
+
+
+func character_focus_point() -> Vector3:
+	return character.model.position + Vector3(0.0, CHARACTER_FOCUS_HEIGHT, 0.0)
+
+
+## Mueve un objeto que está en el piso al píxel más cercano del dibujo, igual
+## que la cámara. Así su distancia a la cámara es un número entero de píxeles
+## y no "tiembla" contra la habitación. Lo corre a lo largo de la mirada de la
+## cámara para que siga apoyado en el piso (en la pantalla no se nota).
+func _snap_to_pixels(node: Node3D) -> void:
+	var texel: float = camera.size / maxf(get_viewport().get_visible_rect().size.x, 1.0)
+	var right: Vector3 = camera.basis.x
+	var up: Vector3 = camera.basis.y
+	var forward: Vector3 = -camera.basis.z
+	var point: Vector3 = node.position
+	var snapped: Vector3 = right * (roundf(point.dot(right) / texel) * texel) \
+		+ up * (roundf(point.dot(up) / texel) * texel) + forward * point.dot(forward)
+	node.position = snapped - forward * (snapped.y / forward.y)
 
 
 func _build_environment() -> void:
@@ -45,33 +186,30 @@ func _build_environment() -> void:
 	sun.light_color = Color("fff1dc")
 	sun.light_energy = 0.75
 	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 30.0
+	# Una sola sombra ortogonal para todo el cuarto: con la cámara en movimiento,
+	# las divisiones del modo por defecto se recalculan y los bordes tiemblan.
+	# Con cámara ortográfica, la sombra cubre de near a far de la cámara.
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 	add_child(sun)
 
 
 func _build_camera() -> void:
-	var camera: Camera3D = Camera3D.new()
-	_camera = camera
+	camera = CameraRig.new()
 	camera.name = "Camera"
-	camera.projection = Camera3D.PROJECTION_ORTHOGONAL
-	camera.keep_aspect = Camera3D.KEEP_WIDTH
-	camera.size = CAMERA_SIZE
-	camera.near = 0.1
-	camera.far = 60.0
-	camera.rotation_degrees = Vector3(CAMERA_PITCH, CAMERA_YAW, 0.0)
-	camera.position = CAMERA_TARGET - camera.basis * Vector3.FORWARD * CAMERA_DISTANCE
-	camera.current = true
 	add_child(camera)
-	get_viewport().size_changed.connect(_fit_camera)
-	_fit_camera()
+	var half: float = RoomShell.SIZE / 2.0 + RoomShell.WALL_THICKNESS
+	var room_bounds: AABB = AABB(Vector3(-half, 0.0, -half), Vector3(half + RoomShell.SIZE / 2.0, RoomShell.WALL_HEIGHT, half + RoomShell.SIZE / 2.0))
+	camera.configure(room_bounds, CAMERA_TARGET, _fitted_camera_size())
+	camera.current = true
+	get_viewport().size_changed.connect(func() -> void: camera.set_base_size(_fitted_camera_size()))
 
 
-func _fit_camera() -> void:
+func _fitted_camera_size() -> float:
 	var size: Vector2 = get_viewport().get_visible_rect().size
 	if size.x <= 0.0:
-		return
+		return CAMERA_SIZE
 	var aspect: float = size.y / size.x
-	_camera.size = CAMERA_SIZE * clampf(sqrt(BASE_ASPECT / aspect), MIN_ZOOM, 1.0)
+	return CAMERA_SIZE * clampf(sqrt(BASE_ASPECT / aspect), MIN_ZOOM, 1.0)
 
 
 func _build_contents() -> void:
@@ -84,6 +222,7 @@ func _build_contents() -> void:
 		node.transform = layout.slots[item.slot]
 		furniture_nodes[item.uid] = node
 		used_slots.append(item.slot)
+		_register(WorldInteractable.Kind.FURNITURE, item.uid, node, true)
 
 	var spool_color: String = _first_spool_color(state)
 	var floor_index: int = 0
@@ -99,17 +238,50 @@ func _build_contents() -> void:
 			spot_index[printer.furniture_uid] = index + 1
 			var spot: Node3D = furniture.get_node("PrinterSpot%d" % index)
 			node.transform = furniture.transform * spot.transform
+		_register(WorldInteractable.Kind.PRINTER, printer.uid, node, true)
 
 	_marker_material = WorldPalette.glow_transparent(WorldPalette.SLOT_MARK, 0.6)
 	for slot: int in layout.slots.size():
 		if slot not in used_slots:
 			var marker: Node3D = SlotMarker.build(self, "FreeSlot%d" % slot, _marker_material)
 			marker.transform = layout.slots[slot]
+			# Se toca la marca que se ve, con un poco de alto para el rayo.
+			var touch_area: AABB = marker.global_transform * PropBounds.local_aabb(marker)
+			touch_area.size.y = SLOT_TOUCH_HEIGHT
+			interactables.append(WorldInteractable.new(WorldInteractable.Kind.SLOT, slot, touch_area))
 	_pulse_markers()
 
-	var character: Node3D = CharacterModel.build(self, "Character")
-	character.transform = layout.character_spot
-	_animate_idle(character)
+	var door: Node3D = get_node("RoomShell/Door")
+	_register(WorldInteractable.Kind.DOOR, 0, door, false)
+
+	grid.build()
+	var model: Node3D = CharacterModel.build(self, "Character")
+	character = CharacterController.new()
+	character.name = "CharacterController"
+	add_child(character)
+	character.setup(model, grid, layout.character_spot)
+	_character_item = WorldInteractable.new(WorldInteractable.Kind.CHARACTER, 0, _character_bounds())
+	interactables.append(_character_item)
+
+
+## Agrega un objeto que se puede tocar y, si ocupa lugar, lo marca como
+## obstáculo para caminar.
+func _register(kind: WorldInteractable.Kind, ref: int, node: Node3D, blocks: bool) -> void:
+	var bounds: AABB = node.global_transform * PropBounds.local_aabb(node)
+	interactables.append(WorldInteractable.new(kind, ref, bounds))
+	if blocks:
+		var footprint: Rect2 = Rect2(bounds.position.x, bounds.position.z, bounds.size.x, bounds.size.z)
+		grid.add_obstacle(footprint.grow(OBSTACLE_MARGIN))
+
+
+func _character_bounds() -> AABB:
+	return character.model.global_transform * PropBounds.local_aabb(character.model)
+
+
+func _build_destination() -> void:
+	_destination_material = WorldPalette.glow_transparent(WorldPalette.SLOT_MARK, 0.8).duplicate() as StandardMaterial3D
+	_destination = PropBuilder.cylinder(self, "Destination", 0.18, 0.01, Vector3.ZERO, _destination_material)
+	_destination.visible = false
 
 
 func _first_spool_color(state: GameState) -> String:
@@ -124,18 +296,3 @@ func _pulse_markers() -> void:
 	var tween: Tween = create_tween().set_loops().set_trans(Tween.TRANS_SINE)
 	tween.tween_property(_marker_material, "albedo_color:a", 0.2, 1.2)
 	tween.tween_property(_marker_material, "albedo_color:a", 0.6, 1.2)
-
-
-## Respiración del personaje y una mirada de vez en cuando a la impresora.
-func _animate_idle(character: Node3D) -> void:
-	var body: Node3D = character.get_node("Body")
-	var head: Node3D = body.get_node("Head")
-	var breathing: Tween = create_tween().set_loops().set_trans(Tween.TRANS_SINE)
-	breathing.tween_property(body, "position:y", body.position.y + 0.015, 1.1)
-	breathing.tween_property(body, "position:y", body.position.y, 1.1)
-	var looking: Tween = create_tween().set_loops().set_trans(Tween.TRANS_SINE)
-	looking.tween_interval(2.5)
-	looking.tween_property(head, "rotation_degrees:y", -25.0, 0.6)
-	looking.tween_interval(1.8)
-	looking.tween_property(head, "rotation_degrees:y", 0.0, 0.6)
-	looking.tween_interval(3.0)

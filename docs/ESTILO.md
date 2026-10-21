@@ -16,12 +16,15 @@ Esta guía mantiene el juego **coherente y consistente** de principio a fin. Tod
 
 ### Render
 - La escena va dentro de un `SubViewportContainer` con `stretch_shrink = 2`, filtro `NEAREST` y sin antialiasing (`game/scenes/main.tscn`).
-- Cámara ortográfica, inclinada −30° y girada 45°: la vista isométrica clásica 2:1. Su zoom se adapta a pantallas más altas (`RoomView._fit_camera`).
+- Cámara ortográfica (`CameraRig`), inclinada −30° y girada 45°: la vista isométrica clásica 2:1. Su tamaño base se adapta a pantallas más altas (`RoomView._fitted_camera_size`).
+- **Sigue al personaje** y tiene tres niveles de zoom: lejos (0,68×, entra todo el cuarto), normal (1×) y cerca (2×).
+- **Sin temblor:** la cámara y el personaje se colocan en píxeles enteros del dibujo, y la fracción que falta se compensa corriendo la imagen (`WorldControls._apply_pixel_shift`). Por eso la vista del mundo es 4 px más grande que la pantalla por cada lado.
 - Un píxel de pantalla equivale a unos **0,028 m** del mundo (`WorldPalette.PIXEL_WORLD_SIZE`). Los detalles de menos de 3 cm no se ven.
 
 ### Luz
 - **Una sola luz direccional** cálida (`#fff1dc`, energía 0,75), entrando por el lado de la ventana, más luz ambiental (`#ffe6c7`, 0,5).
 - Sombras **duras**: la calidad de sombra suave está en 0 en `project.godot`.
+- Sombra **ortogonal** de una sola pieza (`SHADOW_ORTHOGONAL`, hasta 20 m): con la cámara en movimiento no tiembla y cuesta menos que el modo por defecto.
 - Las paredes no proyectan sombra, para que la luz "entre" a la habitación.
 - Pantallas, ventanas y marcas no se iluminan: brillan con su propio color (materiales `glow`). No se agregan luces extra.
 
@@ -65,6 +68,9 @@ Siempre se usan los de `WorldPalette` (`game/world/pixel/world_palette.gd`). As�
 - Los muebles marcan con nodos `PrinterSpot0`, `PrinterSpot1`... dónde va cada impresora (`FurnitureModel`).
 - **Personaje** (`CharacterModel`): chibi de 1,25 m con cabeza grande, pelo café en puntas, buzo negro con capucha y cordones blancos, jeans azules y zapatillas blancas. Respira y mira de vez en cuando su impresora.
 - **Lugares libres:** un marco cian semitransparente con un "+" en el piso, que late suavemente. Invita a comprar muebles (pilar 1).
+- **Objeto cercano** (`HighlightFrame`): un marco cian más brillante en el piso alrededor del objeto que el personaje tiene al lado. Mismo estilo que los lugares libres, para que se lea como "esto se puede usar".
+- **Destino al tocar el piso:** un círculo cian que se agranda y se desvanece en medio segundo.
+- El personaje tiene articulaciones en caderas y hombros (`HipL`, `HipR`, `Body/ShoulderL`, `Body/ShoulderR`) para la animación de caminar, que se hace por código.
 
 ## 3. Interfaz
 
@@ -94,6 +100,12 @@ Todo sale del tema común `UiTheme`; no se crean estilos sueltos.
 - **Tipografía:** solo **Nunito** (`assets/fonts`), regular (peso 650) y negrita (peso 850). Tamaños: títulos 32, normal 24, secundario 21 y pequeño 19.
 - **Iconos:** SVG de 48×48 en `assets/icons`, de trazo blanco de 4 px con puntas redondeadas, teñidos por código. La moneda es el único icono a color.
 - **Vistas 3D en la interfaz** (`ModelPreview`): el retrato del personaje y las impresoras y muebles de la tienda usan el mismo pixel art del mundo.
+- **Panel inferior** (`BottomSheet`): la información de un objeto del mundo. Sube desde abajo en 0,18 s y tapa la barra de secciones. Arriba tiene una rayita para deslizar, la vista del objeto, el título y la X; en el medio, filas de icono y texto y un consejo destacado; abajo, botones de 96 px de alto a todo lo ancho, el principal en cian. Como máximo debería tapar la mitad de la pantalla.
+- **Joystick** (`JoystickRing`): un aro de 90 px de radio, azul marino al 35% con borde cian, y una perilla cian. Se dibuja sobre todo el HUD, solo mientras el dedo arrastra.
+- **Burbuja de cercanía** (`InteractBubble`): botón cuadrado de 88 px con el estilo `IconButton` y el icono del objeto, sobre el objeto cercano. Aparece con un pequeño rebote.
+- **Globo de diálogo** (`SpeechBubble`, variación `BubblePanel`): papel claro `#f4f1e8` con borde oscuro de 3 px, como el contorno del mundo, y texto oscuro (`BubbleLabel`). Es lo único claro de la interfaz, para que se lea como "habla el personaje".
+- **Pista para jugadores nuevos** (`MoveHint`): texto en negrita con contorno oscuro y un joystick fantasma que se mueve solo, en la zona del pulgar.
+- **Botón de zoom:** `IconButton` de 96×104 px abajo a la izquierda, con la lupa y el nivel actual ("Normal", "Cerca", "Lejos").
 
 ### Estructura del HUD (imagen de referencia)
 

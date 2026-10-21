@@ -23,3 +23,8 @@ const BUTTON_PRESSED: Color = Color("10314a")
 const BUTTON_DISABLED: Color = Color("161d2d")
 const PRIMARY: Color = Color("1aa6d6")
 const PRIMARY_TEXT: Color = Color("08121f")
+## Globo de diálogo del personaje: papel claro con contorno oscuro, como el
+## contorno del mundo.
+const BUBBLE: Color = Color("f4f1e8")
+const BUBBLE_TEXT: Color = Color("23242b")
+const OUTLINE_DARK: Color = Color("1a1320")

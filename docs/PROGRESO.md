@@ -2,36 +2,39 @@
 
 ## Estado actual
 
-- **Fase actual:** 1. Simulación, en curso. Por pedido del dueño se adelantó el estilo visual de la Fase 2.
-- **Diseño:** GDD versión 2.1 y guía de estilo en `docs/ESTILO.md`.
-- **Ruta nueva propuesta:** `docs/RUTA.md` reorganiza todo el proyecto en 8 fases (0 a 7) y da prioridad al ciclo jugable, los controles, el game feel y la UX/UI. **Está pendiente de aprobación**: mientras tanto valen la tabla y el plan de abajo.
-- **Siguiente paso:** que el dueño responda las decisiones de la sección 11 de `docs/RUTA.md`. Si aprueba la ruta, se actualiza el GDD y se empieza la tarea 2 de la nueva Fase 1, controles del mundo (cámara y tocar objetos). Si no, se sigue con la tarea 3 del plan actual, tienda y envíos.
+- **Fase actual:** 1. Ciclo jugable, en curso (ruta aprobada por el dueño en `docs/RUTA.md`).
+- **Diseño:** GDD versión 2.2, guía de estilo en `docs/ESTILO.md` y ruta en `docs/RUTA.md`.
+- **Última tarea:** Fase 1, tarea 2, controles del mundo con joystick (2026-10-21).
+- **Siguiente paso:** tarea 3, navegación nueva y HUD despejado.
+- **Pregunta abierta para el dueño**, antes de la tarea 7: ¿se cobra tocando la impresora terminada o el personaje lleva la pieza a una caja de despacho? Ver `docs/RUTA.md`, sección 11.
 
 | Fase | Estado |
 |---|---|
 | 0. Base | Completada (2026-10-21) |
-| 1. Simulación | En curso: tarea 1 terminada, tarea 2 en parte |
-| 2. Prototipo gris | Adelantado: estilo visual, habitación inicial, HUD y pantallas de solo lectura |
-| 3. MVP completo | Sin empezar |
-| 4. Móvil y pulido | Sin empezar |
-| 5. Publicación | Sin empezar |
+| 1. Ciclo jugable | En curso: tareas 1 y 2 terminadas |
+| 2. Personaje vivo y game feel | Sin empezar (el estilo visual ya se adelantó) |
+| 3. UX/UI y primera experiencia | Sin empezar |
+| 4. Contenido y MVP completo | Sin empezar |
+| 5. Móvil y rendimiento | Sin empezar |
+| 6. Publicación | Sin empezar |
+| 7. Después del lanzamiento | Sin empezar |
 
 ### Plan de la Fase 1
 
-Cada tarea termina en un PR.
+Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 
 | # | Tarea | Estado |
 |---|---|---|
-| 1 | Diseño v2 en el GDD, datos de balance en `data/*.json` y su validación | Terminada |
-| 2 | Estado del juego y reloj: dinero, inventario, impresoras, muebles, nivel, calendario, `advance()` y azar reproducible | En parte: falta el azar reproducible |
-| 3 | Tienda y envíos: comprar impresoras, materiales, accesorios y muebles, días de envío, envío exprés, ferretería, almacenamiento y desbloqueo por nivel | Pendiente |
-| 4 | Pedidos: tablero limitado que se renueva, aceptar y rechazar, plazos | Pendiente |
-| 5 | Imprimir y entregar: reglas de asignación, pieza por pieza, cobrar, experiencia y subir de nivel. Prueba de que un paso grande da lo mismo que muchos pequeños | Pendiente |
-| 6 | Fallos y accesorios: espagueti, warping, fin de filamento, limpiar y reintentar, rescate de Don Ernesto | Pendiente |
-| 7 | Progreso fuera del juego (8 h, reloj que retrocede, resumen), avance de los objetivos y prueba de rendimiento | Pendiente |
-| 8 | Simulador `tools/simulate.sh`: 7 días con un jugador automático y su informe | Pendiente |
-
-Cada tarea conecta su lógica con la interfaz que ya existe. Por ejemplo, la tarea 3 activa el botón "Comprar" y hace aparecer en la habitación los muebles comprados.
+| 1 | Datos de balance y su validación | Terminada |
+| 2 | Controles del mundo con joystick: caminar, tocar objetos, paneles, cercanía, cámara y zoom | Terminada |
+| 3 | Navegación y HUD despejado | Pendiente |
+| 4 | Guardado, azar reproducible y menú de pruebas (con la versión visible en Ajustes) | Pendiente |
+| 5 | Tienda y envíos | Pendiente |
+| 6 | Pedidos tipo chat | Pendiente |
+| 7 | Imprimir y entregar. Antes hay que responder cómo se entrega con el joystick | Pendiente |
+| 8 | Fallos y accesorios | Pendiente |
+| 9 | Fuera del juego y objetivos | Pendiente |
+| 10 | Simulador y primer balance | Pendiente |
 
 ---
 
@@ -134,5 +137,52 @@ Cada tarea conecta su lógica con la interfaz que ya existe. Por ejemplo, la tar
 - Solo cambió documentación. `check.sh` y `run_tests.sh` pasan (50 pruebas).
 - Con la fórmula de precios de un taller real, los pagos actuales de `data/orders.json` quedan dentro de lo real (`docs/RUTA.md`, sección 3).
 
-**Pendiente**
-- El dueño debe responder las decisiones de la sección 11 de `docs/RUTA.md`. Hasta entonces no se cambian el GDD ni el plan de la Fase 1.
+**Después (mismo día)**
+- El dueño aprobó la ruta y respondió las decisiones: ver la entrada siguiente.
+
+### 2026-10-21 — Fase 1, tarea 2: controles del mundo con joystick
+
+**Pedido del dueño:** empezar la Fase 1 con sus respuestas a la ruta: 1 sí, 2 joystick, 3 aprobado, 4 sí, 5 sí, 6 aprobado.
+
+**Qué se hizo**
+- **Documentos:**
+  - GDD 2.2 con las decisiones del dueño: controles con joystick y la regla de que caminar nunca es obligatorio para decidir (7.1), navegación aprobada (7.2), tiempos en tiempo real (5.1), ritmo meta (5.15), realismo por validar (5.16), contenido del MVP (13.1) y fases (15).
+  - `docs/RUTA.md` marcada como aprobada, con el diseño del joystick (sección 4).
+  - `docs/ESTILO.md` con los componentes nuevos y `docs/DECISIONES.md` con las decisiones técnicas.
+- **Antes de programar:** tres críticos independientes revisaron el diseño de los controles (ergonomía móvil, juegos con joystick y técnica en Godot 4.7.2). Sus correcciones se aplicaron: dirección del joystick corregida para la vista isométrica, choques que rodean las esquinas, entrada que no pierde el dedo sobre los botones, cámara que sigue al personaje porque la vista normal no muestra todo el cuarto, y botón "atrás" de Android.
+- **Joystick flotante** que aparece bajo el pulgar. El personaje camina hacia donde apunta el dedo, choca con los muebles y los rodea, y tiene animación de caminar, respirar y mirar lo que tiene cerca.
+- **Tocar el mundo:**
+  - Tocar un objeto abre su panel inferior: impresora, mesa del computador, lugar libre o puerta.
+  - Tocar el piso hace caminar al personaje, con un círculo de destino.
+  - Tocar al personaje le hace decir una frase graciosa.
+- **Cercanía:** marco cian en el piso y burbuja sobre el objeto que el personaje tiene al lado; tocar la burbuja abre el panel.
+- **Paneles inferiores** con datos reales:
+  - La impresora muestra su fiabilidad, 80% (85% menos 5% por estar en el suelo), calculada en `core/` (`WorkshopRules.printer_reliability`).
+  - Los botones llevan a la tienda (pestaña Muebles), a Pedidos, a Inventario o al Mapa.
+  - Se cierran con la X, deslizando hacia abajo, tocando el mundo, caminando o con "atrás" en Android.
+- **Cámara** que sigue al personaje, con tres niveles de zoom (normal, cerca y lejos) en un botón abajo a la izquierda, pellizcando o con la rueda del mouse. Se mueve de píxel en píxel sin temblor.
+- **Pistas para jugadores nuevos:** "Arrastra el dedo para caminar" y luego "Toca un objeto para verlo". Quien camina tocando el piso también aprende la primera. Se recuerdan en `user://settings.cfg`.
+- **Ajustes → Controles (pruebas):** deslizadores para cambiar en vivo la velocidad, el recorrido del joystick, la suavidad de la cámara, la distancia para resaltar y la corrección diagonal.
+- **Para probar en el computador:** WASD o flechas, E o Enter, Z, Escape y arrastrar con el mouse.
+- **Herramientas:** `tools/screenshots.sh` saca 12 capturas en situaciones reales (zoom, joystick, paneles, globo, tienda y ajustes) para revisar la interfaz sin teléfono.
+
+**Verificado**
+- `check.sh` y `run_tests.sh` pasan: 133 pruebas. Las nuevas son de toques y joystick, choques y caminos, cercanía, personaje, cámara, cajas de los modelos, dirección del joystick, pistas e integración con toques simulados como en el teléfono (22 pruebas).
+- `run_tests.sh` ahora también falla si GUT no llega a imprimir el resumen final, para que una prueba que cierre el juego antes de tiempo no pase por buena.
+- Revisé las capturas de todas las situaciones.
+- La versión web exportada se probó en un Chromium que simula un Pixel 7, con toques reales del navegador:
+  - el joystick mueve al personaje hacia donde se arrastra;
+  - tocar la impresora abre su panel una sola vez;
+  - tocar arriba lo cierra sin caminar;
+  - el botón Tienda funciona;
+  - pellizcar con dos dedos cambia a "Cerca".
+- La plantilla web de Godot ya trae `touch-action: none` y bloquea el zoom de la página.
+
+**Problemas conocidos**
+- El HUD actual (panel de objetivos y botones a la izquierda) todavía tapa parte del cuarto: se despeja en la tarea 3.
+- Los valores de los deslizadores de Ajustes no se guardan: al recargar vuelven los de fábrica, a propósito.
+- Las pistas se recuerdan, pero el idioma elegido en Ajustes todavía no (llega con el guardado, tarea 4).
+- Algunos botones de los paneles llevan a pantallas que todavía son de solo lectura (Pedidos, Tienda): lo dicen con un aviso.
+- Si el personaje queda en el borde de adelante del cuarto, con zoom "Cerca" queda bajo en la pantalla, cerca del pulgar.
+- La vibración y los sonidos llegan en la Fase 2.
+

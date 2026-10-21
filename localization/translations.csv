@@ -154,3 +154,42 @@ OBJECTIVE_PANEL_HERRAMIENTAS,Cuelga un panel de herramientas,Hang a tool pegboar
 OBJECTIVE_NIVEL_TRES,Llega al nivel 3,Reach level 3
 OBJECTIVE_PRIMER_COSPLAY,Entrega tu primer casco de cosplay,Deliver your first cosplay helmet
 OBJECTIVE_GARAJE,Múdate al garaje,Move to the garage
+SHEET_PRINTER_ON_FLOOR,En el suelo,On the floor
+SHEET_PRINTER_ON_FURNITURE,Ubicación: %s,Location: %s
+SHEET_PRINTER_IDLE,Libre: lista para imprimir,Idle: ready to print
+SHEET_PRINTER_RELIABILITY,Fiabilidad: %d%%,Reliability: %d%%
+SHEET_PRINTER_ACCESSORIES,Incluye: %s,Includes: %s
+SHEET_PRINTER_NO_ACCESSORIES,Sin accesorios,No add-ons
+SHEET_PRINTER_FLOOR_TIP,"En el suelo pierde %d%% de fiabilidad (polvo, vibraciones y algún pisotón). Una mesa la saca de ahí.","On the floor it loses %d%% reliability (dust, vibration and the odd stomp). A table gets it off the floor."
+SHEET_BUY_TABLE,Ver mesas en la tienda,See tables in the shop
+SHEET_SEE_ORDERS,Ver pedidos,See orders
+SHEET_FURNITURE_PRINTERS,Impresoras: %d de %d,Printers: %d of %d
+SHEET_COMPUTER_MESSAGES,Aquí te llegan los mensajes de tus clientes.,Your clients' messages arrive here.
+SHEET_SEE_INVENTORY,Ver inventario,See inventory
+SHEET_SLOT_TITLE,Lugar libre,Free spot
+SHEET_SLOT_TEXT,"Aquí cabe un mueble: sostiene impresoras, guarda material o te ayuda a imprimir mejor.","A piece of furniture fits here: it holds printers, stores material or helps you print better."
+SHEET_SEE_FURNITURE,Ver muebles en la tienda,See furniture in the shop
+SHEET_DOOR_TITLE,Puerta,Door
+SHEET_DOOR_TEXT,Por ahora tu habitación es tu taller. Con el tiempo podrás mudarte a un lugar más grande.,For now your room is your workshop. In time you'll be able to move somewhere bigger.
+SHEET_SEE_MAP,Ver mapa,See map
+CHARACTER_LINE_1,"Si la primera capa sale bien, todo sale bien.","If the first layer sticks, everything sticks."
+CHARACTER_LINE_2,Don Ernesto dice que esta impresora ya imprimió un barquito. Varias veces.,Don Ernesto says this printer has already printed a little boat. Several times.
+CHARACTER_LINE_3,Nota mental: no pisar la impresora.,Mental note: don't step on the printer.
+CHARACTER_LINE_4,Algún día este cuarto va a estar lleno de máquinas.,Someday this room will be full of machines.
+CHARACTER_LINE_5,¿Ese ruido es el motor o mi estómago?,Is that noise the motor or my stomach?
+CHARACTER_LINE_6,Todo empezó con un carrete de PLA blanco.,It all started with a spool of white PLA.
+HINT_MOVE,Arrastra el dedo para caminar,Drag your finger to walk
+HINT_TAP,Toca un objeto para verlo,Tap an object to see it
+ZOOM_FAR,Lejos,Far
+ZOOM_NORMAL,Normal,Normal
+ZOOM_NEAR,Cerca,Near
+SETTINGS_CONTROLS,Controles (pruebas),Controls (testing)
+SETTINGS_CONTROLS_NOTE,"Solo mientras desarrollamos el juego: cambia los valores, prueba caminar y cuéntanos cuáles se sienten mejor.","Only while we build the game: change the values, try walking and tell us which feel best."
+SETTINGS_WALK_SPEED,Velocidad al caminar: %s m/s,Walking speed: %s m/s
+SETTINGS_FULL_SPEED,Recorrido del joystick: %d px,Joystick travel: %d px
+SETTINGS_FOLLOW,Suavidad de la cámara: %s s,Camera smoothing: %s s
+SETTINGS_REACH,Distancia para resaltar: %s m,Highlight distance: %s m
+SETTINGS_ALIGNED,Ir justo hacia donde apunta el pulgar: %s,Walk exactly where your thumb points: %s
+SETTINGS_RESET_CONTROLS,Volver a los valores de fábrica,Reset to defaults
+SETTINGS_ON,sí,on
+SETTINGS_OFF,no,off

@@ -2,8 +2,16 @@ class_name CharacterModel
 extends RefCounted
 ## El protagonista, estilo chibi: cabeza grande, pelo café alborotado,
 ## buzo negro con capucha, jeans y zapatillas blancas. Mira hacia +Z y mide
-## unos 1,25 m. Devuelve el nodo raíz; la cabeza y el cuerpo quedan en los
-## hijos "Body" y "Body/Head" para poder animarlos.
+## unos 1,25 m. Devuelve el nodo raíz.
+##
+## Para poder animarlo, las piernas y los brazos cuelgan de nodos que hacen de
+## articulación: "HipL" y "HipR" (cadera) en la raíz, y "Body/ShoulderL" y
+## "Body/ShoulderR" (hombros). La cabeza es "Body/Head".
+
+## Altura total aproximada, hasta la punta del pelo.
+const HEIGHT: float = 1.25
+const HIP_HEIGHT: float = 0.4
+const SHOULDER_HEIGHT: float = 0.36
 
 
 static func build(parent: Node3D, node_name: String) -> Node3D:
@@ -14,8 +22,9 @@ static func build(parent: Node3D, node_name: String) -> Node3D:
 	var shoes: StandardMaterial3D = WorldPalette.solid(WorldPalette.SHOES)
 	for side: float in [-1.0, 1.0]:
 		var suffix: String = "L" if side < 0.0 else "R"
-		PropBuilder.box(character, "Shoe" + suffix, Vector3(0.12, 0.06, 0.18), Vector3(0.07 * side, 0.03, 0.02), shoes)
-		PropBuilder.box(character, "Leg" + suffix, Vector3(0.11, 0.34, 0.13), Vector3(0.07 * side, 0.23, 0.0), jeans)
+		var hip: Node3D = PropBuilder.group(character, "Hip" + suffix, Vector3(0.07 * side, HIP_HEIGHT, 0.0))
+		PropBuilder.box(hip, "Leg" + suffix, Vector3(0.11, 0.34, 0.13), Vector3(0.0, 0.23 - HIP_HEIGHT, 0.0), jeans)
+		PropBuilder.box(hip, "Shoe" + suffix, Vector3(0.12, 0.06, 0.18), Vector3(0.0, 0.03 - HIP_HEIGHT, 0.02), shoes)
 
 	var body: Node3D = PropBuilder.group(character, "Body", Vector3(0.0, 0.4, 0.0))
 	PropBuilder.box(body, "Torso", Vector3(0.34, 0.38, 0.22), Vector3(0.0, 0.19, 0.0), hoodie)
@@ -24,8 +33,9 @@ static func build(parent: Node3D, node_name: String) -> Node3D:
 	for side: float in [-1.0, 1.0]:
 		var suffix: String = "L" if side < 0.0 else "R"
 		PropBuilder.box(body, "String" + suffix, Vector3(0.015, 0.08, 0.01), Vector3(0.045 * side, 0.3, 0.115), shoes)
-		PropBuilder.box(body, "Arm" + suffix, Vector3(0.09, 0.32, 0.11), Vector3(0.215 * side, 0.2, 0.0), hoodie)
-		PropBuilder.sphere(body, "Hand" + suffix, 0.05, Vector3(0.215 * side, 0.02, 0.01), skin)
+		var shoulder: Node3D = PropBuilder.group(body, "Shoulder" + suffix, Vector3(0.215 * side, SHOULDER_HEIGHT, 0.0))
+		PropBuilder.box(shoulder, "Arm" + suffix, Vector3(0.09, 0.32, 0.11), Vector3(0.0, 0.2 - SHOULDER_HEIGHT, 0.0), hoodie)
+		PropBuilder.sphere(shoulder, "Hand" + suffix, 0.05, Vector3(0.0, 0.02 - SHOULDER_HEIGHT, 0.01), skin)
 
 	var head: Node3D = PropBuilder.group(body, "Head", Vector3(0.0, 0.6, 0.0))
 	PropBuilder.sphere(head, "Face", 0.21, Vector3.ZERO, skin)

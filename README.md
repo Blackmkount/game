@@ -40,6 +40,7 @@ Las pruebas se pueden correr desde el editor con el panel **GUT** (abajo).
 | `tools/check.sh` | Importa el proyecto y falla si algún script o escena tiene errores. |
 | `tools/run_tests.sh` | Corre todas las pruebas GUT. |
 | `tools/export_web.sh` | Exporta la versión web a `build/web/`. |
+| `tools/screenshots.sh` | Saca capturas del juego en varias situaciones en `build/screenshots/` (necesita `xvfb-run`). |
 
 ## Estructura
 

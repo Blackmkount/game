@@ -34,3 +34,23 @@ static func floor_printer_limit(catalog: DataCatalog) -> int:
 
 static func floor_reliability_penalty(catalog: DataCatalog) -> float:
 	return float(catalog.files["config"]["floor_printing"]["reliability_penalty"])
+
+
+## Mejor bono de fiabilidad de los muebles del espacio. Solo cuenta uno, no se
+## suman (GDD, sección 5.9).
+static func furniture_reliability_bonus(state: GameState, catalog: DataCatalog) -> float:
+	var furniture_defs: Dictionary = DataLookup.by_id(catalog, "furniture")
+	var best: float = 0.0
+	for item: OwnedFurniture in state.furniture:
+		best = maxf(best, float(furniture_defs[item.furniture_id]["reliability_bonus"]))
+	return best
+
+
+## Fiabilidad de una impresora en el taller: la de fábrica, menos la
+## penalización por estar en el suelo, más el bono de los muebles.
+static func printer_reliability(state: GameState, catalog: DataCatalog, printer: OwnedPrinter) -> float:
+	var reliability: float = float(DataLookup.by_id(catalog, "printers")[printer.printer_id]["reliability"])
+	if printer.is_on_floor():
+		reliability -= floor_reliability_penalty(catalog)
+	reliability += furniture_reliability_bonus(state, catalog)
+	return clampf(reliability, 0.0, 1.0)

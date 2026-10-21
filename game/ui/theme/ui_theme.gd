@@ -2,9 +2,11 @@ class_name UiTheme
 extends RefCounted
 ## Tema visual de toda la interfaz, armado por código para que sea el mismo en
 ## todas las pantallas. Variaciones disponibles (theme_type_variation):
-## - PanelContainer: "CardPanel", "PillPanel", "ActivePanel", "BadgePanel", "IconTile"
+## - PanelContainer: "CardPanel", "PillPanel", "ActivePanel", "BadgePanel", "IconTile",
+##   "SheetHandle", "BubblePanel"
 ## - Button: "PrimaryButton", "NavButton", "NavButtonActive", "TabButton", "IconButton"
-## - Label: "TitleLabel", "BoldLabel", "MutedLabel", "SmallLabel", "BadgeLabel"
+## - Label: "TitleLabel", "BoldLabel", "MutedLabel", "SmallLabel", "BadgeLabel", "BubbleLabel",
+##   "HintLabel"
 ## - ProgressBar: "XpBar"
 
 const FONT: FontFile = preload("res://assets/fonts/Nunito.ttf")
@@ -45,6 +47,10 @@ static func _build() -> Theme:
 	theme.set_stylebox("panel", "BadgePanel", _box(UiPalette.BADGE, UiPalette.BADGE.darkened(0.3), 14, 2, 2))
 	_variation(theme, "IconTile", "PanelContainer")
 	theme.set_stylebox("panel", "IconTile", _box(Color("0d1424"), UiPalette.CARD_BORDER, 12, 4, 2))
+	_variation(theme, "SheetHandle", "PanelContainer")
+	theme.set_stylebox("panel", "SheetHandle", _box(UiPalette.BORDER, UiPalette.BORDER, 3, 0, 0))
+	_variation(theme, "BubblePanel", "PanelContainer")
+	theme.set_stylebox("panel", "BubblePanel", _box(UiPalette.BUBBLE, UiPalette.OUTLINE_DARK, 14, 10, 3))
 
 	theme.set_color("font_color", "Label", UiPalette.TEXT)
 	_label(theme, "TitleLabel", bold, 32, UiPalette.TEXT)
@@ -52,6 +58,10 @@ static func _build() -> Theme:
 	_label(theme, "MutedLabel", regular, 21, UiPalette.TEXT_MUTED)
 	_label(theme, "SmallLabel", regular, 19, UiPalette.TEXT_MUTED)
 	_label(theme, "BadgeLabel", bold, 18, UiPalette.TEXT)
+	_label(theme, "BubbleLabel", bold, 21, UiPalette.BUBBLE_TEXT)
+	_label(theme, "HintLabel", bold, BASE_FONT_SIZE, UiPalette.TEXT)
+	theme.set_color("font_outline_color", "HintLabel", UiPalette.OUTLINE_DARK)
+	theme.set_constant("outline_size", "HintLabel", 8)
 
 	_button(theme, "Button", UiPalette.BUTTON, UiPalette.BORDER, UiPalette.TEXT)
 	theme.set_font("font", "Button", bold)
@@ -87,12 +97,46 @@ static func _build() -> Theme:
 	_variation(theme, "XpBar", "ProgressBar")
 	theme.set_stylebox("fill", "XpBar", _box(UiPalette.XP_FILL, UiPalette.XP_FILL, 8, 0, 0))
 
+	_slider(theme)
+
 	var grabber: StyleBoxFlat = _box(UiPalette.BORDER, UiPalette.BORDER, 4, 0, 0)
 	theme.set_stylebox("grabber", "VScrollBar", grabber)
 	theme.set_stylebox("grabber_highlight", "VScrollBar", grabber)
 	theme.set_stylebox("grabber_pressed", "VScrollBar", grabber)
 	theme.set_stylebox("scroll", "VScrollBar", _box(Color(0, 0, 0, 0), Color(0, 0, 0, 0), 4, 0, 0))
 	return theme
+
+
+## Deslizador horizontal con un círculo grande para el dedo.
+static func _slider(theme: Theme) -> void:
+	var track: StyleBoxFlat = _box(UiPalette.BAR_BACK, Color("233650"), 8, 0, 2)
+	track.content_margin_top = 6.0
+	track.content_margin_bottom = 6.0
+	theme.set_stylebox("slider", "HSlider", track)
+	var filled: StyleBoxFlat = _box(UiPalette.ACCENT, UiPalette.ACCENT, 8, 0, 0)
+	filled.content_margin_top = 6.0
+	filled.content_margin_bottom = 6.0
+	theme.set_stylebox("grabber_area", "HSlider", filled)
+	theme.set_stylebox("grabber_area_highlight", "HSlider", filled)
+	theme.set_icon("grabber", "HSlider", _circle_texture(36, UiPalette.TEXT))
+	theme.set_icon("grabber_highlight", "HSlider", _circle_texture(36, UiPalette.ACCENT))
+
+
+## Círculo lleno de borde nítido, para no depender de archivos de imagen.
+static func _circle_texture(diameter: int, color: Color) -> GradientTexture2D:
+	var gradient: Gradient = Gradient.new()
+	gradient.set_color(0, color)
+	gradient.set_color(1, Color(color, 0.0))
+	gradient.set_offset(0, 0.92)
+	gradient.set_offset(1, 1.0)
+	var texture: GradientTexture2D = GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.fill = GradientTexture2D.FILL_RADIAL
+	texture.fill_from = Vector2(0.5, 0.5)
+	texture.fill_to = Vector2(1.0, 0.5)
+	texture.width = diameter
+	texture.height = diameter
+	return texture
 
 
 static func _variation(theme: Theme, variation: String, base: String) -> void:

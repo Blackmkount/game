@@ -24,4 +24,10 @@ if grep -qE 'SCRIPT ERROR|Parse Error|Failed to load script' "$log_file"; then
 	echo "run_tests.sh: hay archivos de prueba con errores (revisa la salida de arriba)." >&2
 	exit 1
 fi
+# Si algo cierra el programa a mitad de las pruebas, GUT no llega a imprimir
+# el resumen y el código de salida puede ser 0: sin resumen, es un fallo.
+if ! grep -qE '^Totals' "$log_file"; then
+	echo "run_tests.sh: las pruebas no terminaron (falta el resumen de GUT)." >&2
+	exit 1
+fi
 exit "$status"
