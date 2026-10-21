@@ -5,9 +5,9 @@ extends RefCounted
 ##
 ## El reloj cuenta segundos de juego enteros. advance() convierte el tiempo
 ## real y guarda la fracción de segundo que sobra en _carry, que no se guarda
-## en la partida. Los eventos (fin de pieza, fin de modelado, mensaje nuevo)
-## se procesan en orden de tiempo y se agregan en los pasos siguientes del
-## ciclo de pedidos; por ahora solo avanza el reloj.
+## en la partida. Los eventos se procesan en su segundo exacto y en orden de
+## tiempo. Por ahora hay uno: el mensaje nuevo del tablero; el fin de modelado
+## y el fin de pieza se agregan en los pasos siguientes del ciclo de pedidos.
 
 ## Salvaguarda técnica para que un avance nunca quede dando vueltas sin fin.
 const MAX_EVENTS_PER_ADVANCE: int = 100000
@@ -83,13 +83,16 @@ func _move_to(t: int, live: bool) -> void:
 	state.game_seconds = t
 
 
-## Segundo de juego del próximo evento pendiente, o NO_EVENT. Todavía no hay
-## eventos: los pasos siguientes agregan impresoras, computador y tablero.
+## Segundo de juego del próximo evento pendiente, o NO_EVENT.
 func _scan_next_event_time() -> int:
-	return NO_EVENT
+	var next: int = NO_EVENT
+	if state.next_offer_at >= 0:
+		next = mini(next, state.next_offer_at)
+	return next
 
 
-## Procesa los eventos del segundo `_t` en orden fijo: impresoras, computador
-## y tablero. Se completa en los pasos siguientes.
-func _process_events_at(_t: int) -> void:
-	pass
+## Procesa los eventos del segundo `t` en orden fijo: impresoras, computador y
+## tablero. Por ahora solo el tablero.
+func _process_events_at(t: int) -> void:
+	if state.next_offer_at == t:
+		OrderBoard.on_refill(self, t)
