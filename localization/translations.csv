@@ -183,13 +183,3 @@ HINT_TAP,Toca un objeto para verlo,Tap an object to see it
 ZOOM_FAR,Lejos,Far
 ZOOM_NORMAL,Normal,Normal
 ZOOM_NEAR,Cerca,Near
-SETTINGS_CONTROLS,Controles (pruebas),Controls (testing)
-SETTINGS_CONTROLS_NOTE,"Solo mientras desarrollamos el juego: cambia los valores, prueba caminar y cuéntanos cuáles se sienten mejor.","Only while we build the game: change the values, try walking and tell us which feel best."
-SETTINGS_WALK_SPEED,Velocidad al caminar: %s m/s,Walking speed: %s m/s
-SETTINGS_FULL_SPEED,Recorrido del joystick: %d px,Joystick travel: %d px
-SETTINGS_FOLLOW,Suavidad de la cámara: %s s,Camera smoothing: %s s
-SETTINGS_REACH,Distancia para resaltar: %s m,Highlight distance: %s m
-SETTINGS_ALIGNED,Ir justo hacia donde apunta el pulgar: %s,Walk exactly where your thumb points: %s
-SETTINGS_RESET_CONTROLS,Volver a los valores de fábrica,Reset to defaults
-SETTINGS_ON,sí,on
-SETTINGS_OFF,no,off

@@ -167,7 +167,7 @@ Se propusieron tres opciones (A: tocar y el personaje lo hace; B: joystick; C: p
 - **Personaje:** `CharacterController` con `WalkGrid` (choques círculo contra rectángulo y caminos con `AStarGrid2D`) y `ReachTracker` para la cercanía.
 - **Cámara:** `CameraRig`. Cada cuadro, `WorldControls` llama a `RoomView.step()`, que mueve al personaje, lo ajusta a los píxeles y después mueve la cámara.
 - **Selección:** rayo contra las cajas de cada objeto (`PropBounds`, calculadas con las medidas de las formas), sin motor de física.
-- **Valores de sensación:** todos en `ControlsTuning`, y los principales se pueden mover en vivo en Ajustes → Controles (pruebas).
+- **Valores de sensación:** todos en `ControlsTuning`. Los principales los fijó el dueño probándolos en su teléfono: caminar a 2,2 m/s, joystick de 60 px, cámara de 0,10 s y resaltar a 0,60 m.
 
 ## 5. Jugabilidad: el ciclo y sus decisiones
 

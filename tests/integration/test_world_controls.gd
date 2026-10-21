@@ -29,7 +29,6 @@ func before_each() -> void:
 	_previous_settings_path = UserSettings.path
 	UserSettings.path = SETTINGS_PATH
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SETTINGS_PATH))
-	ControlsTuning.reset()
 	_main = MAIN_SCENE.instantiate()
 	add_child_autofree(_main)
 	await wait_process_frames(3)

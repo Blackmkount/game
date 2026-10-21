@@ -174,7 +174,7 @@ Registro de decisiones técnicas importantes: fecha, decisión y motivo. Las má
 **Motivo:** con la cámara en movimiento, el modo por defecto (4 divisiones) recalcula sus divisiones cada cuadro y los bordes de las sombras tiemblan. Además, dibuja las sombras cuatro veces.
 
 ### Valores de sensación en código, no en `data/`
-**Decisión:** velocidades, distancias del joystick y suavidad de la cámara viven en `ControlsTuning` (`game/world/input/`). Los principales se pueden mover en vivo desde Ajustes → Controles (pruebas), sin guardarse.
+**Decisión:** velocidades, distancias del joystick y suavidad de la cámara viven en `ControlsTuning` (`game/world/input/`). El dueño los probó en su teléfono con unos deslizadores temporales en Ajustes y fijó: caminar a 2,2 m/s, recorrido del joystick de 60 px, suavidad de la cámara de 0,10 s y distancia para resaltar de 0,60 m. Después los deslizadores se quitaron.
 **Motivo:** no son números de balance: no cambian la simulación ni la economía. Claude no puede jugar, así que el dueño los ajusta en el teléfono y avisa qué valores se sienten mejor. Esos valores pasan después al código.
 
 ### Panel inferior que crece hacia arriba
