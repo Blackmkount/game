@@ -16,8 +16,9 @@ func _init(p_sim: Simulation) -> void:
 	sim = p_sim
 
 
-## Acepta un mensaje: se vuelve un pedido con el mismo uid, que espera su
-## modelado. Si el tablero estaba lleno, se vuelve a esperar el próximo mensaje.
+## Acepta un mensaje: se vuelve un pedido con el mismo uid y, si el computador
+## está libre, se empieza a modelar. Si el tablero estaba lleno, se vuelve a
+## esperar el próximo mensaje.
 func accept_offer(offer_uid: int) -> CommandResult:
 	var state: GameState = sim.state
 	var result: CommandResult = OrderBoard.check_accept(state, sim.rules, offer_uid)
@@ -31,6 +32,7 @@ func accept_offer(offer_uid: int) -> CommandResult:
 	if deadline > 0:
 		order.due_live = state.live_seconds + deadline
 	_insert_order(order)
+	DesignFlow.start_next(sim, t)
 	OrderBoard.resume_if_paused(state, sim.rules, t)
 	sim.changes.offers = true
 	sim.changes.add_order(order.uid)
@@ -52,8 +54,20 @@ func reject_offer(offer_uid: int) -> CommandResult:
 	return CommandResult.success()
 
 
+## "Concentrarse" en el pedido que se está modelando (una vez por pedido).
+func focus_design(order_uid: int) -> CommandResult:
+	var state: GameState = sim.state
+	var result: CommandResult = DesignFlow.check_focus(state, order_uid)
+	if not result.ok:
+		return result
+	DesignFlow.focus(sim, state.find_order(order_uid), state.game_seconds)
+	sim.mark_dirty()
+	return result
+
+
 ## Cancela un pedido en cualquier etapa, sin castigo: solo se pierde el
-## material que ya se usó.
+## material que ya se usó. Si se estaba modelando, el computador sigue con el
+## siguiente de la fila.
 func cancel_order(order_uid: int) -> CommandResult:
 	var state: GameState = sim.state
 	var order: Order = state.find_order(order_uid)
@@ -62,6 +76,10 @@ func cancel_order(order_uid: int) -> CommandResult:
 	state.orders.erase(order)
 	if order.printer_uid >= 0:
 		_release_printer(order)
+	if order.stage == Order.Stage.DESIGNING:
+		state.designing_uid = -1
+		sim.changes.computer = true
+		DesignFlow.start_next(sim, state.game_seconds)
 	sim.changes.add_removed(order.uid)
 	sim.mark_dirty()
 	return CommandResult.success()

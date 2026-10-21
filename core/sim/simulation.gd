@@ -6,8 +6,8 @@ extends RefCounted
 ## El reloj cuenta segundos de juego enteros. advance() convierte el tiempo
 ## real y guarda la fracción de segundo que sobra en _carry, que no se guarda
 ## en la partida. Los eventos se procesan en su segundo exacto y en orden de
-## tiempo. Por ahora hay uno: el mensaje nuevo del tablero; el fin de modelado
-## y el fin de pieza se agregan en los pasos siguientes del ciclo de pedidos.
+## tiempo. Por ahora son el fin de modelado y el mensaje nuevo del tablero; el
+## fin de pieza se agrega en un paso siguiente del ciclo de pedidos.
 
 ## Salvaguarda técnica para que un avance nunca quede dando vueltas sin fin.
 const MAX_EVENTS_PER_ADVANCE: int = 100000
@@ -86,13 +86,26 @@ func _move_to(t: int, live: bool) -> void:
 ## Segundo de juego del próximo evento pendiente, o NO_EVENT.
 func _scan_next_event_time() -> int:
 	var next: int = NO_EVENT
+	var designing: Order = _designing_order()
+	if designing != null:
+		next = mini(next, designing.design_ends_at)
 	if state.next_offer_at >= 0:
 		next = mini(next, state.next_offer_at)
 	return next
 
 
 ## Procesa los eventos del segundo `t` en orden fijo: impresoras, computador y
-## tablero. Por ahora solo el tablero.
+## tablero. Por ahora, computador y tablero.
 func _process_events_at(t: int) -> void:
+	var designing: Order = _designing_order()
+	if designing != null and designing.design_ends_at == t:
+		DesignFlow.on_design_end(self, designing, t)
 	if state.next_offer_at == t:
 		OrderBoard.on_refill(self, t)
+
+
+## Pedido que se está modelando, o null con el computador libre.
+func _designing_order() -> Order:
+	if state.designing_uid < 0:
+		return null
+	return state.find_order(state.designing_uid)
