@@ -35,7 +35,7 @@ static func _printer(uid: int) -> BottomSheet:
 	var sheet: BottomSheet = BottomSheet.new(Previews.printer(printer.printer_id), _t(definition["name_key"]), place)
 	sheet.add_line("star", _t("SHEET_PRINTER_IDLE"), UiPalette.XP_FILL)
 	sheet.add_line("printer", UiFormat.tr_format("SHOP_PRINTER_STATS", [UiFormat.decimal(float(definition["speed"])), int(definition["max_quality"]), definition["volume"]]))
-	var reliability: float = WorkshopRules.printer_reliability(state, catalog, printer)
+	var reliability: float = WorkshopRules.printer_reliability(state, Game.rules, printer)
 	sheet.add_line("check", UiFormat.tr_format("SHEET_PRINTER_RELIABILITY", [roundi(reliability * 100.0)]))
 	var accessories: Array[String] = []
 	var accessory_defs: Dictionary = DataLookup.by_id(catalog, "accessories")
@@ -46,7 +46,7 @@ static func _printer(uid: int) -> BottomSheet:
 	else:
 		sheet.add_line("wrench", UiFormat.tr_format("SHEET_PRINTER_ACCESSORIES", [", ".join(accessories)]))
 	if printer.is_on_floor():
-		var penalty: int = roundi(WorkshopRules.floor_reliability_penalty(catalog) * 100.0)
+		var penalty: int = roundi(WorkshopRules.floor_reliability_penalty(Game.rules) * 100.0)
 		sheet.add_tip(UiFormat.tr_format("SHEET_PRINTER_FLOOR_TIP", [penalty]))
 		sheet.add_action("shop_furniture", _t("SHEET_BUY_TABLE"), true)
 	sheet.add_action("orders", _t("SHEET_SEE_ORDERS"), not printer.is_on_floor())

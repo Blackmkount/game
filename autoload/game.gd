@@ -8,11 +8,17 @@ extends Node
 ##   pasa por aquí.
 ## - Avisa de los cambios a través de las señales del autoload Events.
 
+## Un cuadro largo (pestaña escondida, app que vuelve de segundo plano) no
+## avanza más que esto: el juego se pausa en lugar de saltar. Constante técnica.
+const MAX_FRAME_REAL_SECONDS: float = 1.0
+
 var catalog: DataCatalog
+var rules: SimRules
+## Es rules.levels; se mantiene para la interfaz que ya la usa.
 var levels: LevelTable
 var state: GameState
+var sim: Simulation
 
-var _simulation: Simulation
 var _last_minute: int = -1
 
 
@@ -26,14 +32,23 @@ func _ready() -> void:
 			push_error("Datos de balance: " + error)
 		set_process(false)
 		return
-	levels = LevelTable.from_catalog(catalog)
-	state = GameState.new_game(catalog, randi())
-	_simulation = Simulation.new(state, catalog)
+	rules = SimRules.from_catalog(catalog)
+	levels = rules.levels
+	state = GameState.new_game(rules, randi())
+	sim = Simulation.new(state, rules)
 
 
 func _process(delta: float) -> void:
-	_simulation.advance(delta)
-	var minute: int = int(state.game_minutes)
+	advance(minf(delta, MAX_FRAME_REAL_SECONDS))
+
+
+## Avanza la partida `real_seconds` segundos reales. _process lo llama con el
+## tiempo del cuadro limitado; las pruebas y las capturas, sin límite.
+func advance(real_seconds: float) -> void:
+	if sim == null:
+		return
+	sim.advance(real_seconds)
+	var minute: int = floori(state.game_minutes)
 	if minute != _last_minute:
 		_last_minute = minute
 		Events.time_changed.emit(state.game_minutes)
