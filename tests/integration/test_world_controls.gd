@@ -263,6 +263,19 @@ func test_move_hint_gives_way_to_the_tap_hint_after_walking() -> void:
 	assert_true(UserSettings.load_settings().has_seen(HintFlow.MOVE), "Se recuerda para la próxima vez")
 
 
+func test_the_hint_only_works_every_frame_while_its_ghost_joystick_is_on_screen() -> void:
+	assert_true(_hud.move_hint.is_processing(), "El joystick fantasma se mueve")
+	_controls.open_sheet(_printer())
+	await wait_process_frames(2)
+	assert_false(_hud.move_hint.is_processing(), "Escondida bajo el panel no se redibuja")
+	_hud.close_sheet()
+	await wait_process_frames(2)
+	assert_true(_hud.move_hint.visible)
+	assert_true(_hud.move_hint.is_processing(), "Vuelve a moverse al cerrar el panel")
+	_hud.move_hint.set_mode(MoveHint.Mode.TAP)
+	assert_false(_hud.move_hint.is_processing(), "La pista de tocar es solo texto: no se redibuja")
+
+
 func _printer() -> WorldInteractable:
 	return _item(WorldInteractable.Kind.PRINTER)
 

@@ -167,7 +167,7 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 - **Herramientas:** `tools/screenshots.sh` saca 12 capturas en situaciones reales (zoom, joystick, paneles, globo, tienda y ajustes) para revisar la interfaz sin teléfono.
 
 **Verificado**
-- `check.sh` y `run_tests.sh` pasan: 133 pruebas. Las nuevas son de toques y joystick, choques y caminos, cercanía, personaje, cámara, cajas de los modelos, dirección del joystick, pistas e integración con toques simulados como en el teléfono (22 pruebas).
+- `check.sh` y `run_tests.sh` pasan: 134 pruebas. Las nuevas son de toques y joystick, choques y caminos, cercanía, personaje, cámara, cajas de los modelos, dirección del joystick, pistas e integración con toques simulados como en el teléfono (23 pruebas).
 - `run_tests.sh` ahora también falla si GUT no llega a imprimir el resumen final, para que una prueba que cierre el juego antes de tiempo no pase por buena.
 - Revisé las capturas de todas las situaciones.
 - La versión web exportada se probó en un Chromium que simula un Pixel 7, con toques reales del navegador:
