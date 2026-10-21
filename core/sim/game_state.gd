@@ -6,6 +6,8 @@ extends RefCounted
 ## Constante técnica, no de balance: separa los dos flujos de azar para que,
 ## con la misma semilla, el de los fallos no repita los números del tablero.
 const PRINTS_STREAM_SALT: int = 0x5851F42D4C957F2D
+## Cuántos despachos recientes se recuerdan.
+const RECENT_DELIVERIES_KEPT: int = 5
 
 ## El dinero se guarda en centavos para no acumular errores de redondeo.
 var money_cents: int = 0
@@ -34,10 +36,25 @@ var rng_seed: int = 0
 var orders_rng: RandomNumberGenerator = RandomNumberGenerator.new()
 ## Azar de los fallos de impresión.
 var prints_rng: RandomNumberGenerator = RandomNumberGenerator.new()
+## Mensajes sin responder.
+var offers: Array[OrderOffer] = []
 ## Segundo de juego en que llega el próximo mensaje; -1 = pausado (tablero lleno).
 var next_offer_at: int = -1
 ## Pedidos fijos que llegan primero, en orden (config.order_board.starting_offers).
 var scripted_offers: Array[String] = []
+## Pedido del último mensaje, para no repetirlo enseguida.
+var last_offer_order_id: String = ""
+## Pedidos aceptados, siempre en orden de uid.
+var orders: Array[Order] = []
+## Pedido que se está modelando; -1 = computador libre.
+var designing_uid: int = -1
+## Todas las piezas empezadas en la partida (para las piezas de gracia).
+var pieces_started: int = 0
+var delivered_total: int = 0
+## Pedidos despachados por id de pedido.
+var delivered_by_order: Dictionary[String, int] = {}
+## Últimos despachos, el más nuevo primero (máximo RECENT_DELIVERIES_KEPT).
+var recent_deliveries: Array[Delivery] = []
 ## Próximo uid libre para impresoras, muebles, carretes, mensajes y pedidos.
 var next_uid: int = 1
 
@@ -89,3 +106,31 @@ func total_grams() -> int:
 	for spool: Spool in spools:
 		total += spool.grams
 	return total
+
+
+func find_order(uid: int) -> Order:
+	for order: Order in orders:
+		if order.uid == uid:
+			return order
+	return null
+
+
+func find_offer(uid: int) -> OrderOffer:
+	for offer: OrderOffer in offers:
+		if offer.uid == uid:
+			return offer
+	return null
+
+
+func find_printer(uid: int) -> OwnedPrinter:
+	for printer: OwnedPrinter in printers:
+		if printer.uid == uid:
+			return printer
+	return null
+
+
+func find_spool(uid: int) -> Spool:
+	for spool: Spool in spools:
+		if spool.uid == uid:
+			return spool
+	return null

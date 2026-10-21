@@ -16,6 +16,8 @@ const NO_EVENT: int = 9223372036854775807
 
 var state: GameState
 var rules: SimRules
+## Lo que cambió desde el último aviso; Game lo vacía al emitir las señales.
+var changes: SimChanges = SimChanges.new()
 
 ## Fracción de segundo de juego que sobró del último avance. NO se guarda.
 var _carry: float = 0.0
