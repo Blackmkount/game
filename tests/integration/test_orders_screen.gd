@@ -54,13 +54,16 @@ func test_the_header_counts_down_then_fills_then_says_nothing_is_makeable() -> v
 	await wait_process_frames(1)
 	assert_eq(Game.state.offers.size(), 3)
 	assert_eq(_header(screen), "Responde un mensaje para recibir más.")
+	# Sin material, la ferretería va primero aunque el tablero esté lleno:
+	# rechazar mensajes no ayudaría.
 	Game.state.spools[0].grams = 0
 	Events.spools_changed.emit()
 	await wait_process_frames(1)
-	assert_eq(_header(screen), "Responde un mensaje para recibir más.", "El tablero lleno va primero")
+	var none_makeable: String = "Ahora nadie te pide algo que puedas hacer. Revisa tu material."
+	assert_eq(_header(screen), none_makeable, "Sin material, el aviso de la ferretería va primero")
+	assert_true(screen.find_child("LocalStoreBox", true, false).visible, "Con los botones de la ferretería")
 	_press(screen, "Reject_%d" % Game.state.offers[0].uid)
 	await wait_process_frames(1)
-	var none_makeable: String = "Ahora nadie te pide algo que puedas hacer. Revisa tu material."
 	assert_eq(_header(screen), none_makeable)
 	Game.advance(1.0)
 	assert_eq(_header(screen), none_makeable, "Sin cuenta regresiva: no se promete un mensaje")

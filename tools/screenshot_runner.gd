@@ -215,6 +215,9 @@ func _failed_piece() -> void:
 	_zoom(ZOOM_NEAR)
 	_advance_until(func() -> bool: return order.pieces_done == 1)
 	Game.advance(20.0)
+	# Como en una partida ya avanzada: las piezas de regalo de Don Ernesto ya
+	# pasaron, así el panel de la falla muestra el riesgo de verdad.
+	Game.state.pieces_started = Game.rules.grace_pieces
 	DebugTools.force_fail(Game.sim, PRINTER_UID, FailureRules.SPAGHETTI)
 	var printer: OwnedPrinter = Game.state.find_printer(PRINTER_UID)
 	_advance_until(func() -> bool: return printer.job.status == PrintJob.Status.FAILED)
@@ -225,6 +228,9 @@ func _failed_piece() -> void:
 	await _frames(30)
 	await _capture("23_fallo")
 
+	# El reintento vuelve a ser de regalo para que no falle al azar: la
+	# captura 19 necesita la pieza terminada.
+	Game.state.pieces_started = 0
 	_press("retry")
 	await _frames(2)
 	_hud.close_sheet()

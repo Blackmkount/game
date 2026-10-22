@@ -85,6 +85,7 @@ func _ready() -> void:
 	_build_screen_host()
 	feedback = FeedbackLayer.new()
 	feedback.name = "FeedbackLayer"
+	feedback.toast_spot = _toast_spot
 	add_child(feedback)
 	joystick = JoystickRing.new()
 	joystick.name = "Joystick"
@@ -242,6 +243,18 @@ func xp_bar_center() -> Vector2:
 ## Pequeño salto de la píldora del dinero cuando llega un cobro.
 func bump_money() -> void:
 	_money.bump()
+
+
+## Dónde va el aviso corto: debajo del panel de objetivos y a la derecha de
+## los botones de la izquierda, para que se vea lo que acaba de cambiar (por
+## ejemplo, el objetivo que pasa a "1/3" al cobrar).
+func _toast_spot() -> Vector2:
+	var spot: Vector2 = Vector2(MARGIN, CONTENT_TOP)
+	if _side.visible:
+		spot.x = _side.get_global_rect().end.x + MARGIN
+	if _objectives.visible:
+		spot.y = _objectives.get_global_rect().end.y + MARGIN
+	return spot
 
 
 ## Corre un rectángulo para que quede en la parte libre del mundo: entre la

@@ -173,6 +173,26 @@ func test_reloading_in_the_middle_of_a_print_restores_the_world() -> void:
 	assert_eq(Game.state.find_order(knob.uid).stage, Order.Stage.TO_PACK)
 
 
+func test_a_finger_on_a_panel_button_survives_a_refresh() -> void:
+	var order_uid: int = _accept_next_offer()
+	_advance_until(func() -> bool: return Game.state.find_order(order_uid).stage == Order.Stage.READY_TO_PRINT)
+	_controls.open_sheet(_printer())
+	await wait_process_frames(2)
+	var button: Button = _sheet_button("Action_print")
+	var spot: Vector2 = button.get_global_rect().get_center()
+	_send_touch(spot, true)
+	await wait_process_frames(1)
+	# Mientras el dedo está abajo, algo cambia en la partida (llega un mensaje)
+	# y el panel abierto pide rearmarse.
+	Events.offers_changed.emit()
+	await wait_process_frames(2)
+	assert_true(is_instance_valid(button) and button.is_inside_tree(), "El botón bajo el dedo sigue ahí")
+	_send_touch(spot, false)
+	await wait_process_frames(2)
+	assert_not_null(Game.state.printers[0].job, "Al soltar, el toque cuenta: empieza a imprimir")
+	assert_not_null(_hud.current_sheet().find_child("Progress_job", true, false), "Y después el panel se rearma")
+
+
 func _open_main() -> void:
 	_main = MAIN_SCENE.instantiate()
 	add_child_autofree(_main)

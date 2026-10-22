@@ -315,6 +315,8 @@ func _queue_refresh() -> void:
 
 func _refresh_now() -> void:
 	_refresh_queued = false
+	if _wait_for_finger():
+		return
 	var target: WorldInteractable = _open_next
 	_open_next = null
 	if target != null:
@@ -331,6 +333,21 @@ func _refresh_now() -> void:
 		_controls.hud.close_sheet()
 		return
 	_controls.hud.show_sheet(sheet, false)
+
+
+## Si un dedo está sobre un botón del panel abierto, el panel no se rearma
+## hasta que lo suelte: rearmarlo borraría el botón y el toque se perdería.
+func _wait_for_finger() -> bool:
+	var sheet: BottomSheet = _controls.hud.current_sheet()
+	if sheet == null:
+		return false
+	for node: Node in sheet.find_children("*", "BaseButton", true, false):
+		var button: BaseButton = node
+		if not button.toggle_mode and button.is_pressed():
+			if not button.button_up.is_connected(_queue_refresh):
+				button.button_up.connect(_queue_refresh, CONNECT_ONE_SHOT)
+			return true
+	return false
 
 
 ## Una vez por segundo real: las barras de avance del panel abierto. El

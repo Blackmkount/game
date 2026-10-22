@@ -19,6 +19,8 @@ fi
 out_dir="$ROOT_DIR/build/screenshots"
 rm -rf "${out_dir:?}"
 mkdir -p "$out_dir"
+# Godot no debe importar lo que se genera aquí (capturas, archivos de la web).
+touch "$ROOT_DIR/build/.gdignore"
 
 import_project > /dev/null
 timeout 300 xvfb-run -a -s "-screen 0 800x1400x24" "$GODOT_BIN" --path "$ROOT_DIR" \

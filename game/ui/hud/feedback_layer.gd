@@ -25,6 +25,9 @@ var _toast: PanelContainer
 var _toast_label: Label
 var _toast_tween: Tween
 var _waiting_toasts: Array[Dictionary] = []
+## Esquina de arriba a la izquierda donde va el aviso (la pone el HUD para no
+## tapar lo que acaba de cambiar). Sin ella, va bajo la barra de arriba.
+var toast_spot: Callable = Callable()
 
 
 func _ready() -> void:
@@ -38,6 +41,7 @@ func _ready() -> void:
 		add_child(label)
 		_floats.append(label)
 	_float_tweens.resize(FLOAT_COUNT)
+	# El aviso va debajo de los textos que vuelan: "+$6" pasa por encima.
 	_toast = UiKit.panel("PillPanel")
 	_toast.name = "Toast"
 	_toast.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -50,6 +54,7 @@ func _ready() -> void:
 	_toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_toast.add_child(_toast_label)
 	add_child(_toast)
+	move_child(_toast, 0)
 
 
 ## Hace volar `text` desde `from_ui` hasta `to_ui` (centros, en coordenadas de
@@ -72,7 +77,7 @@ func fly(text: String, color: Color, from_ui: Vector2, to_ui: Vector2, duration:
 	_float_tweens[index] = tween
 
 
-## Aviso corto bajo la barra de arriba. Si ya se ve otro, espera su turno.
+## Aviso corto arriba, donde no tape el HUD. Si ya se ve otro, espera su turno.
 func toast(text: String, color: Color = UiPalette.TEXT) -> void:
 	if _toast.visible:
 		_waiting_toasts.append({"text": text, "color": color})
@@ -90,6 +95,10 @@ func _land(index: int, on_done: Callable) -> void:
 
 
 func _show_toast(text: String, color: Color) -> void:
+	var spot: Vector2 = toast_spot.call() if toast_spot.is_valid() else Vector2(Hud.MARGIN, Hud.CONTENT_TOP)
+	_toast.offset_left = spot.x
+	_toast.offset_top = spot.y
+	_toast.offset_bottom = spot.y
 	_toast_label.text = text
 	_toast_label.add_theme_color_override("font_color", color)
 	_toast.visible = true

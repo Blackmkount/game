@@ -178,6 +178,21 @@ func test_the_speech_never_covers_the_nearby_bubble() -> void:
 	assert_almost_eq(_hud.speech.position.x + _hud.speech.size.x / 2.0, head.x, 0.5)
 
 
+func test_a_toast_never_covers_the_objectives_or_the_side_buttons() -> void:
+	# El agradecimiento llega justo cuando el objetivo cambia a (1/3): debe verse.
+	_hud.feedback.toast("Amigos y familia: «¡Quedó genial! Ya todos me preguntan dónde lo hice.»")
+	await wait_process_frames(2)
+	var toast: Rect2 = (_hud.feedback.get_node("Toast") as Control).get_global_rect()
+	assert_false(toast.intersects((_hud.get_node("ObjectivesPanel") as Control).get_global_rect()), "No tapa los objetivos")
+	assert_false(toast.intersects((_hud.get_node("SideButtons") as Control).get_global_rect()), "No tapa los botones de la izquierda")
+	assert_lte(toast.end.x, _hud.get_viewport_rect().size.x, "Entra en la pantalla")
+	# Con una sección abierta no hay objetivos ni botones: va bajo la barra de arriba.
+	_hud.open_screen("orders")
+	_hud.feedback.toast("Ese mensaje ya no está.")
+	await wait_seconds(FeedbackLayer.TOAST_SECONDS + 0.1)
+	assert_eq((_hud.feedback.get_node("Toast") as Control).get_global_rect().position.y, Hud.CONTENT_TOP)
+
+
 func test_toasts_wait_their_turn_and_keep_the_latest() -> void:
 	for text: String in ["uno", "dos", "tres", "cuatro"]:
 		_hud.feedback.toast(text)

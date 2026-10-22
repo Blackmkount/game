@@ -119,13 +119,14 @@ func _build_content() -> void:
 		content.add_child(UiKit.label(UiFormat.tr_format("ORDERS_LOCKED_MORE", [locked]), "MutedLabel", true))
 
 
-## La línea de arriba: tablero lleno, nada que se pueda hacer, o cuánto falta
-## para el próximo mensaje (esta última es la única que cuenta hacia atrás).
+## La línea de arriba: nada que se pueda hacer (con la ferretería), tablero
+## lleno, o cuánto falta para el próximo mensaje (esta última es la única que
+## cuenta hacia atrás). Sin material va primero: rechazar mensajes no ayudaría.
 func _refresh_header(state: GameState, rules: SimRules) -> void:
-	if state.offers.size() >= rules.board_slots:
-		_header_mode = Header.BOARD_FULL
-	elif not OrderBoard.has_makeable(state, rules):
+	if not OrderBoard.has_makeable(state, rules):
 		_header_mode = Header.NONE_MAKEABLE
+	elif state.offers.size() >= rules.board_slots:
+		_header_mode = Header.BOARD_FULL
 	elif OrderQueries.seconds_to_next_offer(state) >= 0:
 		_header_mode = Header.NEXT_OFFER
 	else:
