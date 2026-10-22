@@ -13,11 +13,14 @@
 // kit_printing.gdshader (además HOT_LAYER) es la pieza mientras se imprime,
 // con la capa caliente arriba. kit_glass.gdshader (además KIT_GLASS) es
 // transparente y se ve de los dos lados (la tapa ámbar de la impresora de
-// resina).
+// resina). kit_character.gdshader (KIT_CHARACTER) es el cuerpo del
+// personaje: más relleno de cámara y, en los retratos, una luz de estudio;
+// kit_head.gdshader (además KIT_HEAD), su cabeza con la cara pintada.
 //
 // OJO: un "instance uniform" le cuesta a CADA instancia que use el material
 // 16 lugares del búfer de globales (en la web y en muchos teléfonos caben
-// 1.024 en total). Por eso solo la variante HOT_LAYER tiene uno.
+// 1.024 en total). Por eso solo los tienen la variante HOT_LAYER y las del
+// personaje (unas pocas instancias).
 
 #include "res://game/world/look/world_light.gdshaderinc"
 
@@ -41,6 +44,38 @@ uniform float alpha = 0.5;
 // va la capa caliente. -100 = no hay.
 instance uniform float hot_top = -100.0;
 #endif
+#ifdef KIT_CHARACTER
+// 1 en las vistas previas (retratos): una luz de estudio fija en vez de la
+// luz del mundo (ModelPreview la pone en cada malla).
+instance uniform float preview_light = 0.0;
+// Luz de estudio (espacio de la pantalla): ambiente de arriba y de abajo,
+// llave cálida desde arriba a la izquierda, relleno frío desde la derecha y
+// borde desde atrás. Direcciones en el espacio de la cámara.
+uniform vec3 studio_sky = vec3(0.39, 0.42, 0.49);
+uniform vec3 studio_ground = vec3(0.36, 0.29, 0.23);
+uniform vec3 studio_key = vec3(0.36, 0.32, 0.25);
+uniform vec3 studio_fill = vec3(0.11, 0.13, 0.17);
+uniform vec3 studio_rim = vec3(0.45, 0.43, 0.40);
+const vec3 CC_STUDIO_KEY_DIR = vec3(-0.55, 0.62, 0.56);
+const vec3 CC_STUDIO_FILL_DIR = vec3(0.86, 0.05, 0.5);
+#endif
+#ifdef KIT_HEAD
+// La cara (FacePainter): atlas de expresiones en celdas, proyectado
+// alrededor del eje vertical de la cabeza (face_axis: centro del cráneo a la
+// altura de los ojos, en el espacio de la malla). Una celda cubre face_span
+// radianes alrededor y face_height metros de alto. Solo en la piel (la
+// superficie SKIN; el pelo no recibe la cara). El alfa del atlas es la
+// máscara de los ojos: ahí adentro el iris y la pupila se corren `gaze`
+// (fracción del ancho de la cara); lo que queda atrás es la tinta del ojo.
+uniform sampler2D face_atlas : filter_linear_mipmap, repeat_disable;
+uniform int face_cells = 8;
+uniform vec3 face_axis = vec3(0.0, 0.19, 0.0);
+uniform float face_span = 2.0944;
+uniform float face_height = 0.3;
+uniform vec4 eye_ink = vec4(0.1647, 0.102, 0.1333, 1.0);
+instance uniform int expression = 0;
+instance uniform vec2 gaze = vec2(0.0);
+#endif
 
 // Superficies (UV.x entero).
 const int CC_SMOOTH = 0;
@@ -51,6 +86,9 @@ const int CC_FABRIC = 4;
 const int CC_CARDBOARD = 5;
 const int CC_METAL = 6;
 const int CC_PEI = 7;
+// Del personaje: la piel (recibe la cara) y el pelo (contorno café).
+const int CC_SKIN = 8;
+const int CC_HAIR = 9;
 
 // Baldosa del piso: lado, medio ancho de la junta y bisel (m).
 const float CC_TILE_SIZE = 0.4;
@@ -191,6 +229,43 @@ vec3 cc_surface(int kind, vec3 base, inout vec3 n, inout float shine) {
 	return base;
 }
 
+#ifdef KIT_HEAD
+// La cara pintada sobre la piel (ver face_atlas). El atlas se lee siempre,
+// fuera de los if: así sus mipmaps no dependen de por dónde pasó cada píxel.
+vec3 cc_face(vec3 skin, int kind) {
+	vec3 q = v_local - face_axis;
+	vec2 uv = vec2(0.5 + atan(q.x, q.z) / face_span, 0.5 - q.y / face_height);
+	float cells = float(face_cells);
+	vec2 cell = vec2((uv.x + float(clamp(expression, 0, face_cells - 1))) / cells, uv.y);
+	vec4 face = texture(face_atlas, cell);
+	vec4 moved = texture(face_atlas, cell - vec2(gaze.x / cells, -gaze.y));
+	bool inside = kind == CC_SKIN && uv.x > 0.0 && uv.x < 1.0 && uv.y > 0.0 && uv.y < 1.0;
+	if (!inside) {
+		return skin;
+	}
+	vec3 eye = moved.a > 0.5 ? moved.rgb : eye_ink.rgb;
+	return mix(face.rgb, eye, face.a);
+}
+#endif
+
+// La luz de la pasada base: la del mundo (ver world_light.gdshaderinc) o, en
+// los retratos del personaje, la de estudio.
+vec3 cc_base_light(vec3 n, float ao, mat4 view) {
+#ifdef KIT_CHARACTER
+	if (preview_light > 0.5) {
+		vec3 nv = normalize((view * vec4(n, 0.0)).xyz);
+		vec3 ambient = mix(studio_ground, studio_sky, clamp(nv.y * 0.5 + 0.5, 0.0, 1.0));
+		float key_light = clamp((dot(nv, normalize(CC_STUDIO_KEY_DIR)) + 0.3) / 1.3, 0.0, 1.0);
+		float fill_light = clamp((dot(nv, normalize(CC_STUDIO_FILL_DIR)) + 0.3) / 1.3, 0.0, 1.0);
+		float back_light = pow(1.0 - clamp(nv.z, 0.0, 1.0), 3.0) * smoothstep(-0.2, 0.4, nv.y);
+		return (ambient + studio_key * key_light + studio_fill * fill_light) * cc_ao_color(ao) + studio_rim * back_light;
+	}
+	return cc_world_light(v_world, n, ao, 1.0);
+#else
+	return cc_world_light(v_world, n, ao, 0.0);
+#endif
+}
+
 void fragment() {
 	vec3 n = normalize(v_wnormal);
 #ifdef KIT_GLASS
@@ -203,6 +278,9 @@ void fragment() {
 	float layer_height = v_attr.z;
 	float emit_amount = v_attr.w;
 	base = cc_surface(kind, base, n, shine);
+#ifdef KIT_HEAD
+	base = cc_face(base, kind);
+#endif
 
 	// Lo impreso muestra sus capas: crestas que atrapan la luz, bandas claras
 	// y surcos oscuros en los lados, y el relleno en diagonal arriba. Se
@@ -246,7 +324,7 @@ void fragment() {
 	float ao = v_color.a * cc_occlusion(v_world, n);
 	v_wall_wrap = kind == CC_PAINT ? CC_WALL_WRAP : 0.0;
 	v_albedo = base * (1.0 - hot);
-	v_base = clamp(mix(base * cc_world_light(v_world, n, ao, 0.0) + glow, CC_HOT_COLOR, hot), 0.0, 1.0);
+	v_base = clamp(mix(base * cc_base_light(n, ao, VIEW_MATRIX) + glow, CC_HOT_COLOR, hot), 0.0, 1.0);
 	ALBEDO = base;
 #ifdef KIT_GLASS
 	ALPHA = alpha;

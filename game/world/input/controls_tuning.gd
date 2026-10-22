@@ -45,8 +45,9 @@ var acceleration_time: float = 0.06
 var deceleration_time: float = 0.08
 ## Grados por segundo al girar.
 var turn_speed_degrees: float = 720.0
-## Metros que avanza el personaje en un ciclo de dos pasos.
-var stride_length: float = 0.55
+## Metros que avanza el personaje en un ciclo de dos pasos (biblia de arte
+## §7.7: a 2,2 m/s es un trote suave con las piernas del personaje de 1,40 m).
+var stride_length: float = 0.75
 
 # --- Cercanía con los objetos ---
 ## A esta distancia (del centro del personaje al borde del objeto) el objeto

@@ -67,6 +67,29 @@ func test_the_xp_bar_fills_within_a_level_and_jumps_on_level_up() -> void:
 	assert_eq(bar.max_value, float(Game.levels.xp_span_of_level(280)))
 
 
+func test_the_portrait_changes_its_face_at_the_big_moments() -> void:
+	var card: ProfileCard = _hud.get_node("TopBar/ProfileCard")
+	var face: GeometryInstance3D = card.find_children("Mesh", "MeshInstance3D", true, false).filter(
+		func(node: Node) -> bool: return node.get_parent().name == "Head")[0]
+	assert_eq(card.shown_face(), FacePainter.Face.NEUTRAL)
+	Events.print_failed.emit(1, "spaghetti")
+	assert_eq(card.shown_face(), FacePainter.Face.WORRIED, "Preocupado si falla una impresión")
+	assert_eq(face.get_instance_shader_parameter(&"expression"), FacePainter.Face.WORRIED, "El retrato la muestra")
+	card._face_timer.timeout.emit()
+	assert_eq(card.shown_face(), FacePainter.Face.NEUTRAL, "Después vuelve a la normal")
+	Events.level_up.emit(2)
+	assert_eq(card.shown_face(), FacePainter.Face.SURPRISE, "Sorpresa al subir de nivel")
+	card._face_timer.timeout.emit()
+	assert_eq(card.shown_face(), FacePainter.Face.HAPPY, "y después feliz")
+	card._face_timer.timeout.emit()
+	assert_eq(card.shown_face(), FacePainter.Face.NEUTRAL)
+	assert_true(Events.order_delivered.is_connected(card._on_order_delivered))
+	card._on_order_delivered(1, "llavero", 100, 10, true)
+	assert_eq(card.shown_face(), FacePainter.Face.NEUTRAL, "Si llegó tarde no hay festejo")
+	card._on_order_delivered(1, "llavero", 100, 10, false)
+	assert_eq(card.shown_face(), FacePainter.Face.HAPPY, "Feliz al cobrar a tiempo")
+
+
 func test_a_sheet_button_that_is_not_a_section_goes_to_the_order_loop() -> void:
 	var sheet: BottomSheet = BottomSheet.new(Previews.icon("printer"), "Cubo Uno")
 	sheet.add_action("print", "Imprimir", true)

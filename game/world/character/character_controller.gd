@@ -14,7 +14,15 @@ const WAYPOINT_RADIUS: float = 0.06
 const STUCK_TIME: float = 0.5
 ## Segundos quieto antes de mirar lo que tiene cerca.
 const GLANCE_DELAY: float = 1.5
-const MAX_GLANCE: float = deg_to_rad(55.0)
+## La cabeza gira como mucho MAX_GLANCE hacia lo que mira (más, y la cámara
+## alta deja de verle la cara); las pupilas siguen GAZE_REACH más allá,
+## hasta correrse MAX_GAZE (fracción del ancho de la cara, biblia de arte
+## §7.5).
+const MAX_GLANCE: float = deg_to_rad(20.0)
+const GAZE_REACH: float = deg_to_rad(35.0)
+const MAX_GAZE: float = 0.03
+## Lo que tiene que cambiar la mirada para avisarle a la cara.
+const GAZE_STEP: float = 0.0005
 ## Animación al caminar, a velocidad máxima.
 const LEG_SWING: float = 0.55
 const ARM_SWING: float = 0.45
@@ -46,6 +54,10 @@ var _face_goal: Variant = null
 
 var _body: Node3D
 var _head: Node3D
+## La malla de la cabeza (sus pupilas) y hacia dónde mira, suavizado.
+var _face: GeometryInstance3D
+var _look: float = 0.0
+var _gaze: float = 0.0
 var _hips: Array[Node3D] = []
 var _shoulders: Array[Node3D] = []
 var _body_base_y: float = 0.0
@@ -57,6 +69,7 @@ func setup(p_model: Node3D, p_grid: WalkGrid, start: Transform3D, p_tuning: Cont
 	tuning = p_tuning if p_tuning != null else ControlsTuning.current
 	_body = model.get_node("Body")
 	_head = _body.get_node("Head")
+	_face = _head.get_node("Mesh")
 	_hips = [model.get_node("HipL"), model.get_node("HipR")]
 	_shoulders = [_body.get_node("ShoulderL"), _body.get_node("ShoulderR")]
 	_body_base_y = _body.position.y
@@ -200,9 +213,14 @@ func _apply_to_model(delta: float) -> void:
 	var breath: float = sin(_time * 2.6) * BREATH * (1.0 - speed_ratio)
 	_body.position.y = _body_base_y + bob + breath
 	_body.rotation.x = LEAN * speed_ratio
-	var glance: float = 0.0
+	var look: float = 0.0
 	if _idle_time > GLANCE_DELAY and look_target != null:
 		var target: Vector3 = look_target
 		var local_angle: float = wrapf(atan2(target.x - floor_position.x, target.z - floor_position.y) - yaw, -PI, PI)
-		glance = clampf(local_angle, -MAX_GLANCE, MAX_GLANCE)
-	_head.rotation.y = lerp_angle(_head.rotation.y, glance, 1.0 - exp(-6.0 * delta))
+		look = clampf(local_angle, -MAX_GLANCE - GAZE_REACH, MAX_GLANCE + GAZE_REACH)
+	_look = lerpf(_look, look, 1.0 - exp(-6.0 * delta))
+	_head.rotation.y = clampf(_look, -MAX_GLANCE, MAX_GLANCE)
+	var gaze: float = (_look - _head.rotation.y) / GAZE_REACH * MAX_GAZE
+	if absf(gaze - _gaze) > GAZE_STEP:
+		_gaze = gaze
+		_face.set_instance_shader_parameter(&"gaze", Vector2(_gaze, 0.0))

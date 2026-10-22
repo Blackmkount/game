@@ -2,8 +2,13 @@ class_name ModelPreview
 extends SubViewportContainer
 ## Vista de un modelo 3D dentro de la interfaz (retrato del personaje,
 ## impresoras y muebles de la tienda), con bordes suavizados. Se dibuja una
-## sola vez.
+## sola vez (redraw() la vuelve a dibujar).
 ## Con camera_size = 0 la cámara se ajusta sola al tamaño del modelo.
+##
+## Cada malla del modelo recibe "preview_light" = 1 (biblia de arte §7.9 y
+## §11): las del personaje cambian la luz del cuarto por una luz de estudio
+## fija (la cara nunca queda oscura), y "px_m_override", los metros por píxel
+## de esta vista, para que su contorno mida lo mismo que en el mundo.
 
 ## Color y fuerza del sol de la vista (sobre el ambiente de la mañana del
 ## mundo): el del sol de la mañana, un poco más fuerte.
@@ -15,6 +20,7 @@ var _build_model: Callable
 var _camera_size: float
 var _camera_target: Vector3
 var _yaw: float
+var _viewport: SubViewport
 
 
 func _init(build_model: Callable, size: float, camera_size: float = 0.0, camera_target: Vector3 = Vector3.ZERO, yaw: float = 45.0) -> void:
@@ -30,16 +36,16 @@ func _init(build_model: Callable, size: float, camera_size: float = 0.0, camera_
 
 
 func _ready() -> void:
-	var viewport: SubViewport = SubViewport.new()
-	viewport.own_world_3d = true
-	viewport.transparent_bg = true
-	viewport.msaa_3d = Viewport.MSAA_4X
+	_viewport = SubViewport.new()
+	_viewport.own_world_3d = true
+	_viewport.transparent_bg = true
+	_viewport.msaa_3d = Viewport.MSAA_4X
 	# Sin luces de punto ni de foco: no hace falta su mapa de sombras.
-	viewport.positional_shadow_atlas_size = 0
-	viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
-	add_child(viewport)
+	_viewport.positional_shadow_atlas_size = 0
+	_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+	add_child(_viewport)
 	var world: Node3D = Node3D.new()
-	viewport.add_child(world)
+	_viewport.add_child(world)
 
 	# Como el mundo (biblia de arte §2.4 y §11): el ambiente lo pone el
 	# sombreador del kit, tonemap lineal y un sol con sombra, para que valga
@@ -73,6 +79,17 @@ func _ready() -> void:
 		camera.size = maxf(bounds.get_longest_axis_size() * 1.3, 0.5)
 	camera.position = target - camera.basis * Vector3.FORWARD * 10.0
 	world.add_child(camera)
+	var meters_per_pixel: float = camera.size / maxf(custom_minimum_size.y, 1.0)
+	for node: Node in world.find_children("*", "GeometryInstance3D", true, false):
+		var geometry: GeometryInstance3D = node
+		geometry.set_instance_shader_parameter(&"preview_light", 1.0)
+		geometry.set_instance_shader_parameter(&"px_m_override", meters_per_pixel)
+
+
+## Vuelve a dibujar la vista una vez (el retrato cuando cambia la cara).
+func redraw() -> void:
+	if _viewport != null:
+		_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 
 
 func _bounds(root: Node3D) -> AABB:

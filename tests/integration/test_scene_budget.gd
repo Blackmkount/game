@@ -22,32 +22,36 @@ const SceneBudget: GDScript = preload("res://tests/helpers/scene_budget.gd")
 const FullRoom: GDScript = preload("res://tests/helpers/full_room.gd")
 const SEED: int = 1234
 
-## Cuarto inicial. Medido el 2026-10-22 en el paso 7 de Arte 2.0 (el
-## escritorio del kit: una malla y la pantalla, 3 llamadas; el rincón de
-## despacho: una malla, 2 llamadas), igual en los pasos 8 y 9: 75 llamadas, 18
-## materiales, 30 mallas con sombra y 8 superficies transparentes (5 marcas,
-## el marco de resalte, el haz de la ventana y la sombra bajo la base).
-## Antes: 120 llamadas, 27 materiales y 53 mallas con sombra (paso 6); 136
-## (paso 5); 177 (paso 3); 334 (paso 1).
-const START_MAX_DRAW_CALLS: int = 82
+## Cuarto inicial. Medido el 2026-10-22 en el paso 10 de Arte 2.0 (el
+## personaje nuevo: una malla con piel y la cabeza, cada una con su sombra y
+## su contorno, 6 llamadas; antes eran 48): 33 llamadas, 13 materiales, 8
+## mallas con sombra y 8 superficies transparentes (5 marcas, el marco de
+## resalte, el haz de la ventana y la sombra bajo la base). Antes: 75
+## llamadas, 18 materiales y 30 mallas con sombra (pasos 7 a 9); 120 (paso
+## 6); 136 (paso 5); 177 (paso 3); 334 (paso 1).
+const START_MAX_DRAW_CALLS: int = 37
 const START_MAX_VISIBLE_TRIANGLES: int = 45000
 const START_MAX_TOTAL_TRIANGLES: int = 80000
-const START_MAX_MATERIALS: int = 19
-const START_MAX_SHADOW_MESHES: int = 33
+const START_MAX_MATERIALS: int = 15
+const START_MAX_SHADOW_MESHES: int = 9
 const START_MAX_TRANSPARENT: int = 9
+## El personaje (biblia §5.2): cuerpo y cabeza con su sombra y su contorno, y
+## los triángulos de sus mallas (el contorno comparte la malla).
+const CHARACTER_MAX_DRAW_CALLS: int = 6
+const CHARACTER_MAX_TRIANGLES: int = 8000
 
-## Cuarto lleno. Medido el 2026-10-22 en el paso 9 (las estanterías del kit
-## de 2,40 m: una malla cada una, 2 llamadas): 170 llamadas, 18 materiales,
-## 50 mallas con sombra y 5 superficies transparentes (las 2 tapas ámbar de
-## las Gota R1 y 3 más; sin lugares libres no hay marcas: el tope de
-## transparentes es el final del cuarto inicial). Antes: 230 llamadas, 20
-## materiales y 80 mallas con sombra (paso 8); 395 (paso 7); 440 (paso 6);
-## 519 (paso 5); 535 (paso 3); 1.042 (paso 1).
-const FULL_MAX_DRAW_CALLS: int = 187
+## Cuarto lleno. Medido el 2026-10-22 en el paso 10 (el personaje nuevo):
+## 128 llamadas, 13 materiales, 28 mallas con sombra y 5 superficies
+## transparentes (las 2 tapas ámbar de las Gota R1 y 3 más; sin lugares
+## libres no hay marcas: el tope de transparentes es el final del cuarto
+## inicial). Antes: 170 llamadas, 18 materiales y 50 mallas con sombra (paso
+## 9); 230 (paso 8); 395 (paso 7); 440 (paso 6); 519 (paso 5); 535 (paso 3);
+## 1.042 (paso 1).
+const FULL_MAX_DRAW_CALLS: int = 141
 const FULL_MAX_VISIBLE_TRIANGLES: int = 60000
 const FULL_MAX_TOTAL_TRIANGLES: int = 99999
-const FULL_MAX_MATERIALS: int = 19
-const FULL_MAX_SHADOW_MESHES: int = 55
+const FULL_MAX_MATERIALS: int = 15
+const FULL_MAX_SHADOW_MESHES: int = 31
 const FULL_MAX_TRANSPARENT: int = 12
 
 ## Armar la escena principal con las mallas y los materiales ya en caché
@@ -81,6 +85,8 @@ func test_the_starting_room_fits_the_mobile_budget() -> void:
 	assert_lte((budget.get("materials") as Dictionary).size(), START_MAX_MATERIALS, "Materiales distintos")
 	assert_lte(budget.get("shadow_meshes"), START_MAX_SHADOW_MESHES, "Mallas que dan sombra")
 	assert_lte(budget.get("transparent_surfaces"), START_MAX_TRANSPARENT, "Superficies transparentes")
+	assert_lte(budget.call("child_draw_calls", "Character"), CHARACTER_MAX_DRAW_CALLS, "Llamadas del personaje")
+	assert_lte(budget.call("child_geometry", "Character"), CHARACTER_MAX_TRIANGLES, "Triángulos del personaje")
 	_assert_one_sun_and_everything_measured(budget)
 
 

@@ -76,7 +76,7 @@ const GAME_SHOTS: Array[String] = [
 	"24_zoom_lejos_taller", "23_fallo", "19_pieza_lista",
 ]
 const CHARACTER_SHOTS: Array[String] = [
-	"32a_personaje_frente", "32b_personaje_perfil", "32c_personaje_espalda", "33_personaje_retrato",
+	"32a_personaje_frente", "32b_personaje_perfil", "32c_personaje_espalda", "33_personaje_retrato", "47_perfil",
 ]
 const ART_SHOTS: Array[String] = [
 	"00_calibracion", "30_heroe_sin_hud", "31_normal_sin_hud", "34_impresora_y_escritorio", "45_pieza_creciendo_lejos",
@@ -398,7 +398,8 @@ func _failed_piece() -> void:
 
 ## 32a, 32b, 32c y 33: el personaje sin interfaz, de cuerpo entero de frente,
 ## de perfil y de espaldas, y la cara de muy cerca. La cámara lo sigue a él y
-## no a WorldControls, así nada cercano le cambia la mirada.
+## no a WorldControls, así nada cercano le cambia la mirada. 47: la pantalla
+## de perfil, con su retrato de cuerpo entero.
 func _character_shots() -> void:
 	await _new_game(ROOM_MIDDLE_SPOT)
 	_hud.visible = false
@@ -418,6 +419,11 @@ func _character_shots() -> void:
 	await _frames(40)
 	await _capture("33_personaje_retrato")
 	await _back_to_game(base)
+	_hud.open_screen("profile")
+	await _frames(30)
+	await _capture("47_perfil")
+	_hud.open_screen("home")
+	await _frames(10)
 
 
 ## 00: el modelo de color (tools/calibration_board.gd). Falla si los píxeles

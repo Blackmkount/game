@@ -411,6 +411,21 @@ func quad(size: Vector2, pos: Vector3, rot_deg: Vector3 = Vector3.ZERO) -> KitMe
 	return self
 
 
+## Lámina por una grilla de puntos ya calculados, cada uno con su normal y
+## su color (el pelo, HairKit): (nu + 1) × (nv + 1) puntos, fila por fila.
+## La superficie, el brillo y lo demás salen de lo que se está pintando.
+func sheet(points: PackedVector3Array, normals: PackedVector3Array, colors: PackedColorArray, nu: int, nv: int) -> KitMesh:
+	_place(Vector3.ZERO, Vector3.ZERO)
+	var painted: Color = color
+	var base: int = _positions.size()
+	for k: int in points.size():
+		color = colors[k]
+		_vertex(points[k], normals[k])
+	color = painted
+	_grid(base, nu, nv)
+	return self
+
+
 ## Triángulo plano por tres puntos (banderines, flechas). Su frente mira
 ## hacia (b − a) × (c − a); con `two_sided` se ve de los dos lados.
 func triangle(a: Vector3, b: Vector3, c: Vector3, pos: Vector3 = Vector3.ZERO, rot_deg: Vector3 = Vector3.ZERO, two_sided: bool = true) -> KitMesh:
@@ -440,16 +455,23 @@ func commit() -> ArrayMesh:
 	var mesh: ArrayMesh = ArrayMesh.new()
 	if _indices.is_empty():
 		return mesh
-	var arrays: Array = []
-	arrays.resize(Mesh.ARRAY_MAX)
-	arrays[Mesh.ARRAY_VERTEX] = _positions
-	arrays[Mesh.ARRAY_NORMAL] = _normals
-	arrays[Mesh.ARRAY_COLOR] = _colors
-	arrays[Mesh.ARRAY_TEX_UV] = _uvs
-	arrays[Mesh.ARRAY_TEX_UV2] = _uv2s
-	arrays[Mesh.ARRAY_INDEX] = _indices
-	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays())
 	return mesh
+
+
+## Lo agregado como los arreglos de una superficie de malla (Mesh.ARRAY_*),
+## para quien la completa antes de cerrarla (los huesos y pesos del cuerpo
+## del personaje, CharacterRig).
+func arrays() -> Array:
+	var result: Array = []
+	result.resize(Mesh.ARRAY_MAX)
+	result[Mesh.ARRAY_VERTEX] = _positions
+	result[Mesh.ARRAY_NORMAL] = _normals
+	result[Mesh.ARRAY_COLOR] = _colors
+	result[Mesh.ARRAY_TEX_UV] = _uvs
+	result[Mesh.ARRAY_TEX_UV2] = _uv2s
+	result[Mesh.ARRAY_INDEX] = _indices
+	return result
 
 
 ## Suaviza una línea de puntos con Catmull-Rom: `steps` tramos entre cada

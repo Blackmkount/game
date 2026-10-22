@@ -32,6 +32,9 @@ class Share:
 	var color_triangles: int = 0
 	var casting_calls: int = 0
 	var casting_triangles: int = 0
+	## Triángulos de cada malla distinta (dos instancias de la misma malla,
+	## como el contorno del personaje, se cuentan una vez).
+	var meshes: Dictionary[Mesh, int] = {}
 
 const SCRIPT_PATH: String = "res://tests/helpers/scene_budget.gd"
 const MAX_INCLUDE_DEPTH: int = 8
@@ -99,6 +102,17 @@ func child_draw_calls(child_name: String) -> int:
 func child_triangles(child_name: String) -> int:
 	var share: Share = by_child.get(child_name)
 	return share.color_triangles + share.casting_triangles * shadow_passes if share != null else 0
+
+
+## Triángulos de las mallas distintas de un hijo de la raíz (su geometría,
+## una vez, aunque dos instancias compartan una malla).
+func child_geometry(child_name: String) -> int:
+	var share: Share = by_child.get(child_name)
+	var total: int = 0
+	if share != null:
+		for tris: int in share.meshes.values():
+			total += tris
+	return total
 
 
 ## Una línea con el total y, debajo, una línea por hijo de la raíz, del que
@@ -213,6 +227,9 @@ func _add_geometry(root: Node, instance: GeometryInstance3D, mesh: Mesh, materia
 		var tris: int = _triangles(mesh, surface) * copies
 		surfaces += 1
 		triangles += tris
+		if surface == 0:
+			share.meshes[mesh] = 0
+		share.meshes[mesh] += tris
 		var any_transparent: bool = false
 		for pass_material: Material in _chain(materials_by_surface[surface]):
 			if pass_material != null:

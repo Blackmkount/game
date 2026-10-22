@@ -18,6 +18,9 @@ const SHADERS: Dictionary[String, Array] = {
 	"res://game/world/look/base_shadow.gdshader": ["color"],
 	"res://game/world/look/marker.gdshader": ["color", "alpha", "alpha_low", "period"],
 	"res://game/world/look/color_probe.gdshader": ["base_level", "sun_level"],
+	"res://game/world/look/kit_character.gdshader": ["toon", "rim", "studio_sky", "studio_ground", "studio_key", "studio_fill", "studio_rim"],
+	"res://game/world/look/kit_head.gdshader": ["toon", "rim", "studio_key", "face_atlas", "face_cells", "face_axis", "face_span", "face_height", "eye_ink"],
+	"res://game/world/look/outline_character.gdshader": ["ink", "hair_ink"],
 }
 
 
@@ -41,6 +44,7 @@ func test_every_palette_material_can_be_drawn_on_a_mesh() -> void:
 		WorldPalette.glow("7fe0a0"), WorldPalette.glow("ffffff", "crt_modeling"),
 		WorldPalette.glow("ffffff", WorldPalette.WINDOW_VIEW), WorldPalette.glow_transparent(WorldPalette.SLOT_MARK, 0.6),
 		WorldPalette.halo(LookPalette.LAMP_HALO, 3.0), WorldPalette.window_shaft(),
+		WorldPalette.kit_character(), WorldPalette.kit_head(), WorldPalette.outline_character(),
 	]
 	for surface: int in WorldPalette.Surface.size():
 		materials.append(WorldPalette.paint("cccccc", surface as WorldPalette.Surface))

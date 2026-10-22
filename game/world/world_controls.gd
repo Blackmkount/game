@@ -339,7 +339,7 @@ func _update_overlays() -> void:
 		hud.bubble.hide_bubble()
 	status.place_bubbles()
 	if hud.speech.is_talking() and room.character != null:
-		hud.place_speech(world_to_ui(room.character.model.position + Vector3(0.0, CharacterModel.HEIGHT, 0.0)))
+		hud.place_speech(world_to_ui(room.speech_point()))
 
 
 func _update_hints() -> void:

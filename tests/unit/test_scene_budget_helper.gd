@@ -213,6 +213,23 @@ func test_the_breakdown_adds_each_child_with_its_shadows() -> void:
 	root.free()
 
 
+func test_the_geometry_of_a_child_counts_each_shared_mesh_once() -> void:
+	var root: Node3D = _root_with_sun(DirectionalLight3D.SHADOW_ORTHOGONAL)
+	var group: Node3D = Node3D.new()
+	group.name = "Character"
+	root.add_child(group)
+	var body: MeshInstance3D = _box(group, "Mesh", StandardMaterial3D.new())
+	var outline: MeshInstance3D = _box(group, "Outline", StandardMaterial3D.new())
+	outline.mesh = body.mesh
+	outline.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	_box(group, "Head", StandardMaterial3D.new())
+	var budget: RefCounted = SceneBudget.measure(root)
+	assert_eq(budget.call("child_geometry", "Character"), BOX_TRIANGLES * 2, "El contorno comparte la malla del cuerpo")
+	assert_eq(budget.get("triangles"), BOX_TRIANGLES * 3, "El total cuenta cada instancia")
+	assert_eq(budget.call("child_geometry", "Nada"), 0)
+	root.free()
+
+
 func _root_with_sun(mode: DirectionalLight3D.ShadowMode) -> Node3D:
 	var root: Node3D = Node3D.new()
 	var sun: DirectionalLight3D = DirectionalLight3D.new()

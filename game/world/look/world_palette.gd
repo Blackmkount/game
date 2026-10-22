@@ -15,24 +15,22 @@ extends RefCounted
 const BACKGROUND: String = LookPalette.BACKGROUND
 const WOOD_MID: String = LookPalette.WOOD_MID
 const PLASTIC_BEIGE: String = LookPalette.COMPUTER_BEIGE
-const SKIN: String = LookPalette.SKIN
-const HAIR: String = LookPalette.HAIR
-const HAIR_LIGHT: String = LookPalette.HAIR_MID
-const HOODIE: String = LookPalette.HOODIE
-const JEANS: String = LookPalette.JEANS
-const SHOES: String = LookPalette.SHOES
-const EYES: String = LookPalette.PUPIL
 const SLOT_MARK: String = LookPalette.INTERACTION
 ## Pieza que falló: plástico quemado y opaco.
 const FAILED_PIECE: String = LookPalette.FAILED_PIECE
 
-## Superficies del kit (UV.x entero, biblia §3.3).
-enum Surface { SMOOTH, TILE, WOOD, PAINT, FABRIC, CARDBOARD, METAL, PEI }
+## Superficies del kit (UV.x entero, biblia §3.3). SKIN y HAIR son del
+## personaje: en la piel de la cabeza se pinta la cara y el pelo lleva el
+## contorno café.
+enum Surface { SMOOTH, TILE, WOOD, PAINT, FABRIC, CARDBOARD, METAL, PEI, SKIN, HAIR }
 
 const KIT_SHADER: Shader = preload("res://game/world/look/kit.gdshader")
 const TINTED_SHADER: Shader = preload("res://game/world/look/kit_tinted.gdshader")
 const PRINTING_SHADER: Shader = preload("res://game/world/look/kit_printing.gdshader")
 const GLASS_SHADER: Shader = preload("res://game/world/look/kit_glass.gdshader")
+const CHARACTER_SHADER: Shader = preload("res://game/world/look/kit_character.gdshader")
+const HEAD_SHADER: Shader = preload("res://game/world/look/kit_head.gdshader")
+const OUTLINE_SHADER: Shader = preload("res://game/world/look/outline_character.gdshader")
 const SCREEN_SHADER: Shader = preload("res://game/world/look/screen.gdshader")
 const WINDOW_VIEW_SHADER: Shader = preload("res://game/world/look/window_view.gdshader")
 const MARKER_SHADER: Shader = preload("res://game/world/look/marker.gdshader")
@@ -54,6 +52,10 @@ const WINDOW_VIEW: String = "window_view"
 const PRINTED_GLOSS: float = 0.25
 ## Luz propia de glow(hex): se ve encendido aun a la sombra.
 const GLOW_EMIT: float = 1.0
+## El personaje (biblia §3.4): terminador más marcado y más luz de borde que
+## el resto del mundo.
+const CHARACTER_TOON: float = 0.8
+const CHARACTER_RIM: float = 0.35
 
 static var _cache: Dictionary[String, Material] = {}
 
@@ -66,6 +68,42 @@ static func kit() -> ShaderMaterial:
 		material.shader = KIT_SHADER
 		_cache["kit"] = material
 	return _cache["kit"]
+
+
+## El cuerpo del personaje: como kit(), con el terminador marcado, más
+## relleno de cámara y la luz de estudio de los retratos
+## (kit_character.gdshader).
+static func kit_character() -> ShaderMaterial:
+	if not _cache.has("kit_character"):
+		_cache["kit_character"] = _character_material(CHARACTER_SHADER)
+	return _cache["kit_character"]
+
+
+## La cabeza del personaje: kit_character() con la cara pintada
+## (FacePainter) alrededor del eje de la cara de CharacterModel.
+static func kit_head() -> ShaderMaterial:
+	if not _cache.has("kit_head"):
+		var material: ShaderMaterial = _character_material(HEAD_SHADER)
+		material.set_shader_parameter("face_atlas", FacePainter.atlas())
+		material.set_shader_parameter("face_cells", FacePainter.CELLS)
+		material.set_shader_parameter("face_axis", CharacterModel.FACE_AXIS)
+		material.set_shader_parameter("face_span", FacePainter.SPAN)
+		material.set_shader_parameter("face_height", FacePainter.HEIGHT)
+		material.set_shader_parameter("eye_ink", Color(LookPalette.EYE_LINE))
+		_cache["kit_head"] = material
+	return _cache["kit_head"]
+
+
+## Contorno fino del personaje (outline_character.gdshader): tinta índigo y
+## café oscuro en el pelo.
+static func outline_character() -> ShaderMaterial:
+	if not _cache.has("outline_character"):
+		var material: ShaderMaterial = ShaderMaterial.new()
+		material.shader = OUTLINE_SHADER
+		material.set_shader_parameter("ink", Color(LookPalette.OUTLINE))
+		material.set_shader_parameter("hair_ink", Color(LookPalette.OUTLINE_HAIR))
+		_cache["outline_character"] = material
+	return _cache["outline_character"]
 
 
 ## Plástico impreso de un color (la pieza, la bandeja, el filamento): capas
@@ -168,6 +206,14 @@ static func halo(hex: String, aspect: float = 1.0, intensity: float = 1.0) -> Sh
 		material.set_shader_parameter("intensity", intensity)
 		_cache[key] = material
 	return _cache[key]
+
+
+static func _character_material(shader: Shader) -> ShaderMaterial:
+	var material: ShaderMaterial = ShaderMaterial.new()
+	material.shader = shader
+	material.set_shader_parameter("toon", CHARACTER_TOON)
+	material.set_shader_parameter("rim", CHARACTER_RIM)
+	return material
 
 
 static func _tinted(hex: String, surface: Surface, gloss: float, layer: float, emit: float, shader: Shader = TINTED_SHADER) -> ShaderMaterial:

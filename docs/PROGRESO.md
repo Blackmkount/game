@@ -4,8 +4,8 @@
 
 - **Fase actual:** 1. Ciclo jugable, en curso (ruta aprobada por el dueño en `docs/RUTA.md`).
 - **Diseño:** GDD versión 2.3, guía de estilo en `docs/ESTILO.md` y ruta en `docs/RUTA.md`.
-- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 9 de 16: los seis muebles que se compran, del kit (mesa auxiliar, mesa de trabajo, estantería metálica de 2,40 m con lugar para cualquier impresora, repisa de filamento y tablero de herramientas colgados de la pared o sobre su pie, y estantería de cubos) (2026-10-22). Antes: paso 8, las siete familias de impresoras.
-- **Siguiente paso sugerido:** Arte 2.0, paso 10: el personaje nuevo (modelo, piel, cara, pelo y retratos). Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
+- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 10 de 16: el personaje nuevo (1,40 m, una malla con piel que dobla rodillas y codos, la cara pintada con 8 expresiones, el pelo en una sola superficie, un contorno fino y los retratos con luz de estudio) (2026-10-22). Antes: paso 9, los muebles del kit.
+- **Siguiente paso sugerido:** Arte 2.0, paso 11: el personaje vivo (animación por capas, expresiones y reacciones a lo que pasa). Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
 - **Diseño del ciclo:** aprobado por el dueño (GDD, versión 2.3 en la sección 16).
 
 | Fase | Estado |
@@ -459,4 +459,32 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 - La estantería mide 2,40 m: puesta en el lugar del medio del cuarto tapa un poco lo que hay detrás con el zoom lejos (es su alto real).
 - Las tablas de la estantería quedaron 2 cm más abajo que lo que decía la biblia, para que los tres pisos tengan 0,74 m (detalle en `docs/DECISIONES.md`).
 - El mueble de cubos tiene 2 × 4 huecos (la biblia decía 2 × 2 con las mismas medidas).
+
+### 2026-10-22 — Arte 2.0, paso 10: el personaje nuevo
+
+**Qué se hizo**
+- **El protagonista es nuevo** (decisión D3, aprobada): un joven maker de 1,40 m (el escritorio le llega a la cintura), con la cabeza grande pero no de bebé. Pelo café en mechones grandes con flequillo de lado, buzo gris carbón con la capucha enrollada (forro mostaza), cordones, bolsillo canguro y el logo de tres capas cian en el pecho, jeans con la basta doblada y zapatillas blancas con una franja cian.
+- **Cara con expresiones:** ojos grandes con dos brillos, cejas gruesas, rubor y 8 caras (normal, parpadeo, feliz, preocupado, dos para hablar, concentrado y sorpresa). Cuando mira algo, gira la cabeza un poco y el resto lo hacen los ojos: así siempre se le ve la cara.
+- **Se dobla de verdad:** el cuerpo es una sola pieza con "piel" (como en los juegos 3D grandes), así rodillas y codos se doblan sin cortes. Por ahora camina como antes; las animaciones nuevas (pasos, gestos, reacciones) llegan en el paso 11.
+- **Contorno fino** alrededor del personaje (1,5 píxeles en cualquier zoom), para que se separe del piso.
+- **Retratos:** la tarjeta de arriba a la izquierda muestra su cabeza con una luz de estudio (la cara nunca queda oscura) y **cambia de cara**: feliz cuando te pagan a tiempo, preocupado si falla una impresión, sorprendido y después feliz al subir de nivel. La pantalla Perfil lo muestra de cuerpo entero.
+- El globo de diálogo ahora sale de un punto sobre su cabeza.
+- **Más liviano:** el personaje pasó de 48 a 6 llamadas de dibujo; el cuarto inicial, de 75 a 33.
+
+**Verificado**
+- `check.sh` y `run_tests.sh` pasan: 630 pruebas (antes 619); 8 nuevas del personaje en `tests/unit/test_character_model.gd`, 1 de la mirada, 1 del retrato que cambia de cara y 1 de la herramienta de presupuesto.
+- `screenshots.sh` saca las 39 capturas (nueva: 47, la pantalla Perfil). Revisé 32a, 32b, 32c, 33, 01, 03, 10, 31 y 47, y aparte (laboratorio) el personaje de cerca desde 6 lados y desde arriba, las 8 caras, la mirada, poses dobladas y los retratos en grande.
+
+**Qué revisar en el teléfono** (versión web)
+- Al abrir el juego: el personaje nuevo junto a la impresora. Con el zoom "Cerca" se le ven bien los ojos, el flequillo, el forro mostaza de la capucha y las zapatillas.
+- Camina con el joystick: las piernas y los brazos se mueven como antes (más pausado: pasos más largos).
+- Quédate quieto junto a la impresora: gira un poco la cabeza y los ojos miran hacia ella.
+- La tarjeta de arriba a la izquierda: su cara. Cuando entregues un pedido a tiempo debería verse feliz unos segundos.
+- Toca "Perfil" (abajo a la derecha): el personaje de cuerpo entero.
+
+**Problemas conocidos**
+- En los retratos chicos (la tarjeta del HUD) la cara se ve un poco borrosa: se dibuja a su tamaño en pantalla; el paso 16 la dibuja a la resolución del teléfono.
+- En el Perfil, el buzo oscuro se lee poco sobre el fondo azul oscuro; el paso 16 agrega un disco de luz detrás de cada vista.
+- La captura de la cara de muy cerca (33) se ve un poco suave: la cara está hecha para el zoom del juego.
+- El paso 12 (decoración) va a necesitar subir un poco los topes de la prueba de presupuesto del cuarto inicial (detalle en `docs/DECISIONES.md`).
 

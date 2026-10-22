@@ -86,6 +86,10 @@ var decor: Node3D
 var halos: HaloField
 
 var _character_item: WorldInteractable
+## El esqueleto del personaje (copia la pose de sus pivotes) y el punto
+## sobre su cabeza donde va el globo de diálogo.
+var _rig: CharacterRig
+var _speech_anchor: Node3D
 var _highlight: HighlightFrame
 var _destination: MeshInstance3D
 var _destination_material: ShaderMaterial
@@ -131,6 +135,7 @@ func _ready() -> void:
 func step(delta: float) -> void:
 	if character != null:
 		character.step(delta)
+		_rig.follow()
 		camera.follow_velocity = character.velocity
 	camera.step(delta)
 	anim_time += delta
@@ -230,6 +235,12 @@ func show_destination(point: Vector2) -> void:
 
 func character_focus_point() -> Vector3:
 	return character.model.position + Vector3(0.0, CHARACTER_FOCUS_HEIGHT, 0.0)
+
+
+## Donde se ancla el globo de diálogo: sobre la cabeza del personaje (sigue
+## sus saltos y gestos).
+func speech_point() -> Vector3:
+	return _speech_anchor.global_position
 
 
 ## Entorno de la biblia de arte §2.5: el ambiente, los reflejos y los
@@ -395,6 +406,9 @@ func _build_contents() -> void:
 	character.name = "CharacterController"
 	add_child(character)
 	character.setup(model, grid, layout.character_spot)
+	_rig = model.get_node("Rig")
+	_rig.follow()
+	_speech_anchor = model.get_node("Body/Head/SpeechAnchor")
 	_character_item = WorldInteractable.new(WorldInteractable.Kind.CHARACTER, 0, PropBounds.local_aabb(model), model.global_transform)
 	interactables.append(_character_item)
 
