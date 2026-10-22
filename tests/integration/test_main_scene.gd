@@ -66,6 +66,48 @@ func test_the_floor_darkens_under_the_desk_the_printer_and_the_dispatch_corner()
 		assert_eq(_floor_light(room, image, Vector2(marker.position.x, marker.position.z)), 1.0, "Un lugar libre no tiene mancha (%s)" % slot.name)
 
 
+func test_the_floor_printer_stands_on_its_concrete_paver_with_a_cable_to_the_outlet() -> void:
+	var room: RoomView = _room
+	var uid: int = Game.state.printers[0].uid
+	var printer: Node3D = _room.get_node("Printer%d" % uid)
+	var paver: MeshInstance3D = _room.get_node_or_null("Decor/Paver")
+	assert_not_null(paver, "La baldosa va con la decoración")
+	assert_almost_eq(PaverModel.SIZE.y, RoomLayout.FLOOR_PRINTER_RAISE, 0.0001)
+	assert_almost_eq(printer.position.y, RoomLayout.FLOOR_PRINTER_RAISE, 0.0001, "La impresora apoyada sobre la baldosa")
+	assert_eq(paver.cast_shadow, GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+	var touch: AABB = room.item_for(WorldInteractable.Kind.PRINTER, uid).bounds
+	assert_gte(touch.position.y, RoomLayout.FLOOR_PRINTER_RAISE - 0.001, "La baldosa no agranda la zona de toque")
+	var spot: Transform3D = printer.transform
+	var on_floor: Transform3D = Transform3D(spot.basis, Vector3(spot.origin.x, 0.0, spot.origin.z))
+	var wall: float = -RoomShell.SIZE / 2.0
+	var aabb: AABB = paver.mesh.get_aabb()
+	assert_lte(aabb.position.z, wall + 0.03, "El cable llega a la pared")
+	assert_gte(aabb.end.y, RoomShell.OUTLET_Y, "Y sube hasta el enchufe")
+	# En el piso el cable es plano (≤ 4 mm) y no pisa ningún lugar de muebles.
+	var slots: Array[Rect2] = []
+	for slot: Transform3D in RoomLayout.for_space(Game.state.space_id).slots:
+		var corner: Vector3 = slot * Vector3(-SlotMarker.SIZE.x / 2.0, 0.0, -SlotMarker.SIZE.y / 2.0)
+		var far: Vector3 = slot * Vector3(SlotMarker.SIZE.x / 2.0, 0.0, SlotMarker.SIZE.y / 2.0)
+		slots.append(Rect2(Vector2(minf(corner.x, far.x), minf(corner.z, far.z)), (Vector2(far.x, far.z) - Vector2(corner.x, corner.z)).abs()))
+	var tall: Array[String] = []
+	var on_slot: Array[String] = []
+	var floor_points: int = 0
+	for vertex: Vector3 in paver.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array:
+		var local: Vector3 = on_floor.affine_inverse() * vertex
+		var on_paver: bool = absf(local.x) <= PaverModel.SIZE.x / 2.0 + 0.05 and absf(local.z) <= PaverModel.SIZE.z / 2.0 + 0.05
+		if on_paver or vertex.z < wall + 0.08:
+			continue
+		floor_points += 1
+		if vertex.y > 0.0045:
+			tall.append(str(vertex))
+		for rect: Rect2 in slots:
+			if rect.has_point(Vector2(vertex.x, vertex.z)):
+				on_slot.append(str(vertex))
+	assert_gt(floor_points, 20, "El cable cruza el piso")
+	assert_eq(tall, [] as Array[String], "En el piso mide 4 mm de alto")
+	assert_eq(on_slot, [] as Array[String], "No cruza ningún lugar de muebles")
+
+
 func test_the_room_shows_a_loaded_print_halfway() -> void:
 	# Un llavero a mitad de impresión, guardado y cargado de nuevo.
 	Game.advance(3.0)
@@ -87,7 +129,7 @@ func test_the_room_shows_a_loaded_print_halfway() -> void:
 	_room = _main.get_node("WorldView/SubViewport/Room")
 	var piece: MeshInstance3D = _room.get_node("Printer%d/PieceSpot/Piece" % plan.printer_uid)
 	assert_true(piece.visible, "La pieza está en la cama")
-	var height: float = (piece.mesh as BoxMesh).size.y
+	var height: float = PieceModel.shown_height(piece)
 	assert_gt(height, 0.0)
 	assert_lt(height, PieceModel.SIZES["S"].y, "Va por la mitad")
 

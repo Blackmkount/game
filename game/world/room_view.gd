@@ -57,8 +57,9 @@ const SUN_SHADOW_OPACITY: float = 0.9
 ## más abajo que la base.
 const BASE_SHADOW_SCALE: float = 1.9
 const BASE_SHADOW_GAP: float = 0.06
-## Luz LED sobre la cama de la impresora del piso y brillo del monitor: cuánto
-## más arriba de la cama y cuánto delante de la pantalla.
+## Luz LED de la impresora del piso (si su modelo no tiene el marcador
+## "BedLight": cuánto más arriba de la cama) y brillo del monitor (cuánto
+## delante de la pantalla).
 const PRINTER_LED_ABOVE_BED: float = 0.18
 const MONITOR_GLOW_AHEAD: float = 0.12
 
@@ -82,6 +83,9 @@ var markers_emphasis: bool = false
 ## La caja que tapa el parche de sol de la ventana (cc_occ_a): el tablero del
 ## escritorio, que está bajo la ventana. Vacía si no hay mueble.
 var window_occluder: AABB = AABB()
+## Lo que adorna el cuarto y no se toca (biblia §5.4): por ahora, la
+## baldosa y el cable de la impresora del piso.
+var decor: Node3D
 
 var _character_item: WorldInteractable
 var _highlight: HighlightFrame
@@ -103,6 +107,7 @@ func _ready() -> void:
 	RoomShell.build(self)
 	_build_base_shadow()
 	grid = WalkGrid.new(Rect2(-RoomShell.SIZE / 2.0, -RoomShell.SIZE / 2.0, RoomShell.SIZE, RoomShell.SIZE))
+	decor = PropBuilder.group(self, "Decor")
 	_highlight = HighlightFrame.build(self, "Highlight")
 	_build_destination()
 	_publish_window_occluders(null)
@@ -341,9 +346,9 @@ func _build_contents() -> void:
 		var node: Node3D = PrinterModel.build(self, "Printer%d" % printer.uid, printer.printer_id, spool_color)
 		if printer.is_on_floor():
 			node.transform = layout.floor_printer_spots[mini(floor_index, layout.floor_printer_spots.size() - 1)]
-			if floor_index == 0 and node.has_node("Bed"):
-				var bed: Node3D = node.get_node("Bed")
-				day_cycle.place_light("printer_led", bed.global_position + Vector3.UP * PRINTER_LED_ABOVE_BED)
+			if floor_index == 0:
+				PaverModel.build(decor, node.transform)
+				_place_printer_led(node)
 			floor_index += 1
 		else:
 			var furniture: Node3D = furniture_nodes[printer.furniture_uid]
@@ -432,6 +437,17 @@ func _build_destination() -> void:
 	_destination = PropBuilder.kit(self, "Destination", ring, _destination_material)
 	_destination.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_destination.visible = false
+
+
+## La luz LED que alumbra la cama de la impresora del piso (cc_pl3): en su
+## marcador "BedLight" o, en los modelos que no lo tienen, sobre la cama.
+func _place_printer_led(printer: Node3D) -> void:
+	var led: Node3D = printer.get_node_or_null("BedLight")
+	if led != null:
+		day_cycle.place_light("printer_led", led.global_position)
+	elif printer.has_node("Bed"):
+		var bed: Node3D = printer.get_node("Bed")
+		day_cycle.place_light("printer_led", bed.global_position + Vector3.UP * PRINTER_LED_ABOVE_BED)
 
 
 func _first_spool_color(state: GameState) -> String:

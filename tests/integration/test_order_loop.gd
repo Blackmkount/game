@@ -72,7 +72,7 @@ func test_the_first_sale_from_the_message_to_the_payment() -> void:
 	Game.advance(25.0)
 	var piece: MeshInstance3D = _room.get_node("Printer%d/PieceSpot/Piece" % Game.state.printers[0].uid)
 	assert_true(piece.visible)
-	assert_between((piece.mesh as BoxMesh).size.y, 0.001, PieceModel.SIZES["S"].y - 0.001, "La pieza va creciendo")
+	assert_between(PieceModel.shown_height(piece), 0.001, PieceModel.SIZES["S"].y - 0.001, "La pieza va creciendo")
 	assert_eq(_label(_hud.current_sheet(), "ProgressText_job"), "Lista en 25 s", "La cuenta regresiva sigue al reloj")
 
 	Game.advance(25.0)

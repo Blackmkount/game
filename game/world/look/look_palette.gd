@@ -130,6 +130,8 @@ const MOON: String = "9db4ff"
 const HOT_LAYER: String = "ff8a3d"
 const REVEAL_CUT: String = "ff8030"
 const REVEAL_PREVIEW: String = "38d0ff"
+## Destellos de "pieza lista" (§9.5): el dorado de la guirnalda.
+const READY_SPARKLE: String = STRING_LIGHTS
 
 # Interacción (§4.8): marcas del piso, marco de cercanía y destino.
 const INTERACTION: String = "38d6ff"

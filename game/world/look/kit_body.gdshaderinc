@@ -63,6 +63,12 @@ const float CC_HOT_MIN = 0.01;
 varying vec3 v_world;
 varying vec3 v_local;
 varying vec3 v_wnormal;
+// Hacia dónde crecen las capas: el "arriba" del objeto (su eje Y en el
+// mundo) y la altura del punto a lo largo de ese eje. Para casi todo es el
+// arriba del mundo; un carrete acostado muestra así los surcos del bobinado
+// (anillos alrededor de su eje) y una pieza torcida, sus capas torcidas.
+varying vec3 v_up;
+varying float v_layer;
 varying vec4 v_color;
 varying vec4 v_attr;
 // De fragment() a light(): el color del objeto y cuánto sol recibe esta
@@ -92,6 +98,8 @@ void vertex() {
 	v_local = VERTEX;
 	v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	v_wnormal = MODEL_NORMAL_MATRIX * NORMAL;
+	v_up = normalize((MODEL_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+	v_layer = dot(v_world, v_up);
 }
 
 // Baldosa: damero suave, variación por baldosa, junta clara y bisel que
@@ -191,16 +199,19 @@ void fragment() {
 	// y surcos oscuros en los lados, y el relleno en diagonal arriba. Se
 	// apagan cuando una capa mide menos de ~1,3 píxeles (nunca centellean).
 	if (layer_height > 0.0) {
-		float y = v_world.y;
+		vec3 up = normalize(v_up);
+		float y = v_layer;
 		float fade = cc_aa_fade(fwidth(y), layer_height);
 		float t = fract(y / layer_height);
-		float side = 1.0 - smoothstep(0.55, 0.85, abs(n.y));
-		n = normalize(n + vec3(0.0, sin(t * 6.2831853) * 0.38 * fade * side, 0.0));
+		float along = dot(n, up);
+		float side = 1.0 - smoothstep(0.55, 0.85, abs(along));
+		n = normalize(n + up * (sin(t * 6.2831853) * 0.38 * fade * side));
 		float amount = clamp(layer_height * 14.0, 0.07, 0.36) * fade * side;
 		float groove = smoothstep(0.62, 1.0, abs(t * 2.0 - 1.0));
 		base *= 1.0 + amount * (0.55 * sin(t * 6.2831853 + 1.2) - 0.9 * groove);
+		// El relleno en diagonal solo en la cara de arriba de lo impreso parado.
 		float diag = (v_world.x + v_world.z) / (layer_height * 1.5);
-		float top = smoothstep(0.75, 0.95, n.y);
+		float top = smoothstep(0.75, 0.95, along) * smoothstep(0.75, 0.95, n.y);
 		float infill = smoothstep(0.55, 1.0, abs(fract(diag) * 2.0 - 1.0)) * cc_aa_fade(fwidth(diag), 1.0);
 		base *= 1.0 - 0.08 * top * infill;
 		shine = max(shine, 0.25);

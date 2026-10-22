@@ -167,14 +167,16 @@ static func window_shaft() -> ShaderMaterial:
 	return _cache["window_shaft"]
 
 
-## Halo de luz que suma (lámpara, pantalla, tira LED con `aspect` > 1).
-static func halo(hex: String, aspect: float = 1.0) -> ShaderMaterial:
-	var key: String = "halo:%s:%s" % [hex, snappedf(aspect, 0.01)]
+## Halo de luz que suma (lámpara, pantalla, tira LED con `aspect` > 1,
+## destellos con más `intensity`).
+static func halo(hex: String, aspect: float = 1.0, intensity: float = 1.0) -> ShaderMaterial:
+	var key: String = "halo:%s:%s:%s" % [hex, snappedf(aspect, 0.01), snappedf(intensity, 0.01)]
 	if not _cache.has(key):
 		var material: ShaderMaterial = ShaderMaterial.new()
 		material.shader = HALO_SHADER
 		material.set_shader_parameter("color", Color(hex))
 		material.set_shader_parameter("aspect", aspect)
+		material.set_shader_parameter("intensity", intensity)
 		_cache[key] = material
 	return _cache[key]
 

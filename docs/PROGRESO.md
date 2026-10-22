@@ -4,8 +4,8 @@
 
 - **Fase actual:** 1. Ciclo jugable, en curso (ruta aprobada por el dueño en `docs/RUTA.md`).
 - **Diseño:** GDD versión 2.3, guía de estilo en `docs/ESTILO.md` y ruta en `docs/RUTA.md`.
-- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 5 de 16: el cuarto (base impresa, paredes con el hueco de la ventana, ventana corrediza con rejas, cortina y vista del barrio, parche de sol que cruza la impresora del piso, puerta y marcas en esquinas) (2026-10-22). Antes: paso 4, kit de formas.
-- **Siguiente paso sugerido:** Arte 2.0, paso 6: la impresora estrella (Cubo Uno), la pieza que crece, el espagueti de los fallos y el carrete. Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
+- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 6 de 16: la impresora estrella (Cubo Uno del kit, sobre su baldosa de concreto con el cable al enchufe), la pieza con su capa caliente, el espagueti y el warping que se leen sin abrir el panel, los destellos de "pieza lista" y el carrete de tapas abiertas (2026-10-22). Antes: paso 5, el cuarto.
+- **Siguiente paso sugerido:** Arte 2.0, paso 7: el escritorio, el rincón de despacho y los paquetes. Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
 - **Diseño del ciclo:** aprobado por el dueño (GDD, versión 2.3 en la sección 16).
 
 | Fase | Estado |
@@ -364,3 +364,30 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 - El parche no sube por la pared del fondo (la biblia lo pedía, pero no puede cruzar la impresora y subir por esa pared a la vez): elegí cruzar la impresora.
 - Sobre el piso claro de baldosa el parche se nota menos que en el prototipo "Diorama" (que tenía piso de madera oscura y el sol solo por la ventana). El cuarto todavía está vacío: la decoración llega en el paso 12.
 - La mañana es el único momento del día (el resto llega en el paso 13). El escritorio, la impresora, el despacho y el personaje siguen con los modelos de cajas (pasos 6 a 10).
+
+### 2026-10-22 — Arte 2.0, paso 6: la impresora estrella
+
+**Qué se hizo**
+- **La Cubo Uno nueva** (la impresora del piso): marco negro de perfil de aluminio con sus ranuras, cama dorada con perillas amarillas en las esquinas, cabezal con ventilador azul y boquilla de latón, un tubo blanco que sube en arco, barra de luz LED que alumbra la cama, caja de control con la pantallita abajo a la derecha y el carrete arriba en un soporte impreso azul. Se arma en pocas piezas (más liviana que la de cajas) y la tienda y los paneles muestran la misma.
+- **Sobre su baldosa:** la impresora del piso descansa en una baldosa de concreto clara con granitos, y su cable negro cruza el piso (sin pisar los lugares de muebles) hasta el enchufe de la pared del fondo.
+- **El carrete:** tapas abiertas (un aro y cuatro rayos) y el bobinado del color del filamento con los surcos del enrollado. También cambiaron los carretes de los estantes.
+- **La pieza:** sigue creciendo capa a capa con la capa caliente naranja arriba (se ve también desde lejos); al terminar da su saltito y suelta **tres destellos dorados** por medio segundo.
+- **Los fallos se leen sin abrir el panel:** con **espagueti** aparece un nido de hilos del color del filamento sobre la pieza fallida y dos hebras que suben hasta la boquilla, que se queda encima; con **warping** la pieza se inclina y se le levanta una esquina, y el cabezal se aparta. Al limpiar, todo vuelve a su lugar.
+- Captura nueva `36_impresora_cerca`: la impresora imprimiendo, de muy cerca.
+- El cuarto inicial bajó de 136 a 120 llamadas de dibujo.
+
+**Verificado**
+- `check.sh` y `run_tests.sh` pasan: 590 pruebas (antes 575); 15 nuevas (la impresora, el carrete, el espagueti, el warping, la capa caliente, los destellos, la baldosa y el cable) y 4 adaptadas con la misma intención (detalle en `docs/DECISIONES.md`).
+- `screenshots.sh` saca las 38 capturas. Revisé 01, 03, 18, 19, 23, 26, 34, 36, 38, 45 y 46, y los destellos aparte (duran menos que lo que tarda una captura).
+
+**Qué revisar en el teléfono** (versión web)
+- Al empezar: la impresora del piso sobre su baldosa gris clara y el cable fino que va hasta el enchufe de la pared crema.
+- Con el zoom cerca mientras imprime: las capas de la pieza, la línea naranja arriba, el cabezal que va y viene, la luz de la barra LED y el carrete con sus surcos. Con el zoom lejos, que la línea naranja se siga viendo.
+- Al terminar una pieza: el saltito y los tres destellos dorados (duran medio segundo).
+- Si falla (más fácil con la perilla en PETG): el nido de hilos blancos encima de la pieza oscura, sin abrir el panel.
+
+**Problemas conocidos**
+- Las otras seis familias siguen con los modelos de cajas (paso 8). En la estantería vieja (tablas cada 0,62 m) el carrete de la Cubo Uno atraviesa la tabla de arriba, igual que pasaba con la de cajas: la estantería nueva del paso 9 deja lugar para impresoras de 0,72 m.
+- El espagueti usa un hilo de 6 mm (la biblia pedía 4 mm, que no se leía en la captura).
+- El escritorio, el despacho y el personaje siguen con los modelos de cajas (pasos 7 y 10).
+

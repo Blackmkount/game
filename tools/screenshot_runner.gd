@@ -80,7 +80,7 @@ const CHARACTER_SHOTS: Array[String] = [
 ]
 const ART_SHOTS: Array[String] = [
 	"00_calibracion", "30_heroe_sin_hud", "31_normal_sin_hud", "34_impresora_y_escritorio", "45_pieza_creciendo_lejos",
-	"46_tienda_impresoras", "26_familias_de_impresoras", "37_taller_lleno_sin_hud", "38_impresoras_de_cerca",
+	"36_impresora_cerca", "46_tienda_impresoras", "26_familias_de_impresoras", "37_taller_lleno_sin_hud", "38_impresoras_de_cerca",
 ]
 ## Columnas de budget.csv. gl_*: lo que contó OpenGL al dibujar el mundo
 ## (WorldView/SubViewport); las llamadas suman las de color y las de sombra
@@ -103,6 +103,10 @@ const ROOM_CENTER: Vector3 = Vector3(0.0, 0.8, 0.0)
 ## La impresora del piso y el escritorio, de cerca (zoom normal).
 const STARS_POINT: Vector3 = Vector3(-1.55, 0.55, -1.35)
 const STARS_FRAME: float = 3.4
+## La impresora del piso imprimiendo, de muy cerca (zoom cerca): el punto que
+## queda al centro (sobre la impresora, espacio de la impresora) y el ancho.
+const PRINTER_POINT: Vector3 = Vector3(0.0, 0.3, 0.0)
+const PRINTER_FRAME: float = 1.5
 ## Las siete familias: la del piso más dos por mesa de trabajo en los lugares
 ## de la pared del fondo (de frente a la cámara, para comparar siluetas).
 const FAMILY_TABLE_ID: String = "mesa_trabajo"
@@ -431,9 +435,10 @@ func _calibration() -> void:
 	await _frames(2)
 
 
-## 30, 31, 34, 45 y 46: el cuarto inicial a las 08:00 sin interfaz (entero y
-## con el zoom normal), las dos estrellas de cerca, la pieza que crece vista
-## desde lejos y la tienda de impresoras.
+## 30, 31, 34, 45, 36 y 46: el cuarto inicial a las 08:00 sin interfaz
+## (entero y con el zoom normal), las dos estrellas de cerca, la pieza que
+## crece vista desde lejos y de muy cerca (capas y capa caliente), y la tienda
+## de impresoras.
 func _art_room_shots() -> void:
 	await _new_game(_start_spot())
 	_hud.visible = false
@@ -465,8 +470,12 @@ func _art_room_shots() -> void:
 	_zoom(ZOOM_FAR)
 	await _frames(40)
 	await _capture("45_pieza_creciendo_lejos")
-	_hud.visible = true
-	_zoom(CameraRig.DEFAULT_ZOOM_INDEX)
+	_zoom(ZOOM_NEAR)
+	_room.camera.set_base_size(PRINTER_FRAME)
+	_camera_point = _room.get_node("Printer%d" % PRINTER_UID).global_transform * PRINTER_POINT
+	await _frames(40)
+	await _capture("36_impresora_cerca")
+	await _back_to_game(base)
 
 	_hud.open_screen("shop", "printers")
 	await _frames(10)

@@ -463,3 +463,53 @@ Medido: cuarto inicial 136 llamadas, 32 materiales, 62 mallas con sombra y 8 tra
 ### Pruebas nuevas
 - `tests/integration/test_room_shell.gd` (9): la zona de toque de la puerta exacta; el hueco de la malla coincide con `WindowSpec` (por adentro no hay pared, 2 cm afuera sí) y los globales del parche salen de `WindowSpec`, con cada reja en la malla; al menos 6 rayas, a media separación de los bordes y sin tapar el parante; nada del cuarto da sombra y el cuarto cabe en 5 llamadas y 2.500 triángulos; la sombra de la base va debajo de la base; las 5 marcas comparten la malla y su zona de toque mide 1,24 × 0,60; las marcas se encienden con el personaje cerca y con la tienda abierta; la caja que tapa el parche es el tablero del escritorio; el marco de cercanía rodea la huella + 0,12 m y reusa su malla.
 - `tests/unit/test_kit_mesh.gd`: `test_what_hangs_sways_more_the_lower_it_is`.
+
+## 2026-10-22 — Arte 2.0, paso 6: impresora estrella, pieza, espagueti y carrete
+
+### Cubo Uno del kit, con marcadores
+**Decisión:** la Cubo Uno (`PrinterModel._cubo_uno`, biblia §9.3) es una malla del kit para todo lo fijo (`Body`: base de perfil negro con ranuras, caja de control con la pantallita abajo a la derecha y su perilla, fuente de poder, riel, carro, perillas amarillas, placa y lámina PEI, postes Z y barra de arriba, motor Z y tornillo de latón, barra LED, portacarrete impreso azul, eje y las tapas del carrete) y aparte solo lo que se mueve o cambia: `Gantry` (barra X con las placas, el motor X y la polea), `PrintHead/Carriage`, `Display` (sin sombra) y `Spool/Filament`. Mide 0,446 m de ancho y 0,706 m de alto con el carrete (`PrinterModel.MAX_HEIGHT` = 0,72), 2.386 triángulos y 9 llamadas con la sombra (biblia §5.2: ≤ 2.400 y 9). Las mallas van en caché (las comparten el cuarto, la tienda y las pruebas).
+**Marcadores** (`Marker3D`) que `PrinterView` lee en vez de números fijos: `Bed` (sigue marcando "abierta"), `PieceAnchor`, `HeadRest`, `HeadPark`, `TrayAnchor` y `BedLight`. En la Cubo Uno valen lo mismo que `BED_TOP`, `PIECE_Z`, `HEAD_REST_Y`, `HEAD_PARK_X` y la bandeja (`TRAY_*`) de `PrinterView`; los modelos de cajas que quedan (paso 8) no tienen marcadores y la vista usa esas constantes × su escala, como antes.
+**Cambios de lugar (no fijados por pruebas):** el cabezal quieto queda centrado sobre la cama (x 0, antes −0,05) y su origen en z 0 (antes −0,02), así la boquilla cae justo sobre el centro de la pieza (z = `PIECE_Z`); la barra X pasa a z −0,04 (antes −0,06) y la punta de la boquilla queda 2 mm sobre la capa de arriba (`HEAD_CLEARANCE` 0,045, punta en −0,043).
+**Motivo:** biblia §5.1, §5.2, §9.1 y §9.3.
+
+### Extrusor directo y tubo PTFE en arco
+**Decisión:** el extrusor va en el cabezal (como las impresoras tipo Ender más nuevas) y el tubo PTFE sale de arriba y sube en arco hacia el carrete, como parte de la malla del cabezal.
+**Motivo:** la biblia pide "tubo PTFE en arco". Con un extrusor fijo en el marco (tipo Bowden), un tubo que se mueve con el cabezal se despegaba del extrusor hasta 15 cm (al estacionarse) y 17 cm (con la pieza alta): con un tubo que solo va unido al cabezal no hay nada que se despegue.
+
+### Las capas siguen el eje del objeto
+**Decisión:** en `kit_body.gdshaderinc` las capas de lo impreso se miden a lo largo del "arriba" del objeto (su eje Y en el mundo, `v_up`/`v_layer`, calculados en el vértice) y no del arriba del mundo. Para todo lo que está derecho (pieza, bandeja, base, cortes de pared) da exactamente lo mismo que antes.
+**Motivo:** el bobinado del carrete usa `WorldPalette.solid(color)` (contrato de las pruebas) y está acostado: con capas del mundo se veían rayas horizontales a lo largo del eje; ahora dibujan los surcos del enrollado alrededor del eje (biblia §9.4: "bobinado con surcos de enrollado (capas)"). De paso, la pieza despegada (warping) muestra sus capas torcidas con ella, y los carretes de los estantes también se ven bien.
+
+### Carrete de tapas abiertas
+**Decisión:** `SpoolModel` (misma firma, con `flanges` opcional): tapas gris claro de aro y cuatro rayos un 10 % más grandes que el bobinado, centro gris y el bobinado (`Filament`, malla del kit a lo largo de Y con el nodo acostado). En las impresoras las tapas van dentro de la malla de la impresora (`SpoolModel.add_flanges`), así el carrete cuesta una sola malla más. Los carretes de los muebles (estantería y repisa) también cambian.
+**Motivo:** biblia §9.4 (idea del prototipo "Diorama").
+
+### Espagueti
+**Decisión:** `PieceSpot/Spaghetti` (`PieceModel.build_spaghetti`): un nido de 11 rulos y 2 hebras que suben hasta la boquilla, una malla con semilla fija, escondida si no se usa. Va sobre la pieza fallida (oscura) y el cabezal se queda encima del nido, con la boquilla donde terminan las hebras (`SPAGHETTI_RISE`). Material `PieceModel.spaghetti_material(hex)`: el color del filamento × 1,1 con brillo, sin capas. Solo se ve en un fallo de espagueti; en warping no, y se esconde al limpiar.
+**Desvío:** hilo de **6 mm** en vez de los 4 mm de la biblia. Con 4 mm, en la captura 23 (zoom cerca) cada hilo medía menos de un píxel y el nido se leía como unas rayitas; con 6 mm se lee como una maraña blanca sin abrir el panel (la aceptación del paso).
+
+### Warping: se levanta una esquina
+**Decisión:** la pieza despegada se inclina 12° hacia atrás (como antes; lo prueba `rotation_degrees.x`) y además 7° de lado, así una esquina queda bien levantada; `PieceSpot` sube lo justo para que la esquina más baja quede apoyada en la cama (antes la mitad de la pieza se hundía en la cama). Al limpiar vuelve a su lugar.
+**Motivo:** biblia §9.5.
+
+### Destellos de "pieza lista" y halos sin "instance uniform"
+**Decisión:** `game/world/look/ready_sparkles.gd` (`ReadySparkles`, hijo `PieceSpot/Sparkles`): un `MultiMeshInstance3D` con 3 estrellitas de cuatro puntas (dos rectángulos cruzados con el halo estirado) que crecen y se apagan una tras otra en 0,6 s; miran a la cámara (se orientan al empezar: la cámara no gira); escondido el resto del tiempo. Salen solo cuando la pieza termina mientras se mira (no al cargar una partida). `halo.gdshader`: `intensity` pasa de "instance uniform" a uniform del material, y `WorldPalette.halo(hex, aspect, intensity)` la recibe (en la clave de la caché). Los destellos usan intensidad 2,2: sobre el piso claro, con 1 casi no se veían.
+**Motivo:** biblia §5.3 y §9.5. Un "instance uniform" le cuesta 16 lugares del búfer de globales (1.024 en la web) a cada instancia que tenga el material, aunque esté escondida: con un `Sparkles` por impresora, 16 impresoras habrían ocupado 256 lugares sin dibujar nada. Nadie usaba todavía `intensity`.
+
+### Baldosa de concreto y cable al enchufe
+**Decisión:** la impresora del piso se apoya en una baldosa de concreto (0,54 × 0,50 × 0,035 m, `#cfcac0` con granitos `#b9b3a8` solo en el borde que se ve) y su cable negro (4 mm en el piso, biblia §5.4) baja por detrás de la baldosa, cruza el piso entre los lugares 2 y 3 sin pisarlos y sube a una clavija en el enchufe de la pared del fondo (`PaverModel`, una malla sin sombra en `Room/Decor`, que no se toca ni es obstáculo). `RoomLayout.FLOOR_PRINTER_RAISE` (0,035) sube el lugar de la impresora del piso. `RoomView.decor` es el nodo `Decor` (lo usará la decoración del paso 12). La luz LED de la cama (`cc_pl3`) sale del marcador `BedLight` (la barra LED); los modelos sin marcador siguen con "sobre la cama".
+**Motivo:** biblia §9.3 ("en el piso: sobre la baldosa de concreto, con su cable al enchufe"), §5.4 y §4.3.
+
+### Captura nueva
+`36_impresora_cerca` (grupos `all` y `art`): la impresora del piso imprimiendo, de muy cerca y sin interfaz (capas, capa caliente, cabezal, carrete).
+
+### Prueba de presupuesto
+Medido: cuarto inicial 120 llamadas, 27 materiales, 53 mallas con sombra y 8 transparentes; cuarto lleno 440 llamadas, 37 materiales y 214 mallas con sombra (la Cubo Uno de cajas tenía 12 mallas con sombra; la del kit, 4). Topes (medido + 10 %, nunca por encima del anterior): inicio 132 llamadas, 29 materiales, 58 mallas con sombra y 9 transparentes; lleno 484 llamadas, 40 materiales y 235 mallas con sombra. Armar la escena principal con caché: ~12–14 ms.
+
+### Pruebas adaptadas (misma intención, no más débiles)
+- `tests/integration/test_world_views.gd` (`_height`), `test_main_scene.gd`, `test_order_loop.gd` y `test_player_touches.gd`: el alto de la pieza se lee con `PieceModel.shown_height(piece)` en vez de `(piece.mesh as BoxMesh).size.y` (la pieza sigue siendo un `BoxMesh`; así sirve cuando las piezas tengan forma). Son 4 lugares (el plan decía 6: en `test_world_views.gd` todos pasan por `_height`). Mismos límites.
+
+### Pruebas nuevas
+- `tests/unit/test_printer_model.gd` (9): la Cubo Uno mide 0,40–0,50 m de ancho, apoya en y = 0 y no pasa de 0,72 m; tiene todos los nodos del contrato (mallas y marcadores; `Body` con el material del kit, `Display` sin sombra, el cabezal empieza en `HeadRest` y la barra X a su altura); sus marcadores valen las constantes de `PrinterView`; la lámina de la cama está justo bajo la pieza y la punta de la boquilla a ≤ 4 mm de la capa de arriba, sobre el centro de la pieza; ≤ 2.400 triángulos y ≤ 9 llamadas con la sombra; dos impresoras comparten sus mallas; el carrete está acostado (las capas alrededor del eje), con tapas un 10 % más grandes que el bobinado y abiertas (entre los rayos no hay tapa); el nido de espagueti está escondido, encima de la pieza, sus hebras llegan a la boquilla y su color es el del filamento × 1,1; los destellos se encienden y se apagan solos.
+- `tests/integration/test_world_views.gd` (5): la capa caliente va en el borde de arriba de la pieza mientras crece (en la malla y en el mundo) y desaparece al terminar; un fallo de espagueti muestra el nido del color del filamento sobre la pieza oscura con el cabezal encima, y se esconde al limpiar; el warping no hace espagueti, la esquina más baja queda en la cama y otra se levanta; la pieza lista suelta destellos que se apagan solos, y al cargar una partida con la pieza lista no salen; la impresora del piso pone la pieza, la bandeja y la luz LED donde dicen sus marcadores.
+- `tests/integration/test_main_scene.gd` (1): la impresora del piso está sobre la baldosa (`Decor/Paver`, sin sombra, fuera de la zona de toque) y el cable llega al enchufe, mide 4 mm de alto en el piso y no cruza ningún lugar de muebles.
