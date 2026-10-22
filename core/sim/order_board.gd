@@ -29,7 +29,7 @@ static func is_makeable(state: GameState, rules: SimRules, order_id: String) -> 
 
 ## Hay algún pedido del nivel del jugador que se pueda hacer.
 static func has_makeable(state: GameState, rules: SimRules) -> bool:
-	var level: int = rules.levels.level_for_xp(state.xp)
+	var level: int = OrderQueries.level(state, rules)
 	for order_id: String in rules.order_list:
 		if int(rules.orders[order_id]["min_level"]) <= level and is_makeable(state, rules, order_id):
 			return true
@@ -41,7 +41,7 @@ static func has_makeable(state: GameState, rules: SimRules) -> bool:
 ## Si todos los posibles ya están en el tablero, se permite repetirlos. Si hay
 ## más de uno, nunca se repite el pedido del último mensaje.
 static func candidates(state: GameState, rules: SimRules) -> Array[String]:
-	var level: int = rules.levels.level_for_xp(state.xp)
+	var level: int = OrderQueries.level(state, rules)
 	var makeable: Array[String] = []
 	for order_id: String in rules.order_list:
 		if int(rules.orders[order_id]["min_level"]) <= level and is_makeable(state, rules, order_id):

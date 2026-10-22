@@ -86,9 +86,12 @@ func _move_to(t: int, live: bool) -> void:
 ## Segundo de juego del próximo evento pendiente, o NO_EVENT.
 func _scan_next_event_time() -> int:
 	var next: int = NO_EVENT
+	# Se recorre en cada evento: va sin llamadas a funciones, que en GDScript
+	# cuestan más que la comparación.
 	for printer: OwnedPrinter in state.printers:
-		if _is_printing(printer):
-			next = mini(next, printer.job.ends_at)
+		var job: PrintJob = printer.job
+		if job != null and job.status == PrintJob.Status.PRINTING and job.ends_at < next:
+			next = job.ends_at
 	var designing: Order = _designing_order()
 	if designing != null:
 		next = mini(next, designing.design_ends_at)
@@ -101,18 +104,14 @@ func _scan_next_event_time() -> int:
 ## de uid), el computador y el tablero.
 func _process_events_at(t: int) -> void:
 	for printer: OwnedPrinter in state.printers:
-		if _is_printing(printer) and printer.job.ends_at == t:
+		var job: PrintJob = printer.job
+		if job != null and job.ends_at == t and job.status == PrintJob.Status.PRINTING:
 			PrintFlow.on_piece_end(self, printer, t)
 	var designing: Order = _designing_order()
 	if designing != null and designing.design_ends_at == t:
 		DesignFlow.on_design_end(self, designing, t)
 	if state.next_offer_at == t:
 		OrderBoard.on_refill(self, t)
-
-
-## La impresora tiene una pieza en curso (su fin es un evento pendiente).
-func _is_printing(printer: OwnedPrinter) -> bool:
-	return printer.job != null and printer.job.status == PrintJob.Status.PRINTING
 
 
 ## Pedido que se está modelando, o null con el computador libre.

@@ -105,22 +105,51 @@ func clean_printer(printer_uid: int) -> CommandResult:
 	return result
 
 
+## Retira las piezas terminadas de la impresora: el pedido pasa a embalarse y
+## la impresora queda libre.
+func remove_pieces(printer_uid: int) -> CommandResult:
+	var printer: OwnedPrinter = sim.state.find_printer(printer_uid)
+	if printer == null:
+		return CommandResult.fail("ERR_PRINTER_GONE")
+	if printer.job == null or printer.job.status != PrintJob.Status.DONE:
+		return CommandResult.fail("ERR_NOTHING_TO_REMOVE")
+	DeliveryFlow.remove(sim, printer)
+	sim.mark_dirty()
+	return CommandResult.success()
+
+
+## Embala un pedido con las piezas ya retiradas.
+func pack_order(order_uid: int) -> CommandResult:
+	var order: Order = sim.state.find_order(order_uid)
+	var result: CommandResult = _check_stage(order, Order.Stage.TO_PACK, "ERR_NOTHING_TO_PACK")
+	if not result.ok:
+		return result
+	DeliveryFlow.pack(sim, order)
+	sim.mark_dirty()
+	return result
+
+
+## Despacha un pedido embalado: se cobra y se gana experiencia (menos si se
+## pasó del plazo). `cents` y `xp` del resultado dicen cuánto.
+func dispatch_order(order_uid: int) -> CommandResult:
+	var order: Order = sim.state.find_order(order_uid)
+	var result: CommandResult = _check_stage(order, Order.Stage.PACKED, "ERR_NOTHING_TO_DISPATCH")
+	if not result.ok:
+		return result
+	var delivery: Delivery = DeliveryFlow.dispatch(sim, order, sim.state.game_seconds)
+	result.cents = delivery.cents
+	result.xp = delivery.xp
+	sim.mark_dirty()
+	return result
+
+
 ## Cancela un pedido en cualquier etapa, sin castigo: solo se pierde el
-## material que ya se usó. Si se estaba modelando, el computador sigue con el
-## siguiente de la fila.
+## material que ya se usó.
 func cancel_order(order_uid: int) -> CommandResult:
-	var state: GameState = sim.state
-	var order: Order = state.find_order(order_uid)
+	var order: Order = sim.state.find_order(order_uid)
 	if order == null:
 		return CommandResult.fail("ERR_ORDER_GONE")
-	state.orders.erase(order)
-	if order.printer_uid >= 0:
-		_release_printer(order)
-	if order.stage == Order.Stage.DESIGNING:
-		state.designing_uid = -1
-		sim.changes.computer = true
-		DesignFlow.start_next(sim, state.game_seconds)
-	sim.changes.add_removed(order.uid)
+	DeliveryFlow.cancel(sim, order, sim.state.game_seconds)
 	sim.mark_dirty()
 	return CommandResult.success()
 
@@ -137,11 +166,10 @@ func _insert_order(order: Order) -> void:
 	orders.insert(index, order)
 
 
-## Libera la impresora de un pedido cancelado. La pieza en curso (o la que
-## falló) se pierde; el material apartado para las piezas sin empezar vuelve
-## al carrete. Las piezas terminadas se descartan.
-func _release_printer(order: Order) -> void:
-	var printer: OwnedPrinter = sim.state.find_printer(order.printer_uid)
-	if printer == null or printer.job == null:
-		return
-	PrintFlow.release(sim, printer, order)
+## El pedido existe y está en la etapa `stage`; si no, falla con `reason_key`.
+static func _check_stage(order: Order, stage: Order.Stage, reason_key: String) -> CommandResult:
+	if order == null:
+		return CommandResult.fail("ERR_ORDER_GONE")
+	if order.stage != stage:
+		return CommandResult.fail(reason_key)
+	return CommandResult.success()
