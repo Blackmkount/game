@@ -4,11 +4,18 @@ extends RefCounted
 ## planas debajo y un rollo de cinta, y un cajón de madera donde esperan los
 ## paquetes listos. El frente mira hacia +Z y la base queda en y = 0.
 ##
+## El cajón queda detrás de la mesa para la cámara, así que es casi tan alto
+## como ella: los paquetes se apilan por encima de la tabla y se ven enteros.
+##
 ## Las marcas "PackSpot0..2" (sobre la mesa) y "OutSpot0..2" (apiladas sobre el
 ## cajón) dicen dónde van las cajas abiertas y los paquetes (DispatchView).
 
 const PACK_SPOTS: int = 3
 const OUT_SPOTS: int = 3
+## Alto del cajón de salida (la mesa mide 0,5 m).
+const CRATE_HEIGHT: float = 0.42
+## Alto de un paquete (PackageModel.package): uno encima del otro.
+const PACKAGE_HEIGHT: float = 0.14
 
 
 static func build(parent: Node3D, node_name: String) -> Node3D:
@@ -25,17 +32,17 @@ static func build(parent: Node3D, node_name: String) -> Node3D:
 	PropBuilder.cylinder(table, "TapeRoll", 0.04, 0.04, Vector3(0.38, 0.52, -0.13), WorldPalette.solid(WorldPalette.TAPE))
 
 	var crate: Node3D = PropBuilder.group(corner, "OutCrate")
-	PropBuilder.box(crate, "Body", Vector3(0.36, 0.26, 0.34), Vector3(-0.25, 0.13, 0.0), wood_mid)
+	PropBuilder.box(crate, "Body", Vector3(0.36, CRATE_HEIGHT, 0.34), Vector3(-0.25, CRATE_HEIGHT / 2.0, 0.0), wood_mid)
 	var slat: StandardMaterial3D = WorldPalette.solid(WorldPalette.WOOD_DARK)
-	PropBuilder.box(crate, "Slat0", Vector3(0.37, 0.03, 0.35), Vector3(-0.25, 0.08, 0.0), slat)
-	PropBuilder.box(crate, "Slat1", Vector3(0.37, 0.03, 0.35), Vector3(-0.25, 0.18, 0.0), slat)
+	for i: int in 2:
+		PropBuilder.box(crate, "Slat%d" % i, Vector3(0.37, 0.03, 0.35), Vector3(-0.25, CRATE_HEIGHT * (i + 1) / 3.0, 0.0), slat)
 
 	# Las cajas abiertas se apoyan en la mesa; los paquetes se apilan con su
 	# centro en cada marca.
 	for i: int in PACK_SPOTS:
 		_marker(corner, "PackSpot%d" % i, Vector3(0.03 + i * 0.17, 0.5, 0.02))
 	for i: int in OUT_SPOTS:
-		_marker(corner, "OutSpot%d" % i, Vector3(-0.25, 0.33 + i * 0.14, 0.0))
+		_marker(corner, "OutSpot%d" % i, Vector3(-0.25, CRATE_HEIGHT + PACKAGE_HEIGHT * (i + 0.5), 0.0))
 	return corner
 
 

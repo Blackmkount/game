@@ -158,6 +158,26 @@ func test_payout_flies_to_the_money_and_lands_once() -> void:
 	assert_eq(pill.scale, Vector2.ONE)
 
 
+func test_the_speech_never_covers_the_nearby_bubble() -> void:
+	_hud.speech.say(tr("SPEECH_NEW_MESSAGE"))
+	await wait_process_frames(1)
+	var head: Vector2 = Vector2(360.0, 700.0)
+	# La burbuja a un costado de la cabeza: el globo se corre al otro costado.
+	_hud.place_bubble("printer", Vector2(460.0, 690.0))
+	_hud.place_speech(head)
+	_assert_speech_clear_over(head)
+	var beside: float = _hud.speech.position.y
+	# La burbuja justo sobre la cabeza: el globo sube por encima de ella.
+	_hud.place_bubble("printer", Vector2(370.0, 690.0))
+	_hud.place_speech(head)
+	_assert_speech_clear_over(head)
+	assert_lt(_hud.speech.position.y, beside, "Sube por encima de la burbuja")
+	# Sin burbuja de cercanía, va sobre la cabeza como siempre.
+	_hud.bubble.hide_bubble()
+	_hud.place_speech(head)
+	assert_almost_eq(_hud.speech.position.x + _hud.speech.size.x / 2.0, head.x, 0.5)
+
+
 func test_toasts_wait_their_turn_and_keep_the_latest() -> void:
 	for text: String in ["uno", "dos", "tres", "cuatro"]:
 		_hud.feedback.toast(text)
@@ -223,6 +243,16 @@ func test_a_new_game_needs_a_second_tap_within_three_seconds() -> void:
 	assert_not_same(Game.state, played, "Partida nueva")
 	assert_eq(Game.state.offers.size(), 0)
 	assert_eq(restarts[0], 1)
+
+
+## El globo de diálogo no tapa la burbuja de cercanía y sigue sobre la
+## cabeza (en `head`).
+func _assert_speech_clear_over(head: Vector2) -> void:
+	var speech: Rect2 = Rect2(_hud.speech.position, _hud.speech.size)
+	var bubble: Rect2 = Rect2(_hud.bubble.position, _hud.bubble.size)
+	assert_false(speech.intersects(bubble), "El globo %s no tapa la burbuja %s" % [speech, bubble])
+	assert_between(head.x, speech.position.x, speech.end.x, "El globo sigue sobre la cabeza")
+	assert_lt(speech.end.y, head.y, "El globo queda arriba de la cabeza")
 
 
 ## Número rojo del botón de la izquierda, o "" si no se ve.

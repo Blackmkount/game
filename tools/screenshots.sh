@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Saca capturas de la escena principal en varias situaciones (pantallas,
-# paneles, zoom, joystick) y las deja en build/screenshots/.
+# paneles, zoom, joystick y cada paso del ciclo de pedidos) y las deja en
+# build/screenshots/.
 #
 # Sirve para revisar la interfaz sin un teléfono. Necesita xvfb-run (una
 # pantalla virtual): en modo headless Godot no dibuja nada.

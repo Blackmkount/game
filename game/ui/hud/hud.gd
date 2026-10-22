@@ -33,6 +33,11 @@ const CONTENT_TOP: float = 150.0
 const NAV_HEIGHT: float = 116.0
 const ZOOM_BUTTON_SIZE: Vector2 = Vector2(96, 104)
 const ZOOM_LABELS: Array[String] = ["ZOOM_FAR", "ZOOM_NORMAL", "ZOOM_NEAR"]
+## Espacio libre entre el globo de diálogo y la burbuja de cercanía.
+const SPEECH_GAP: float = 8.0
+## Si el globo se corre hacia un costado, la cabeza tiene que quedar al menos
+## así de adentro de su borde.
+const SPEECH_HEAD_MARGIN: float = 24.0
 ## Pantalla (y opción) que abre cada botón de un panel inferior.
 const ACTION_SCREENS: Dictionary[String, Array] = {
 	"orders": ["orders", ""],
@@ -187,10 +192,29 @@ func place_bubble(icon_name: String, anchor: Vector2) -> void:
 
 
 ## Pone el globo de diálogo sobre la cabeza (punta de abajo en `anchor`), sin
-## salirse de la pantalla.
+## salirse de la pantalla ni tapar la burbuja de cercanía (se pone después de
+## ella en cada cuadro).
 func place_speech(anchor: Vector2) -> void:
-	var top_left: Vector2 = anchor - Vector2(speech.size.x / 2.0, speech.size.y + SpeechBubble.LIFT)
-	speech.position = keep_in_world(Rect2(top_left, speech.size))
+	var box: Vector2 = speech.size
+	var spot: Vector2 = keep_in_world(Rect2(anchor - Vector2(box.x / 2.0, box.y + SpeechBubble.LIFT), box))
+	if bubble.visible:
+		var avoid: Rect2 = Rect2(bubble.position, bubble.size).grow(SPEECH_GAP)
+		if avoid.intersects(Rect2(spot, box)):
+			spot = _speech_clear_of(avoid, spot, box, anchor.x)
+	speech.position = spot
+
+
+## Dónde va el globo de diálogo (de tamaño `box`) para no tapar `avoid`:
+## corrido hacia el costado contrario, si así sigue sobre la cabeza (en
+## `head_x`); si no, por encima.
+func _speech_clear_of(avoid: Rect2, spot: Vector2, box: Vector2, head_x: float) -> Vector2:
+	var beside: Vector2 = spot
+	beside.x = avoid.position.x - box.x if avoid.get_center().x > head_x else avoid.end.x
+	beside = keep_in_world(Rect2(beside, box))
+	var over_head: bool = head_x >= beside.x + SPEECH_HEAD_MARGIN and head_x <= beside.x + box.x - SPEECH_HEAD_MARGIN
+	if over_head and not avoid.intersects(Rect2(beside, box)):
+		return beside
+	return keep_in_world(Rect2(Vector2(spot.x, avoid.position.y - box.y), box))
 
 
 func set_zoom_label(zoom_index: int) -> void:
