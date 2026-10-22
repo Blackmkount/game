@@ -237,6 +237,25 @@ func test_the_desk_shows_the_model_and_lets_you_focus() -> void:
 	assert_has(_texts(_hud.current_sheet()), "Imprimir: Llavero con nombre")
 
 
+func test_the_desk_counts_down_until_the_busy_printer_is_free() -> void:
+	Game.advance(3.0)
+	var second: int = _add_offer("llavero")
+	assert_true(Game.accept_offer(FIRST).ok)
+	assert_true(Game.accept_offer(second).ok)
+	Game.advance(10.0)
+	_start_recommended(FIRST)
+	Game.advance(10.0)
+	assert_eq(Game.state.find_order(second).stage, Order.Stage.READY_TO_PRINT)
+	_controls.open_sheet(_desk())
+	await wait_process_frames(1)
+	var sheet: BottomSheet = _hud.current_sheet()
+	assert_true(_button(sheet, "Action_print_ready").disabled, "La impresora está ocupada")
+	assert_eq(_label(sheet, "Note_print_ready"), "La Cubo Uno está ocupada: se libera en 40 s.")
+	Game.advance(2.0)
+	assert_same(_hud.current_sheet(), sheet, "Sin rearmarse")
+	assert_eq(_label(sheet, "Note_print_ready"), "La Cubo Uno está ocupada: se libera en 38 s.", "Cuenta hacia atrás con el reloj")
+
+
 func test_the_dispatch_corner_packs_and_dispatches_everything() -> void:
 	Game.advance(3.0)
 	var second: int = _add_offer("llavero")
@@ -272,6 +291,29 @@ func test_the_dispatch_corner_packs_and_dispatches_everything() -> void:
 	await wait_process_frames(1)
 	assert_does_not_have(_flying(), "+$18", "Cada cobro vuela solo con lo suyo")
 	assert_has(_flying(), "+$6")
+
+
+func test_the_dispatch_corner_says_when_an_order_turns_late_while_open() -> void:
+	_ready_keychain()
+	var printer_uid: int = _start_recommended(FIRST)
+	_advance_until(func() -> bool: return Game.state.find_order(FIRST).stage == Order.Stage.PRINTED)
+	assert_true(Game.remove_pieces(printer_uid).ok)
+	assert_true(Game.pack_order(FIRST).ok)
+	# El plazo vence en un segundo real, con el panel abierto.
+	var order: Order = Game.state.find_order(FIRST)
+	order.due_live = Game.state.live_seconds + Game.rules.game_seconds_per_real_second
+	_controls.open_sheet(_room.dispatch_item)
+	await wait_process_frames(1)
+	var sheet: BottomSheet = _hud.current_sheet()
+	assert_has(_texts(sheet), "Para despachar: Llavero con nombre · Pasan a buscarlo · $6 · +5 XP")
+	Game.advance(0.5)
+	await wait_process_frames(1)
+	assert_same(_hud.current_sheet(), sheet, "Todavía a tiempo: no se rearma")
+	Game.advance(1.0)
+	await wait_process_frames(1)
+	var late: Array[String] = _texts(_hud.current_sheet())
+	assert_has(late, "Para despachar: Llavero con nombre · Pasan a buscarlo · $3 · +0 XP", "Lo que se cobra de verdad")
+	assert_has(late, "Llavero con nombre: atrasado, cobras la mitad y sin XP")
 
 
 func test_the_status_bubbles_show_what_each_object_is_doing() -> void:

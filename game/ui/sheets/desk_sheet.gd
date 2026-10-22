@@ -12,6 +12,9 @@ extends RefCounted
 const FURNITURE_ID: String = "mesa_computador"
 ## Fila de avance del modelado (se cambia en el lugar con tick).
 const DESIGN_ROW: String = "design"
+## Botón para imprimir el primer modelo listo; su nota (por qué no se puede
+## todavía) se cambia en el lugar con tick.
+const PRINT_READY: String = "print_ready"
 
 
 ## Arma el panel, o null si el mueble ya no está.
@@ -53,18 +56,23 @@ static func build(furniture_uid: int, error_text: String = "") -> BottomSheet:
 	elif not ready.is_empty():
 		sheet.add_action("orders", _t("SHEET_SEE_ORDERS"))
 		var plan: PrintPlan = PrintPlanner.recommend(state, rules, first_ready(state))
-		sheet.add_action("print_ready", _t("ACTION_PRINT"), true, plan.ok, UiFormat.reason(plan.reason, rules.game_seconds_per_real_second))
+		sheet.add_action(PRINT_READY, _t("ACTION_PRINT"), true, plan.ok, UiFormat.reason(plan.reason, rules.game_seconds_per_real_second))
 	else:
 		sheet.add_action("orders", _t("SHEET_SEE_ORDERS"), true)
 	return sheet
 
 
-## Cambia en el lugar cuánto falta y la barra del modelado (una vez por
-## segundo real), sin volver a armar el panel.
+## Cambia en el lugar cuánto falta y la barra del modelado, y por qué no se
+## puede imprimir todavía (por ejemplo, cuánto falta para que se libere la
+## impresora), una vez por segundo real, sin volver a armar el panel.
 static func tick(sheet: BottomSheet, now: int) -> void:
 	var designing: Order = Game.state.find_order(Game.state.designing_uid)
 	if designing != null:
 		sheet.set_progress(DESIGN_ROW, _ready_in(designing, now), OrderQueries.design_progress(designing, Game.rules, now))
+	var ready: Order = first_ready(Game.state)
+	if ready != null:
+		var plan: PrintPlan = PrintPlanner.recommend(Game.state, Game.rules, ready)
+		sheet.set_note(PRINT_READY, UiFormat.reason(plan.reason, Game.rules.game_seconds_per_real_second))
 
 
 ## El primer pedido (menor uid) con el modelo listo para imprimir, o null.

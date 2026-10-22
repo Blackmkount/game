@@ -46,6 +46,17 @@ static func build(error_text: String = "") -> BottomSheet:
 	return sheet
 
 
+## Cuántos pedidos del rincón (por embalar o embalados) van atrasados. El
+## plazo vence con el reloj, sin ninguna señal: OrderLoopController lo revisa
+## una vez por segundo y rearma el panel si cambió.
+static func late_count(state: GameState) -> int:
+	var count: int = 0
+	for order: Order in state.orders:
+		if (order.stage == Order.Stage.TO_PACK or order.stage == Order.Stage.PACKED) and OrderQueries.is_late(state, order):
+			count += 1
+	return count
+
+
 ## tr() no se puede usar en funciones estáticas.
 static func _t(key: String) -> String:
 	return TranslationServer.translate(key)

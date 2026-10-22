@@ -34,7 +34,9 @@ extends Node
 ##
 ## El panel abierto se refresca solo con las señales de Events (al final del
 ## cuadro, una vez, y nunca dentro del botón que se tocó). Con el reloj solo
-## cambian las barras de avance.
+## cambian en el lugar las barras de avance y las cuentas regresivas; el
+## rincón de despacho se rearma, además, cuando vence un plazo (no hay señal
+## para eso y cambia lo que se cobra).
 
 var _controls: WorldControls
 ## Lo elegido en el panel de la impresora abierta.
@@ -46,6 +48,8 @@ var _error: String = ""
 var _refresh_queued: bool = false
 ## Panel para abrir al final del cuadro en lugar de refrescar el actual.
 var _open_next: WorldInteractable = null
+## Pedidos atrasados que muestra el panel del rincón de despacho armado.
+var _late_shown: int = 0
 
 
 func _init(controls: WorldControls) -> void:
@@ -75,6 +79,8 @@ func build_sheet(item: WorldInteractable) -> BottomSheet:
 		_error = ""
 	var error: String = _error
 	_error = ""
+	if item.kind == WorldInteractable.Kind.DISPATCH:
+		_late_shown = DispatchSheet.late_count(Game.state)
 	return WorldSheets.build(item, _choice, error)
 
 
@@ -106,7 +112,7 @@ func run_sheet(action_id: String) -> void:
 			_after(Game.dispatch_all())
 		"go_pack":
 			_open_later(_controls.room.dispatch_item)
-		"print_ready":
+		DeskSheet.PRINT_READY:
 			var order: Order = DeskSheet.first_ready(Game.state)
 			if order != null:
 				_open_printer_later(order.uid)
@@ -327,7 +333,8 @@ func _refresh_now() -> void:
 	_controls.hud.show_sheet(sheet, false)
 
 
-## Una vez por segundo real: solo las barras de avance del panel abierto.
+## Una vez por segundo real: las barras de avance del panel abierto. El
+## rincón de despacho se rearma si un plazo venció (cambia lo que se cobra).
 func _on_clock_ticked(game_seconds: int) -> void:
 	var item: WorldInteractable = _controls.sheet_item
 	if item == null or not _controls.hud.has_sheet() or Game.state == null:
@@ -336,3 +343,5 @@ func _on_clock_ticked(game_seconds: int) -> void:
 		PrinterSheet.tick(_controls.hud.current_sheet(), item.ref, game_seconds)
 	elif item.kind == WorldInteractable.Kind.FURNITURE and QuickActions.is_computer_desk(Game.state, item.ref):
 		DeskSheet.tick(_controls.hud.current_sheet(), game_seconds)
+	elif item.kind == WorldInteractable.Kind.DISPATCH and DispatchSheet.late_count(Game.state) != _late_shown:
+		_queue_refresh()

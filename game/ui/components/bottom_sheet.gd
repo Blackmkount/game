@@ -38,6 +38,7 @@ var _actions: Array[Dictionary] = []
 var _progress_labels: Dictionary[String, Label] = {}
 var _progress_bars: Dictionary[String, ProgressBar] = {}
 var _progress_tweens: Dictionary[String, Tween] = {}
+var _note_labels: Dictionary[String, Label] = {}
 var _drag_start: Variant = null
 var _drag_offset: float = 0.0
 var _tween: Tween
@@ -89,6 +90,14 @@ func set_progress(row_id: String, text: String, ratio: float) -> void:
 	var tween: Tween = create_tween()
 	tween.tween_property(_progress_bars[row_id], "value", clampf(ratio, 0.0, 1.0), PROGRESS_TIME)
 	_progress_tweens[row_id] = tween
+
+
+## Cambia en el lugar la nota de un botón ya armado (por ejemplo, una cuenta
+## regresiva de por qué no se puede usar todavía). Si el botón no tenía nota,
+## no hace nada.
+func set_note(action_id: String, text: String) -> void:
+	if _note_labels.has(action_id):
+		_note_labels[action_id].text = text
 
 
 ## Botón grande al pie del panel. El primero que se marca `primary` va
@@ -154,6 +163,7 @@ func _ready() -> void:
 				var note: Label = UiKit.label(action["note"], "MutedLabel", true)
 				note.name = "Note_" + action["id"]
 				column.add_child(note)
+				_note_labels[action["id"]] = note
 
 
 ## Coloca el panel abajo, sobre la barra de secciones, y lo hace subir.
