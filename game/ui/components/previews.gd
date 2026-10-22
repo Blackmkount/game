@@ -1,7 +1,7 @@
 class_name Previews
 extends RefCounted
-## Vistas pequeñas para tarjetas: modelos 3D pixel art de impresoras y
-## muebles, y carretes del color del material.
+## Vistas pequeñas para tarjetas: modelos 3D de impresoras y muebles, y
+## carretes del color del material.
 
 const SIZE: float = 92.0
 

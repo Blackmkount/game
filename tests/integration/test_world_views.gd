@@ -39,18 +39,35 @@ func test_the_computer_screen_shows_the_model_only_while_designing() -> void:
 	assert_eq(screen.material_override, WorldPalette.glow("ffffff", "crt_screen"), "Vuelve a la pantalla de siempre")
 
 
-func test_the_piece_grows_one_screen_pixel_at_a_time_while_the_head_swings() -> void:
+func test_the_piece_grows_one_layer_at_a_time_and_never_shrinks() -> void:
 	var printer: Node3D = _printer_node()
 	var piece: MeshInstance3D = printer.get_node("PieceSpot/Piece")
 	assert_false(piece.visible, "Sin trabajo no hay pieza")
 	_start_keychain()
 	assert_eq(_display().material_override, WorldPalette.glow("ffffff", "printer_display_busy"))
-	Game.advance(25.0)
-	var step: float = _room.vertical_pixel_meters()
+	var step: float = PieceModel.LAYER_STEP
+	var previous: float = 0.0
+	var shrank: Array[String] = []
+	var off_layer: Array[String] = []
+	# Un segundo por vez hasta la mitad. A mitad de camino cambia el zoom: el
+	# alto de la capa ya no depende de la cámara.
+	for second: int in range(1, 26):
+		if second == 12:
+			_room.camera.set_zoom_index(0)
+			_room.camera.snap_to_goal()
+		Game.advance(1.0)
+		var shown: float = _height(piece)
+		if shown < previous:
+			shrank.append("%d s: %.4f → %.4f" % [second, previous, shown])
+		# Antes de la primera capa la caja mide lo mínimo.
+		if not is_equal_approx(shown, PieceModel.MIN_HEIGHT) and absf(shown - roundf(shown / step) * step) > 0.0001:
+			off_layer.append("%d s: %.4f" % [second, shown])
+		previous = shown
+	assert_eq(shrank, [] as Array[String], "La pieza nunca baja")
+	assert_eq(off_layer, [] as Array[String], "Crece de a una capa entera")
 	var height: float = _height(piece)
 	assert_true(piece.visible)
 	assert_between(height, step, PieceModel.SIZES["S"].y - step, "Va por la mitad")
-	assert_almost_eq(height / step, roundf(height / step), 0.001, "Crece de a un píxel de pantalla")
 	Game.advance(10.0)
 	assert_gt(_height(piece), height, "Siguió creciendo con el reloj")
 	var head: Node3D = printer.get_node("PrintHead")

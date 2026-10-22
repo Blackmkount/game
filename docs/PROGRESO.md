@@ -4,8 +4,8 @@
 
 - **Fase actual:** 1. Ciclo jugable, en curso (ruta aprobada por el dueño en `docs/RUTA.md`).
 - **Diseño:** GDD versión 2.3, guía de estilo en `docs/ESTILO.md` y ruta en `docs/RUTA.md`.
-- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 1 de 16: prueba de presupuesto de dibujo y capturas de arte, sin cambiar el aspecto (2026-10-22). Antes: arreglos de la revisión final del ciclo de pedidos.
-- **Siguiente paso sugerido:** Arte 2.0, paso 2: el mundo a alta resolución, sin pixel art. Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
+- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 2 de 16: el mundo a resolución alta, sin pixel art (2026-10-22). Antes: paso 1, prueba de presupuesto de dibujo y capturas de arte.
+- **Siguiente paso sugerido:** Arte 2.0, paso 3: kit de materiales, modelo de color y entorno (sin contorno en el mundo). Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
 - **Diseño del ciclo:** aprobado por el dueño (GDD, versión 2.3 en la sección 16).
 
 | Fase | Estado |
@@ -267,3 +267,30 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 **Problemas conocidos**
 - Entre dos corridas de capturas cambian unos píxeles de lo que se anima con tiempo real (el latido de las marcas de lugar libre y el marco de resalte). El personaje y la cámara salen iguales.
 - La opción `--quality` de las capturas solo queda anotada: el juego todavía tiene un solo nivel de calidad (llega en el paso 15).
+
+### 2026-10-22 — Arte 2.0, paso 2: el mundo a resolución alta, sin pixel art
+
+**Decisión del dueño:** dejar el pixel art por "Mundo Impreso" (D1, aprobada: "puedes cambiar el estilo gráfico... total libertad").
+
+**Qué se hizo**
+- **El mundo se dibuja con el ancho de tu pantalla** (hasta 1.080 px) en vez de a la mitad, con bordes suavizados (MSAA 4×) y estirado con filtro suave. En un teléfono de 1.080 px de ancho cada píxel del mundo es un píxel de la pantalla. Es el script nuevo `game/world/world_viewport.gd`.
+- **Sin ajuste a píxeles:** la cámara y el personaje ya no se redondean a la cuadrícula del pixel art, y se borró el truco que corría la imagen para disimularlo.
+- **Sombras suaves y más finas:** filtro suave, mapa de sombra de 2.048 también en el teléfono y la cámara ve solo la profundidad del cuarto (11 a 30 m), así cada punto de la sombra es más chico.
+- **Luz provisoria:** sol y ambiente en 0,45 para que el piso no se vea quemado (el paso 3 trae la luz nueva).
+- **La pieza crece de a 1 cm** (una capa) y nunca baja, con cualquier zoom. Antes crecía "de a un píxel" y el escalón cambiaba con el zoom.
+- Las vistas 3D de la tienda, el retrato del HUD y el perfil también se ven suaves (sin pixelar, con MSAA).
+
+**Verificado**
+- `check.sh` y `run_tests.sh` pasan: 524 pruebas (antes 520). Dos pruebas se adaptaron con la misma intención (la cámara llega justo a su meta; la pieza crece de a una capa y nunca baja) y una ayuda de prueba cambió `stretch_shrink` por `view_per_ui`; detalle en `docs/DECISIONES.md`. Nuevas: 3 de `WorldViewport` y una de toques con pantallas de 1.080 y 1.440 px.
+- `screenshots.sh` saca las 36 capturas, a 720 × 1.280 y a 1.080 × 2.400 (en esta, el mundo se dibuja a 1.080 × 2.400: un píxel por píxel). La prueba de presupuesto da lo mismo que antes (334 y 1.042 llamadas): la resolución no cambia la cantidad de llamadas.
+- Revisé 01, 02, 03, 05, 10, 18, 30, 32a, 33 y 46: todo se ve suave y la burbuja, el globo y los toques siguen alineados con el mundo.
+
+**Qué revisar en el teléfono** (versión web)
+- Que el cuarto se vea nítido y con bordes suaves, sin "escalones" de píxel, y que al caminar la cámara se mueva suave, sin temblor.
+- Que tocar la impresora, el escritorio, una marca del piso y el piso (para caminar) siga funcionando igual que antes.
+- Que el juego siga fluido. Si se siente más lento que antes, avisa: el paso 15 agrega una calidad Baja automática.
+
+**Problemas conocidos**
+- **Esperado por un paso:** el contorno oscuro de los objetos ahora mide unos 2 píxeles (4 con zoom cerca) y las texturas del piso y las paredes siguen siendo de pixel art. El paso 3 quita el contorno del mundo y cambia los materiales.
+- El costo de dibujar a resolución alta con MSAA en un teléfono todavía no se midió (llega con el panel de depuración del paso 15).
+

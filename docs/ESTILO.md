@@ -6,25 +6,27 @@ Esta guía mantiene el juego **coherente y consistente** de principio a fin. Tod
 
 ## 1. Idea general
 
+> **En transición a Arte 2.0 ("Mundo Impreso").** El dueño aprobó dejar el pixel art (2026-10-22, ver `docs/DECISIONES.md`). Desde el paso 2 el mundo ya se dibuja a resolución alta y con bordes suavizados (sección "Render"); el resto de esta guía se reescribe con la biblia de arte al terminar los 16 pasos. Mientras tanto, lo que aquí dice "pixel art" describe los modelos y materiales que todavía no se cambiaron.
+
 **Pixel art isométrico cálido, con interfaz oscura de bordes cian.**
 
-- El mundo es 3D, armado con formas básicas, y se dibuja a **la mitad de la resolución** con píxeles nítidos. El resultado parece pixel art, pero se puede animar, mover y ampliar como 3D.
+- El mundo es 3D, armado con formas básicas (por ahora con el contorno y las texturas del pixel art), y se dibuja a **resolución alta con bordes suavizados**. Se puede animar, mover y ampliar como 3D.
 - La interfaz se dibuja a resolución completa: texto nítido sobre paneles azul marino con bordes y brillos cian.
 - Ambiente: cálido y acogedor adentro (madera, luz de tarde), frío y oscuro afuera (fondo azul marino).
 
 ## 2. Mundo 3D
 
 ### Render
-- La escena va dentro de un `SubViewportContainer` con `stretch_shrink = 2`, filtro `NEAREST` y sin antialiasing (`game/scenes/main.tscn`).
+- La escena va dentro de `Main/WorldView` (`WorldViewport`, `game/world/world_viewport.gd`): se dibuja con el ancho físico de la pantalla hasta un tope de 1.080 px, con MSAA 4× y filtro lineal. En un teléfono de 1.080 px, un píxel del mundo es un píxel de la pantalla.
 - Cámara ortográfica (`CameraRig`), inclinada −30° y girada 45°: la vista isométrica clásica 2:1. Su tamaño base se adapta a pantallas más altas (`RoomView._fitted_camera_size`).
 - **Sigue al personaje** y tiene tres niveles de zoom: lejos (0,68×, entra todo el cuarto), normal (1×) y cerca (2×).
-- **Sin temblor:** la cámara y el personaje se colocan en píxeles enteros del dibujo, y la fracción que falta se compensa corriendo la imagen (`WorldControls._apply_pixel_shift`). Por eso la vista del mundo es 4 px más grande que la pantalla por cada lado.
-- Un píxel de pantalla equivale a unos **0,028 m** del mundo (`WorldPalette.PIXEL_WORLD_SIZE`). Los detalles de menos de 3 cm no se ven.
+- Sin ajuste a píxeles: la cámara y el personaje se mueven sin redondeo. Ve de 11 a 30 m de profundidad (`CameraRig.NEAR` / `FAR`), lo justo para el cuarto, así la sombra del sol es más fina.
+- Con zoom normal y 1.080 px de ancho, un píxel equivale a unos **6 mm** del mundo (`CameraRig.meters_per_pixel()`). Lo menor a 1 cm no se modela.
 
 ### Luz
-- **Una sola luz direccional** cálida (`#fff1dc`, energía 0,75), entrando por el lado de la ventana, más luz ambiental (`#ffe6c7`, 0,5).
-- Sombras **duras**: la calidad de sombra suave está en 0 en `project.godot`.
-- Sombra **ortogonal** de una sola pieza (`SHADOW_ORTHOGONAL`, hasta 20 m): con la cámara en movimiento no tiembla y cuesta menos que el modo por defecto.
+- **Una sola luz direccional** cálida (`#fff1dc`, energía 0,45 provisoria), entrando por el lado de la ventana, más luz ambiental (`#ffe6c7`, 0,45 provisoria). El paso 3 de Arte 2.0 las reemplaza por el modelo de color nuevo.
+- Sombras **suaves**: filtro de calidad 2 y mapa de 2.048 en `project.godot`, también en móvil.
+- Sombra **ortogonal** de una sola pieza (`SHADOW_ORTHOGONAL`; con la cámara ortográfica cubre de `near` a `far` de la cámara): con la cámara en movimiento no tiembla y cuesta menos que el modo por defecto.
 - Las paredes no proyectan sombra, para que la luz "entre" a la habitación.
 - Pantallas, ventanas y marcas no se iluminan: brillan con su propio color (materiales `glow`). No se agregan luces extra.
 
@@ -74,7 +76,7 @@ Siempre se usan los de `WorldPalette` (`game/world/pixel/world_palette.gd`). As�
 - **Lugares libres:** un marco cian semitransparente con un "+" en el piso, que late suavemente. Invita a comprar muebles (pilar 1).
 - **Objeto cercano** (`HighlightFrame`): un marco cian más brillante en el piso alrededor del objeto que el personaje tiene al lado. Mismo estilo que los lugares libres, para que se lea como "esto se puede usar".
 - **Destino al tocar el piso:** un círculo cian que se agranda y se desvanece en medio segundo.
-- **Pieza impresa** (`PieceModel`): un bloque del color del carrete, más grande que la pieza real para que se vea (tamaño S de 0,12 m, M de 0,18 m y L de 0,24 m). Crece sobre la cama en escalones de un píxel de pantalla. Al terminar da un saltito; si falla, queda detenida en gris oscuro (el warping además se inclina). En pedidos de varias piezas, las terminadas esperan en una bandeja al frente de la impresora.
+- **Pieza impresa** (`PieceModel`): un bloque del color del carrete, más grande que la pieza real para que se vea (tamaño S de 0,12 m, M de 0,18 m y L de 0,24 m). Crece sobre la cama de a una capa de 1 cm (`PieceModel.LAYER_STEP`) y nunca baja. Al terminar da un saltito; si falla, queda detenida en gris oscuro (el warping además se inclina). En pedidos de varias piezas, las terminadas esperan en una bandeja al frente de la impresora.
 - **Rincón de despacho** (`DispatchCornerModel`): una mesita de madera para embalar, con cartones planos y un rollo de cinta, y un cajón de salida casi tan alto como la mesa. Va fijo junto a la puerta, sin ocupar un lugar de muebles. Encima de la mesa aparecen las cajas abiertas con la pieza; sobre el cajón, los paquetes con cinta (`PackageModel`). Al despachar, el paquete se desliza hacia la puerta y desaparece.
 - El personaje tiene articulaciones en caderas y hombros (`HipL`, `HipR`, `Body/ShoulderL`, `Body/ShoulderR`) para la animación de caminar, que se hace por código.
 

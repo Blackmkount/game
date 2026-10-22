@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://game/world/room_view.gd" id="1_room"]
 [ext_resource type="Script" path="res://game/ui/hud/hud.gd" id="2_hud"]
 [ext_resource type="Script" path="res://game/world/world_controls.gd" id="3_controls"]
+[ext_resource type="Script" path="res://game/world/world_viewport.gd" id="4_world_view"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -14,25 +15,19 @@ grow_vertical = 2
 mouse_filter = 2
 
 [node name="WorldView" type="SubViewportContainer" parent="."]
-texture_filter = 1
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = -4.0
-offset_top = -4.0
-offset_right = 4.0
-offset_bottom = 4.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 stretch = true
-stretch_shrink = 2
+script = ExtResource("4_world_view")
 
 [node name="SubViewport" type="SubViewport" parent="WorldView"]
 handle_input_locally = false
-msaa_3d = 0
-size = Vector2i(360, 640)
+size = Vector2i(720, 1280)
 render_target_update_mode = 4
 
 [node name="Room" type="Node3D" parent="WorldView/SubViewport"]

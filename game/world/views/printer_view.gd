@@ -6,7 +6,7 @@ extends Node
 ## - La pantallita cambia de color: libre, imprimiendo, lista o con falla.
 ## - El carrete toma el color del filamento que se usa.
 ## - En las impresoras abiertas (las que tienen "Bed"), la pieza crece sobre la
-##   cama de píxel en píxel, el cabezal va y viene mientras imprime, las piezas
+##   cama capa a capa, el cabezal va y viene mientras imprime, las piezas
 ##   terminadas esperan en una bandeja al frente y la pieza lista da un saltito.
 ##   Si falla, la pieza queda a medias y oscura (torcida si es warping).
 ##
@@ -50,7 +50,6 @@ const WARP_TILT_DEGREES: float = 12.0
 
 var printer_uid: int
 
-var _room: RoomView
 var _scale: float
 var _display: MeshInstance3D
 var _filament: MeshInstance3D
@@ -73,8 +72,7 @@ var _swing: Tween
 var _hop: Tween
 
 
-func _init(room: RoomView, p_printer_uid: int, model_scale: float) -> void:
-	_room = room
+func _init(p_printer_uid: int, model_scale: float) -> void:
 	printer_uid = p_printer_uid
 	_scale = model_scale
 
@@ -155,13 +153,13 @@ func _sync_piece(shown: Shown) -> void:
 	_grow()
 
 
-## Alto de la pieza según su avance, de a un píxel de pantalla con el zoom de
-## ahora. La pieza lista tiene su alto completo.
+## Alto de la pieza según su avance, de a una capa (PieceModel.LAYER_STEP).
+## La pieza lista tiene su alto completo.
 func _grow() -> void:
 	var full: float = PieceModel.full_size(_size_id).y
 	var height: float = full
 	if _job.status != PrintJob.Status.DONE:
-		var step: float = _room.vertical_pixel_meters()
+		var step: float = PieceModel.LAYER_STEP
 		height = floorf(_job.progress_at(Game.state.game_seconds) * full / step) * step
 	if height == _height:
 		return

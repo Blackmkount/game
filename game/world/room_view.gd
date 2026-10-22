@@ -57,17 +57,13 @@ func _ready() -> void:
 	camera.snap_to_goal()
 
 
-## Avanza un cuadro: mueve al personaje, mueve la cámara y después ajusta al
-## personaje a la cuadrícula de píxeles de la cámara. Lo llama WorldControls, que decide el
-## orden de todo lo que pasa en cada cuadro.
+## Avanza un cuadro: mueve al personaje y después la cámara. Lo llama
+## WorldControls, que decide el orden de todo lo que pasa en cada cuadro.
 func step(delta: float) -> void:
 	if character != null:
 		character.step(delta)
 		camera.follow_velocity = character.velocity
 	camera.step(delta)
-	# Después de la cámara, que es la que actualiza el zoom de este cuadro.
-	if character != null:
-		_snap_to_pixels(character.model)
 
 
 ## Objeto del mundo de ese tipo con ese `ref` (uid de la impresora o del
@@ -77,13 +73,6 @@ func item_for(kind: WorldInteractable.Kind, ref: int) -> WorldInteractable:
 		if item.kind == kind and item.ref == ref:
 			return item
 	return null
-
-
-## Metros del mundo que mide en vertical un píxel del dibujo con el zoom de
-## ahora: la pieza que se imprime crece de a un píxel.
-func vertical_pixel_meters() -> float:
-	var width: float = maxf(get_viewport().get_visible_rect().size.x, 1.0)
-	return camera.size / width / cos(deg_to_rad(-CameraRig.PITCH))
 
 
 ## Objeto que está bajo un punto de la pantalla (píxeles del dibujo), o null.
@@ -170,28 +159,15 @@ func character_focus_point() -> Vector3:
 	return character.model.position + Vector3(0.0, CHARACTER_FOCUS_HEIGHT, 0.0)
 
 
-## Mueve un objeto que está en el piso al píxel más cercano del dibujo, igual
-## que la cámara. Así su distancia a la cámara es un número entero de píxeles
-## y no "tiembla" contra la habitación. Lo corre a lo largo de la mirada de la
-## cámara para que siga apoyado en el piso (en la pantalla no se nota).
-func _snap_to_pixels(node: Node3D) -> void:
-	var texel: float = camera.size / maxf(get_viewport().get_visible_rect().size.x, 1.0)
-	var right: Vector3 = camera.basis.x
-	var up: Vector3 = camera.basis.y
-	var forward: Vector3 = -camera.basis.z
-	var point: Vector3 = node.position
-	var snapped: Vector3 = right * (roundf(point.dot(right) / texel) * texel) \
-		+ up * (roundf(point.dot(up) / texel) * texel) + forward * point.dot(forward)
-	node.position = snapped - forward * (snapped.y / forward.y)
-
-
 func _build_environment() -> void:
 	var environment: Environment = Environment.new()
 	environment.background_mode = Environment.BG_COLOR
 	environment.background_color = Color(WorldPalette.BACKGROUND)
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = Color("ffe6c7")
-	environment.ambient_light_energy = 0.5
+	# Energías provisorias hasta el modelo de color nuevo (paso 3 de Arte
+	# 2.0): con 0,75 de sol y 0,5 de ambiente el piso se quemaba.
+	environment.ambient_light_energy = 0.45
 	var world_environment: WorldEnvironment = WorldEnvironment.new()
 	world_environment.name = "WorldEnvironment"
 	world_environment.environment = environment
@@ -201,7 +177,7 @@ func _build_environment() -> void:
 	sun.name = "Sun"
 	sun.rotation_degrees = Vector3(-55.0, -60.0, 0.0)
 	sun.light_color = Color("fff1dc")
-	sun.light_energy = 0.75
+	sun.light_energy = 0.45
 	sun.shadow_enabled = true
 	# Una sola sombra ortogonal para todo el cuarto: con la cámara en movimiento,
 	# las divisiones del modo por defecto se recalculan y los bordes tiemblan.
@@ -258,7 +234,7 @@ func _build_contents() -> void:
 			var spot: Node3D = furniture.get_node("PrinterSpot%d" % index)
 			node.transform = furniture.transform * spot.transform
 		_register(WorldInteractable.Kind.PRINTER, printer.uid, node, true)
-		_add_view(node, PrinterView.new(self, printer.uid, PrinterModel.frame_scale(printer.printer_id)))
+		_add_view(node, PrinterView.new(printer.uid, PrinterModel.frame_scale(printer.printer_id)))
 
 	_marker_material = WorldPalette.glow_transparent(WorldPalette.SLOT_MARK, 0.6)
 	for slot: int in layout.slots.size():

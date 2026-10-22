@@ -309,3 +309,30 @@ Registro de decisiones técnicas importantes: fecha, decisión y motivo. Las má
 
 ### Ninguna prueba existente cambió
 **Decisión:** este paso solo agrega pruebas (15). Las 505 de antes siguen igual.
+
+## 2026-10-22 — Arte 2.0, paso 2: adiós al pixel art
+
+### El mundo se dibuja a resolución alta, con MSAA y sin ajuste a píxeles
+**Decisión:** el dueño aprobó dejar el pixel art por "Mundo Impreso" (D1: "puedes cambiar el estilo gráfico... total libertad"). `Main/WorldView` tiene el script nuevo `WorldViewport` (`game/world/world_viewport.gd`): el dibujo del mundo tiene el ancho físico de la pantalla, con un tope de 1.080 px (nivel Alto; los niveles de calidad llegan en el paso 15). Con k = ancho interno / 720, el contenedor mide la pantalla × k, se dibuja con escala 1/k y filtro lineal, `stretch_shrink = 1`, y el `SubViewport` lleva MSAA 4× (no hereda el del proyecto). En un teléfono de 1.080 px un píxel del mundo es un píxel físico; en uno de 1.440 se dibuja a 1.080 y se estira. Las cuentas de `WorldControls` entre la interfaz y el dibujo pasan por `view_per_ui` (k), `WorldViewport.ui_to_view()` y `view_to_ui()`. Se borraron el ajuste a píxeles de la cámara (`CameraRig._apply` redondeaba y guardaba `pixel_remainder`), el del personaje (`RoomView._snap_to_pixels`), el corrimiento de la imagen (`WorldControls._apply_pixel_shift` y el desplazamiento visual del contenedor) y los 4 px de margen de `main.tscn`. Las vistas 3D de la interfaz (`ModelPreview`) también se dibujan sin achicar, con filtro lineal y MSAA 4×.
+**Motivo:** a la mitad de la resolución, estirado con píxeles nítidos, el mundo nunca iba a verse "como un juego caro": las columnas de píxeles salían desparejas (3; 3,25; 3,57 veces según el teléfono) y no había suavizado de bordes. Un ancho interno fijo por nivel deja el costo controlado aunque el teléfono tenga 1.440 px. MSAA es el único suavizado que existe en el renderizador Compatibility (FXAA solo da un aviso).
+
+### Sombras suaves y más finas
+**Decisión:** `project.godot`: sombra del sol con filtro suave de calidad 2 (también en móvil), mapa de 2.048 en todas las plataformas y sin mapa de sombras para luces de punto o de foco (`positional_shadow/atlas_size = 0`; el `SubViewport` del mundo y los de las vistas previas también lo ponen en 0, porque no heredan el ajuste del proyecto). La cámara ve de 11 a 30 m (`CameraRig.NEAR` / `FAR`, antes 5 y 35): el cuarto queda entre unos 15,5 y 28,5 m. La cámara publica `meters_per_pixel()` (lo usará el sombreador desde el paso 3).
+**Motivo:** con la cámara ortográfica el mapa de sombra cubre de `near` a `far`; acotarlo al cuarto deja cada texel de sombra ~1,6 veces más chico. A resolución alta, las sombras duras se veían escalonadas.
+
+### Energías provisorias del sol y del ambiente
+**Decisión:** sol 0,45 (antes 0,75) y ambiente 0,45 (antes 0,5), hasta que el paso 3 traiga el modelo de color nuevo (luces calculadas en el sombreador).
+**Motivo:** el piso salía casi quemado (234, 143, 72 en la captura 01); ahora sale (210, 121, 59) y se siguen leyendo las sombras.
+
+### La pieza crece de a 1 cm
+**Decisión:** `PieceModel.LAYER_STEP = 0.01`: la pieza que se imprime sube de a una capa de 1 cm y nunca baja. Antes subía de a "un píxel de pantalla" con el zoom de ese momento (`RoomView.vertical_pixel_meters`, borrado), así que al cambiar el zoom el escalón cambiaba. `PrinterView` ya no necesita al `RoomView`.
+**Motivo:** sin pixel art, "un píxel" deja de tener sentido; una capa fija se ve igual con cualquier zoom y en cualquier teléfono, y es la idea del título (biblia de arte §9.5).
+
+### Pruebas adaptadas (misma intención, no más débiles)
+- `tests/unit/test_camera_rig.gd`: `test_camera_sits_on_whole_pixels_and_reports_the_rest` → `test_camera_reaches_its_goal_exactly`. Antes: la cámara quedaba en un píxel entero y el resto reconstruía la posición exacta. Ahora: el centro de la vista es justo el punto que persigue (±0,00001 m, sin resto), y al llegar, el punto seguido queda centrado de lado a lado y a la altura de `ANCHOR` medida en píxeles de la vista (±0,001 px). Se cambió el punto seguido a (0,2; 1,5; −0,3) porque el de antes, con el zoom cerca, choca con el borde del cuarto y no se podía comprobar la altura.
+- `tests/integration/test_world_views.gd`: `test_the_piece_grows_one_screen_pixel_at_a_time_while_the_head_swings` → `test_the_piece_grows_one_layer_at_a_time_and_never_shrinks`. Antes revisaba una sola vez, a la mitad, que el alto fuera un múltiplo del píxel de pantalla. Ahora revisa cada segundo hasta la mitad (con un cambio de zoom en el medio) que el alto sea un múltiplo de `LAYER_STEP` (±0,0001 m; antes de la primera capa la caja mide `MIN_HEIGHT`) y que nunca baje; sigue revisando que a la mitad esté entre una capa y el alto final menos una capa, que siga creciendo con el reloj y que el cabezal se mueva en 0,2 s.
+- `tests/integration/test_world_controls.gd` (ayuda `_pick_under`): el lado mínimo del toque pasa de `MIN_TOUCH_PX / stretch_shrink` a `MIN_TOUCH_PX * view_per_ui`, la misma cuenta que hace `WorldControls.tap`.
+
+### Pruebas nuevas
+- `tests/unit/test_world_viewport.gd` (3): k para ventanas de 405, 720, 1.080 y 1.440 px con el tope; el dibujo tiene ese ancho y llena la pantalla; ida y vuelta interfaz ↔ dibujo y mundo → interfaz → dibujo, con el rayo pasando por el punto.
+- `tests/integration/test_world_controls.gd`: `test_taps_hit_the_same_object_at_any_phone_width` (con 1.080 × 2.400 y 1.440 × 3.200 el toque sobre la impresora la elige y abre su panel).

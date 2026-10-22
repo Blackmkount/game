@@ -14,6 +14,9 @@ const SIZES: Dictionary[String, Vector3] = {
 ## Alto mínimo de la malla: una pieza recién empezada no tiene alto, pero la
 ## caja no puede medir 0.
 const MIN_HEIGHT: float = 0.001
+## Alto de cada capa que se ve crecer (presentación): la pieza sube de a 1 cm
+## y nunca baja.
+const LAYER_STEP: float = 0.01
 
 
 ## Arma la pieza escondida, con su propia malla (cambia de tamaño mientras
@@ -25,7 +28,7 @@ static func build(parent: Node3D, node_name: String) -> MeshInstance3D:
 
 
 ## Tamaño, color y alto actual de la pieza. Se cambia el tamaño de la malla y
-## no la escala del nodo, para que el contorno siga midiendo 1 píxel.
+## no la escala del nodo, para que el contorno no crezca con la pieza.
 static func set_shape(piece: MeshInstance3D, size_id: String, color_hex: String, height: float) -> void:
 	var full: Vector3 = full_size(size_id)
 	var mesh: BoxMesh = piece.mesh

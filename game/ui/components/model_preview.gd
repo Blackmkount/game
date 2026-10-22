@@ -1,7 +1,8 @@
 class_name ModelPreview
 extends SubViewportContainer
-## Vista pixel art de un modelo 3D dentro de la interfaz (retrato del
-## personaje, impresoras y muebles de la tienda). Se dibuja una sola vez.
+## Vista de un modelo 3D dentro de la interfaz (retrato del personaje,
+## impresoras y muebles de la tienda), con bordes suavizados. Se dibuja una
+## sola vez.
 ## Con camera_size = 0 la cámara se ajusta sola al tamaño del modelo.
 
 ## Recibe el nodo raíz del mundo del retrato y arma el modelo dentro.
@@ -18,8 +19,8 @@ func _init(build_model: Callable, size: float, camera_size: float = 0.0, camera_
 	_yaw = yaw
 	custom_minimum_size = Vector2(size, size)
 	stretch = true
-	stretch_shrink = 2
-	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	stretch_shrink = 1
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
@@ -27,7 +28,9 @@ func _ready() -> void:
 	var viewport: SubViewport = SubViewport.new()
 	viewport.own_world_3d = true
 	viewport.transparent_bg = true
-	viewport.msaa_3d = Viewport.MSAA_DISABLED
+	viewport.msaa_3d = Viewport.MSAA_4X
+	# Sin luces de punto ni de foco: no hace falta su mapa de sombras.
+	viewport.positional_shadow_atlas_size = 0
 	viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
 	add_child(viewport)
 	var world: Node3D = Node3D.new()

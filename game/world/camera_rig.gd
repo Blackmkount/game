@@ -9,19 +9,17 @@ extends Camera3D
 ##   espacio, "normal" es la vista de siempre y "cerca" es el doble.
 ## - No se sale del espacio. Con la vista normal el cuarto no cabe entero de
 ##   lado a lado, así que la cámara sigue al personaje también ahí.
-## - Se mueve de píxel en píxel del dibujo a media resolución, para que los
-##   bordes del pixel art no tiemblen. Lo que falta para la posición exacta
-##   queda en pixel_remainder, y la escena principal corre la imagen esa
-##   fracción para que el movimiento siga siendo suave.
+## - El mundo se dibuja a resolución alta y con bordes suavizados: la cámara
+##   va justo a su meta, sin ajustarse a píxeles.
 
 const PITCH: float = -30.0
 const YAW: float = 45.0
 const DISTANCE: float = 20.0
-## Lo que ve la cámara en profundidad: el cuarto queda entre unos 14 y 26 m.
-## Un rango corto también hace más nítida la sombra del sol, que lo cubre
-## entero.
-const NEAR: float = 5.0
-const FAR: float = 35.0
+## Lo que ve la cámara en profundidad: el cuarto queda entre unos 15,5 y
+## 28,5 m. Con cámara ortográfica el mapa de sombra del sol cubre de NEAR a
+## FAR: acotarlo al cuarto da sombras más finas.
+const NEAR: float = 11.0
+const FAR: float = 30.0
 ## Escalones de zoom. 0,68 deja ver todo el cuarto (unos 10 m de ancho).
 const ZOOM_STEPS: Array[float] = [0.68, 1.0, 2.0]
 const DEFAULT_ZOOM_INDEX: int = 1
@@ -36,13 +34,11 @@ var tuning: ControlsTuning
 var follow_point: Vector3 = Vector3.ZERO
 ## Velocidad en el piso (x, z) del punto seguido, para adelantarse un poco.
 var follow_velocity: Vector2 = Vector2.ZERO
-## Píxeles del dibujo (media resolución) tapados arriba y abajo por la interfaz.
+## Píxeles del dibujo del mundo tapados arriba y abajo por la interfaz.
 var inset_top_px: float = 0.0
 var inset_bottom_px: float = 0.0
 var zoom_index: int = DEFAULT_ZOOM_INDEX
 var zoom: float = 1.0
-## Fracción de píxel (del dibujo) que falta para la posición exacta.
-var pixel_remainder: Vector2 = Vector2.ZERO
 
 var _base_size: float = 6.8
 var _home: Vector3 = Vector3.ZERO
@@ -144,6 +140,12 @@ func snap_to_goal() -> void:
 	_apply()
 
 
+## Metros del mundo que mide un píxel del dibujo, de lado a lado de la
+## pantalla, con el zoom de ahora.
+func meters_per_pixel() -> float:
+	return size / _view_size().x
+
+
 func _view_size() -> Vector2:
 	var view: Vector2 = get_viewport().get_visible_rect().size if is_inside_tree() else Vector2(360.0, 640.0)
 	return view if view.x > 0.0 else Vector2(360.0, 640.0)
@@ -152,7 +154,7 @@ func _view_size() -> Vector2:
 ## Centro de la vista que deja el punto seguido en su lugar de la pantalla.
 func _goal() -> Vector3:
 	var view: Vector2 = _view_size()
-	var meters_per_px: float = size / view.x
+	var meters_per_px: float = meters_per_pixel()
 	var point: Vector3 = follow_point
 	var ahead: float = clampf(zoom - 1.0, 0.0, 1.0) * tuning.camera_look_ahead / maxf(tuning.walk_speed, 0.001)
 	point += Vector3(follow_velocity.x, 0.0, follow_velocity.y) * ahead
@@ -167,7 +169,7 @@ func _goal() -> Vector3:
 ## que quedan justo dentro de la parte visible.
 func _clamp(target: Vector3) -> Vector3:
 	var view: Vector2 = _view_size()
-	var meters_per_px: float = size / view.x
+	var meters_per_px: float = meters_per_pixel()
 	var half: Vector2 = view * meters_per_px / 2.0
 	var top: float = inset_top_px * meters_per_px
 	var bottom: float = inset_bottom_px * meters_per_px
@@ -183,10 +185,4 @@ func _compose(r: float, u: float) -> Vector3:
 
 
 func _apply() -> void:
-	var meters_per_px: float = size / _view_size().x
-	var r: float = _target.dot(_right)
-	var u: float = _target.dot(_up)
-	var snapped_r: float = roundf(r / meters_per_px) * meters_per_px
-	var snapped_u: float = roundf(u / meters_per_px) * meters_per_px
-	pixel_remainder = Vector2((r - snapped_r) / meters_per_px, (u - snapped_u) / meters_per_px)
-	position = _compose(snapped_r, snapped_u) - _forward * DISTANCE
+	position = _compose(_target.dot(_right), _target.dot(_up)) - _forward * DISTANCE
