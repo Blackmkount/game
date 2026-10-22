@@ -7,19 +7,22 @@ extends Node3D
 const LINE: float = 0.05
 const HEIGHT: float = 0.012
 const MARGIN: float = 0.12
+## Latido: el alfa va de ALPHA a ALPHA_LOW y vuelve en PULSE_PERIOD segundos
+## (lo anima el sombreador con el tiempo del mundo).
+const ALPHA: float = 0.9
+const ALPHA_LOW: float = 0.45
+const PULSE_PERIOD: float = 1.2
 
 var _sides: Array[MeshInstance3D] = []
-var _material: StandardMaterial3D
-var _pulse: Tween
 
 
 static func build(parent: Node3D, node_name: String) -> HighlightFrame:
 	var frame: HighlightFrame = HighlightFrame.new()
 	frame.name = node_name
 	parent.add_child(frame)
-	frame._material = WorldPalette.glow_transparent(WorldPalette.SLOT_MARK, 0.9).duplicate() as StandardMaterial3D
+	var material: ShaderMaterial = WorldPalette.glow_transparent(WorldPalette.SLOT_MARK, ALPHA, ALPHA_LOW, PULSE_PERIOD)
 	for side_name: String in ["Front", "Back", "Left", "Right"]:
-		frame._sides.append(PropBuilder.box(frame, side_name, Vector3.ONE * LINE, Vector3.ZERO, frame._material))
+		frame._sides.append(PropBuilder.box(frame, side_name, Vector3.ONE * LINE, Vector3.ZERO, material))
 	frame.visible = false
 	return frame
 
@@ -34,27 +37,13 @@ func show_around(footprint: Rect2) -> void:
 	_place(1, Vector3(width + LINE, HEIGHT, LINE), Vector3(0.0, 0.0, -depth / 2.0))
 	_place(2, Vector3(LINE, HEIGHT, depth), Vector3(-width / 2.0, 0.0, 0.0))
 	_place(3, Vector3(LINE, HEIGHT, depth), Vector3(width / 2.0, 0.0, 0.0))
-	if not visible:
-		visible = true
-		_start_pulse()
+	visible = true
 
 
 func hide_frame() -> void:
 	visible = false
-	if _pulse != null:
-		_pulse.kill()
-		_pulse = null
 
 
 func _place(index: int, size: Vector3, offset: Vector3) -> void:
 	(_sides[index].mesh as BoxMesh).size = size
 	_sides[index].position = offset
-
-
-func _start_pulse() -> void:
-	if _pulse != null:
-		_pulse.kill()
-	_material.albedo_color.a = 0.9
-	_pulse = create_tween().set_loops().set_trans(Tween.TRANS_SINE)
-	_pulse.tween_property(_material, "albedo_color:a", 0.45, 0.6)
-	_pulse.tween_property(_material, "albedo_color:a", 0.9, 0.6)

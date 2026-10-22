@@ -16,10 +16,10 @@ const SHOULDER_HEIGHT: float = 0.36
 
 static func build(parent: Node3D, node_name: String) -> Node3D:
 	var character: Node3D = PropBuilder.group(parent, node_name)
-	var skin: StandardMaterial3D = WorldPalette.solid(WorldPalette.SKIN)
-	var hoodie: StandardMaterial3D = WorldPalette.solid(WorldPalette.HOODIE)
-	var jeans: StandardMaterial3D = WorldPalette.solid(WorldPalette.JEANS)
-	var shoes: StandardMaterial3D = WorldPalette.solid(WorldPalette.SHOES)
+	var skin: Material = WorldPalette.paint(WorldPalette.SKIN)
+	var hoodie: Material = WorldPalette.paint(WorldPalette.HOODIE, WorldPalette.Surface.FABRIC)
+	var jeans: Material = WorldPalette.paint(WorldPalette.JEANS, WorldPalette.Surface.FABRIC)
+	var shoes: Material = WorldPalette.paint(WorldPalette.SHOES)
 	for side: float in [-1.0, 1.0]:
 		var suffix: String = "L" if side < 0.0 else "R"
 		var hip: Node3D = PropBuilder.group(character, "Hip" + suffix, Vector3(0.07 * side, HIP_HEIGHT, 0.0))
@@ -29,7 +29,7 @@ static func build(parent: Node3D, node_name: String) -> Node3D:
 	var body: Node3D = PropBuilder.group(character, "Body", Vector3(0.0, 0.4, 0.0))
 	PropBuilder.box(body, "Torso", Vector3(0.34, 0.38, 0.22), Vector3(0.0, 0.19, 0.0), hoodie)
 	PropBuilder.box(body, "Hood", Vector3(0.26, 0.1, 0.08), Vector3(0.0, 0.37, -0.11), hoodie)
-	PropBuilder.box(body, "Pocket", Vector3(0.2, 0.08, 0.01), Vector3(0.0, 0.08, 0.11), WorldPalette.solid("2f313b"))
+	PropBuilder.box(body, "Pocket", Vector3(0.2, 0.08, 0.01), Vector3(0.0, 0.08, 0.11), WorldPalette.paint(LookPalette.HOODIE_CUFF, WorldPalette.Surface.FABRIC))
 	for side: float in [-1.0, 1.0]:
 		var suffix: String = "L" if side < 0.0 else "R"
 		PropBuilder.box(body, "String" + suffix, Vector3(0.015, 0.08, 0.01), Vector3(0.045 * side, 0.3, 0.115), shoes)
@@ -39,8 +39,8 @@ static func build(parent: Node3D, node_name: String) -> Node3D:
 
 	var head: Node3D = PropBuilder.group(body, "Head", Vector3(0.0, 0.6, 0.0))
 	PropBuilder.sphere(head, "Face", 0.21, Vector3.ZERO, skin)
-	var hair: StandardMaterial3D = WorldPalette.solid(WorldPalette.HAIR)
-	var hair_light: StandardMaterial3D = WorldPalette.solid(WorldPalette.HAIR_LIGHT)
+	var hair: Material = WorldPalette.paint(WorldPalette.HAIR, WorldPalette.Surface.SMOOTH, 0.3)
+	var hair_light: Material = WorldPalette.paint(WorldPalette.HAIR_LIGHT, WorldPalette.Surface.SMOOTH, 0.3)
 	PropBuilder.sphere(head, "HairCap", 0.215, Vector3(0.0, 0.05, -0.04), hair)
 	var spikes: Array[Vector3] = [
 		Vector3(-0.12, 0.16, 0.12), Vector3(0.0, 0.19, 0.13), Vector3(0.12, 0.15, 0.11),
@@ -50,7 +50,7 @@ static func build(parent: Node3D, node_name: String) -> Node3D:
 	for i: int in spikes.size():
 		var spike: MeshInstance3D = PropBuilder.box(head, "Spike%d" % i, Vector3(0.09, 0.09, 0.09), spikes[i], hair if i % 2 == 0 else hair_light)
 		spike.rotation_degrees = Vector3(35.0 + i * 7.0, 45.0 + i * 20.0, 15.0)
-	var eyes: StandardMaterial3D = WorldPalette.solid(WorldPalette.EYES)
+	var eyes: Material = WorldPalette.paint(WorldPalette.EYES, WorldPalette.Surface.SMOOTH, 0.6)
 	for side: float in [-1.0, 1.0]:
 		PropBuilder.box(head, "Eye" + ("L" if side < 0.0 else "R"), Vector3(0.035, 0.06, 0.02), Vector3(0.075 * side, -0.01, 0.195), eyes)
 	return character

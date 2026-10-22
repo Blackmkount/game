@@ -13,6 +13,8 @@ extends Node3D
 ## caminar (grid) y dónde está cada cosa en la pantalla. Los gestos del
 ## jugador los interpreta WorldControls, desde la escena principal.
 
+const BACKDROP_SHADER: Shader = preload("res://game/world/look/backdrop.gdshader")
+const BASE_SHADOW_SHADER: Shader = preload("res://game/world/look/base_shadow.gdshader")
 const CAMERA_SIZE: float = 6.8
 const CAMERA_TARGET: Vector3 = Vector3(-0.15, 1.95, -0.15)
 ## Proporción de pantalla (alto / ancho) para la que está pensado CAMERA_SIZE.
@@ -27,26 +29,56 @@ const OBSTACLE_MARGIN: float = 0.05
 const SLOT_TOUCH_HEIGHT: float = 0.2
 ## Altura del punto del personaje que sigue la cámara.
 const CHARACTER_FOCUS_HEIGHT: float = 0.7
+## Hora de la luz cuando no hay partida (la mañana del inicio).
+const NO_GAME_HOUR: float = 8.0
+## Radio de la mancha de sombra suave bajo el personaje (biblia de arte §3.5).
+const CHARACTER_SHADOW_RADIUS: float = 0.36
+## Las marcas de lugares libres laten entre estos dos alfas, en este periodo
+## (segundos).
+const MARKER_ALPHA: float = 0.6
+const MARKER_ALPHA_LOW: float = 0.2
+const MARKER_PULSE_PERIOD: float = 2.4
+## Marca de destino: alfa al aparecer y lo que tarda en irse (segundos).
+const DESTINATION_ALPHA: float = 0.8
+const DESTINATION_FADE_TIME: float = 0.45
+## Sombra del sol (biblia §2.6).
+const SUN_SHADOW_BIAS: float = 0.04
+const SUN_SHADOW_NORMAL_BIAS: float = 1.2
+const SUN_SHADOW_OPACITY: float = 0.9
+## Sombra suave bajo la base del diorama: tamaño respecto del cuarto y cuánto
+## más abajo que el piso.
+const BASE_SHADOW_SCALE: float = 1.9
+const BASE_SHADOW_DROP: float = 0.22
+## Luz LED sobre la cama de la impresora del piso y brillo del monitor: cuánto
+## más arriba de la cama y cuánto delante de la pantalla.
+const PRINTER_LED_ABOVE_BED: float = 0.18
+const MONITOR_GLOW_AHEAD: float = 0.12
 
 var camera: CameraRig
 var character: CharacterController
+## La luz según la hora (sol, ambiente, ventana, luces del sombreador, fondo).
+var day_cycle: DayCycle
+## Tiempo de animación del mundo (pantallas, latidos): avanza con step() y
+## llega a los sombreadores como cc_anim_time.
+var anim_time: float = 0.0
 var grid: WalkGrid
 var interactables: Array[WorldInteractable] = []
 ## El rincón de despacho (para abrir su panel desde cualquier parte).
 var dispatch_item: WorldInteractable
 
 var _character_item: WorldInteractable
-var _marker_material: StandardMaterial3D
 var _highlight: HighlightFrame
 var _destination: MeshInstance3D
-var _destination_material: StandardMaterial3D
+var _destination_material: ShaderMaterial
 var _destination_tween: Tween
 
 
 func _ready() -> void:
+	ColorProbe.run(self, WorldViewport.MSAA_HIGH)
 	_build_environment()
 	_build_camera()
 	RoomShell.build(self)
+	_build_base_shadow()
 	grid = WalkGrid.new(Rect2(-RoomShell.SIZE / 2.0, -RoomShell.SIZE / 2.0, RoomShell.SIZE, RoomShell.SIZE))
 	_highlight = HighlightFrame.build(self, "Highlight")
 	_build_destination()
@@ -54,16 +86,22 @@ func _ready() -> void:
 		_build_contents()
 		# La cámara empieza ya encuadrando al personaje.
 		camera.follow_point = character_focus_point()
+	day_cycle.apply_hour(Game.state.game_minutes / 60.0 if Game.state != null else NO_GAME_HOUR)
 	camera.snap_to_goal()
+	_publish_character()
 
 
-## Avanza un cuadro: mueve al personaje y después la cámara. Lo llama
+## Avanza un cuadro: mueve al personaje y después la cámara, y avisa a los
+## sombreadores dónde está el personaje y el tiempo de animación. Lo llama
 ## WorldControls, que decide el orden de todo lo que pasa en cada cuadro.
 func step(delta: float) -> void:
 	if character != null:
 		character.step(delta)
 		camera.follow_velocity = character.velocity
 	camera.step(delta)
+	anim_time += delta
+	RenderingServer.global_shader_parameter_set(&"cc_anim_time", anim_time)
+	_publish_character()
 
 
 ## Objeto del mundo de ese tipo con ese `ref` (uid de la impresora o del
@@ -146,12 +184,12 @@ func show_destination(point: Vector2) -> void:
 	_destination.position = Vector3(point.x, 0.01, point.y)
 	_destination.visible = true
 	_destination.scale = Vector3.ONE * 0.6
-	_destination_material.albedo_color.a = 0.8
+	_destination_material.set_shader_parameter("alpha", DESTINATION_ALPHA)
 	if _destination_tween != null:
 		_destination_tween.kill()
 	_destination_tween = create_tween().set_parallel().set_trans(Tween.TRANS_SINE)
-	_destination_tween.tween_property(_destination, "scale", Vector3.ONE, 0.45)
-	_destination_tween.tween_property(_destination_material, "albedo_color:a", 0.0, 0.45)
+	_destination_tween.tween_property(_destination, "scale", Vector3.ONE, DESTINATION_FADE_TIME)
+	_destination_tween.tween_property(_destination_material, "shader_parameter/alpha", 0.0, DESTINATION_FADE_TIME)
 	_destination_tween.chain().tween_callback(func() -> void: _destination.visible = false)
 
 
@@ -159,15 +197,17 @@ func character_focus_point() -> Vector3:
 	return character.model.position + Vector3(0.0, CHARACTER_FOCUS_HEIGHT, 0.0)
 
 
+## Entorno de la biblia de arte §2.5: el ambiente, los reflejos y los
+## efectos del motor apagados (los calcula el sombreador del mundo, ver
+## game/world/look/) y tonemap lineal, para que la cuenta de color sea una
+## suma simple. Un solo sol con sombra; DayCycle lo orienta según la hora.
 func _build_environment() -> void:
 	var environment: Environment = Environment.new()
 	environment.background_mode = Environment.BG_COLOR
 	environment.background_color = Color(WorldPalette.BACKGROUND)
-	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = Color("ffe6c7")
-	# Energías provisorias hasta el modelo de color nuevo (paso 3 de Arte
-	# 2.0): con 0,75 de sol y 0,5 de ambiente el piso se quemaba.
-	environment.ambient_light_energy = 0.45
+	environment.ambient_light_source = Environment.AMBIENT_SOURCE_DISABLED
+	environment.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
+	environment.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	var world_environment: WorldEnvironment = WorldEnvironment.new()
 	world_environment.name = "WorldEnvironment"
 	world_environment.environment = environment
@@ -175,15 +215,22 @@ func _build_environment() -> void:
 
 	var sun: DirectionalLight3D = DirectionalLight3D.new()
 	sun.name = "Sun"
-	sun.rotation_degrees = Vector3(-55.0, -60.0, 0.0)
-	sun.light_color = Color("fff1dc")
-	sun.light_energy = 0.45
 	sun.shadow_enabled = true
 	# Una sola sombra ortogonal para todo el cuarto: con la cámara en movimiento,
 	# las divisiones del modo por defecto se recalculan y los bordes tiemblan.
 	# Con cámara ortográfica, la sombra cubre de near a far de la cámara.
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
+	sun.shadow_bias = SUN_SHADOW_BIAS
+	sun.shadow_normal_bias = SUN_SHADOW_NORMAL_BIAS
+	sun.shadow_opacity = SUN_SHADOW_OPACITY
 	add_child(sun)
+
+	day_cycle = DayCycle.new()
+	day_cycle.name = "DayCycle"
+	day_cycle.sun = sun
+	add_child(day_cycle)
+	var half: float = RoomShell.SIZE / 2.0
+	RenderingServer.global_shader_parameter_set(&"cc_room", Vector4(-half, -half, RoomShell.SIZE, RoomShell.WALL_HEIGHT))
 
 
 func _build_camera() -> void:
@@ -194,7 +241,41 @@ func _build_camera() -> void:
 	var room_bounds: AABB = AABB(Vector3(-half, 0.0, -half), Vector3(half + RoomShell.SIZE / 2.0, RoomShell.WALL_HEIGHT, half + RoomShell.SIZE / 2.0))
 	camera.configure(room_bounds, CAMERA_TARGET, _fitted_camera_size())
 	camera.current = true
+	_build_backdrop()
 	get_viewport().size_changed.connect(func() -> void: camera.set_base_size(_fitted_camera_size()))
+
+
+## Fondo degradado del diorama (biblia §8.10): un cuadro pegado a la cámara,
+## al fondo de lo que ve. Sus colores los pone DayCycle.
+func _build_backdrop() -> void:
+	var quad: QuadMesh = QuadMesh.new()
+	quad.size = Vector2.ONE * CameraRig.FAR * 4.0
+	var material: ShaderMaterial = ShaderMaterial.new()
+	material.shader = BACKDROP_SHADER
+	var backdrop: MeshInstance3D = MeshInstance3D.new()
+	backdrop.name = "Backdrop"
+	backdrop.mesh = quad
+	backdrop.material_override = material
+	backdrop.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	backdrop.position = Vector3(0.0, 0.0, -(CameraRig.FAR - 0.5))
+	camera.add_child(backdrop)
+	day_cycle.backdrop = material
+
+
+## Sombra suave bajo la base del diorama: lo apoya en el fondo.
+func _build_base_shadow() -> void:
+	var quad: QuadMesh = QuadMesh.new()
+	quad.size = Vector2.ONE * RoomShell.SIZE * BASE_SHADOW_SCALE
+	var material: ShaderMaterial = ShaderMaterial.new()
+	material.shader = BASE_SHADOW_SHADER
+	var shadow: MeshInstance3D = MeshInstance3D.new()
+	shadow.name = "BaseShadow"
+	shadow.mesh = quad
+	shadow.material_override = material
+	shadow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	shadow.position = Vector3(0.0, -BASE_SHADOW_DROP, 0.0)
+	shadow.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
+	add_child(shadow)
 
 
 func _fitted_camera_size() -> float:
@@ -218,6 +299,8 @@ func _build_contents() -> void:
 		_register(WorldInteractable.Kind.FURNITURE, item.uid, node, true)
 		if item.furniture_id == DeskSheet.FURNITURE_ID:
 			_add_view(node, DeskView.new())
+			var screen: Node3D = node.get_node("Monitor/Screen")
+			day_cycle.place_light("monitor", screen.global_transform * Vector3(0.0, 0.0, MONITOR_GLOW_AHEAD))
 
 	var spool_color: String = _first_spool_color(state)
 	var floor_index: int = 0
@@ -226,6 +309,9 @@ func _build_contents() -> void:
 		var node: Node3D = PrinterModel.build(self, "Printer%d" % printer.uid, printer.printer_id, spool_color)
 		if printer.is_on_floor():
 			node.transform = layout.floor_printer_spots[mini(floor_index, layout.floor_printer_spots.size() - 1)]
+			if floor_index == 0 and node.has_node("Bed"):
+				var bed: Node3D = node.get_node("Bed")
+				day_cycle.place_light("printer_led", bed.global_position + Vector3.UP * PRINTER_LED_ABOVE_BED)
 			floor_index += 1
 		else:
 			var furniture: Node3D = furniture_nodes[printer.furniture_uid]
@@ -236,16 +322,16 @@ func _build_contents() -> void:
 		_register(WorldInteractable.Kind.PRINTER, printer.uid, node, true)
 		_add_view(node, PrinterView.new(printer.uid, PrinterModel.frame_scale(printer.printer_id)))
 
-	_marker_material = WorldPalette.glow_transparent(WorldPalette.SLOT_MARK, 0.6)
+	# Las marcas de lugares libres laten suavemente para invitar a llenarlos.
+	var marker_material: ShaderMaterial = WorldPalette.glow_transparent(WorldPalette.SLOT_MARK, MARKER_ALPHA, MARKER_ALPHA_LOW, MARKER_PULSE_PERIOD)
 	for slot: int in layout.slots.size():
 		if slot not in used_slots:
-			var marker: Node3D = SlotMarker.build(self, "FreeSlot%d" % slot, _marker_material)
+			var marker: Node3D = SlotMarker.build(self, "FreeSlot%d" % slot, marker_material)
 			marker.transform = layout.slots[slot]
 			# Se toca la marca que se ve, con un poco de alto para el rayo.
 			var touch_area: AABB = PropBounds.local_aabb(marker)
 			touch_area.size.y = SLOT_TOUCH_HEIGHT
 			interactables.append(WorldInteractable.new(WorldInteractable.Kind.SLOT, slot, touch_area, marker.global_transform))
-	_pulse_markers()
 
 	var door: Node3D = get_node("RoomShell/Door")
 	_register(WorldInteractable.Kind.DOOR, 0, door, false)
@@ -300,7 +386,7 @@ func _ray_pick(origin: Vector3, direction: Vector3, margin: float) -> WorldInter
 
 
 func _build_destination() -> void:
-	_destination_material = WorldPalette.glow_transparent(WorldPalette.SLOT_MARK, 0.8).duplicate() as StandardMaterial3D
+	_destination_material = WorldPalette.glow_transparent(WorldPalette.SLOT_MARK, DESTINATION_ALPHA).duplicate() as ShaderMaterial
 	_destination = PropBuilder.cylinder(self, "Destination", 0.18, 0.01, Vector3.ZERO, _destination_material)
 	_destination.visible = false
 
@@ -312,8 +398,11 @@ func _first_spool_color(state: GameState) -> String:
 	return color.get("hex", WorldPalette.PLASTIC_BEIGE)
 
 
-## Las marcas de lugares libres laten suavemente para invitar a llenarlos.
-func _pulse_markers() -> void:
-	var tween: Tween = create_tween().set_loops().set_trans(Tween.TRANS_SINE)
-	tween.tween_property(_marker_material, "albedo_color:a", 0.2, 1.2)
-	tween.tween_property(_marker_material, "albedo_color:a", 0.6, 1.2)
+
+## Dónde está el personaje para los sombreadores: su mancha en el piso y la
+## cápsula que tapa el parche de la ventana (cc_char_pos).
+func _publish_character() -> void:
+	if character == null:
+		return
+	var feet: Vector3 = character.model.position
+	RenderingServer.global_shader_parameter_set(&"cc_char_pos", Vector4(feet.x, feet.y, feet.z, CHARACTER_SHADOW_RADIUS))

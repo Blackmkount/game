@@ -11,7 +11,7 @@ extends RefCounted
 static func package(parent: Node3D, node_name: String) -> Node3D:
 	var root: Node3D = PropBuilder.group(parent, node_name)
 	PropBuilder.box(root, "Box", Vector3(0.18, 0.14, 0.16), Vector3.ZERO, WorldPalette.textured("cardboard"))
-	PropBuilder.box(root, "Tape", Vector3(0.185, 0.006, 0.04), Vector3(0.0, 0.073, 0.0), WorldPalette.solid(WorldPalette.TAPE))
+	PropBuilder.box(root, "Tape", Vector3(0.185, 0.006, 0.04), Vector3(0.0, 0.073, 0.0), WorldPalette.paint(WorldPalette.TAPE, WorldPalette.Surface.SMOOTH, 0.4))
 	return root
 
 

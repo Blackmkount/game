@@ -3,7 +3,7 @@ extends RefCounted
 ## Marca brillante en el piso de un lugar libre para un mueble, con un "+".
 
 
-static func build(parent: Node3D, node_name: String, material: StandardMaterial3D) -> Node3D:
+static func build(parent: Node3D, node_name: String, material: Material) -> Node3D:
 	var marker: Node3D = PropBuilder.group(parent, node_name)
 	var width: float = 1.2
 	var depth: float = 0.56

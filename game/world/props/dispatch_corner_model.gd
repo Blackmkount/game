@@ -20,20 +20,20 @@ const PACKAGE_HEIGHT: float = 0.14
 
 static func build(parent: Node3D, node_name: String) -> Node3D:
 	var corner: Node3D = PropBuilder.group(parent, node_name)
-	var wood_mid: StandardMaterial3D = WorldPalette.solid(WorldPalette.WOOD_MID)
+	var wood_mid: Material = WorldPalette.paint(WorldPalette.WOOD_MID, WorldPalette.Surface.WOOD, 0.15)
 
 	var table: Node3D = PropBuilder.group(corner, "PackTable")
-	PropBuilder.box(table, "Top", Vector3(0.5, 0.04, 0.4), Vector3(0.2, 0.48, 0.0), WorldPalette.solid(WorldPalette.WOOD_LIGHT))
+	PropBuilder.box(table, "Top", Vector3(0.5, 0.04, 0.4), Vector3(0.2, 0.48, 0.0), WorldPalette.paint(WorldPalette.WOOD_LIGHT, WorldPalette.Surface.WOOD, 0.15))
 	for i: int in 4:
 		var x: float = 0.2 + (0.22 if i % 2 == 0 else -0.22)
 		var z: float = 0.17 if i < 2 else -0.17
 		PropBuilder.box(table, "Leg%d" % i, Vector3(0.04, 0.46, 0.04), Vector3(x, 0.23, z), wood_mid)
 	PropBuilder.box(table, "FlatBoxes", Vector3(0.4, 0.1, 0.3), Vector3(0.2, 0.05, 0.0), WorldPalette.textured("cardboard"))
-	PropBuilder.cylinder(table, "TapeRoll", 0.04, 0.04, Vector3(0.38, 0.52, -0.13), WorldPalette.solid(WorldPalette.TAPE))
+	PropBuilder.cylinder(table, "TapeRoll", 0.04, 0.04, Vector3(0.38, 0.52, -0.13), WorldPalette.paint(WorldPalette.TAPE, WorldPalette.Surface.SMOOTH, 0.4))
 
 	var crate: Node3D = PropBuilder.group(corner, "OutCrate")
 	PropBuilder.box(crate, "Body", Vector3(0.36, CRATE_HEIGHT, 0.34), Vector3(-0.25, CRATE_HEIGHT / 2.0, 0.0), wood_mid)
-	var slat: StandardMaterial3D = WorldPalette.solid(WorldPalette.WOOD_DARK)
+	var slat: Material = WorldPalette.paint(WorldPalette.WOOD_DARK, WorldPalette.Surface.WOOD, 0.15)
 	for i: int in 2:
 		PropBuilder.box(crate, "Slat%d" % i, Vector3(0.37, 0.03, 0.35), Vector3(-0.25, CRATE_HEIGHT * (i + 1) / 3.0, 0.0), slat)
 

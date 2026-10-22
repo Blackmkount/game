@@ -4,8 +4,8 @@
 
 - **Fase actual:** 1. Ciclo jugable, en curso (ruta aprobada por el dueño en `docs/RUTA.md`).
 - **Diseño:** GDD versión 2.3, guía de estilo en `docs/ESTILO.md` y ruta en `docs/RUTA.md`.
-- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 2 de 16: el mundo a resolución alta, sin pixel art (2026-10-22). Antes: paso 1, prueba de presupuesto de dibujo y capturas de arte.
-- **Siguiente paso sugerido:** Arte 2.0, paso 3: kit de materiales, modelo de color y entorno (sin contorno en el mundo). Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
+- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 3 de 16: kit de materiales, modelo de color y entorno, sin contorno en el mundo (2026-10-22). Antes: paso 2, el mundo a resolución alta.
+- **Siguiente paso sugerido:** Arte 2.0, paso 4: kit de formas (`KitMesh`), caché y mapa de oclusión del piso. Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
 - **Diseño del ciclo:** aprobado por el dueño (GDD, versión 2.3 en la sección 16).
 
 | Fase | Estado |
@@ -267,6 +267,32 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 **Problemas conocidos**
 - Entre dos corridas de capturas cambian unos píxeles de lo que se anima con tiempo real (el latido de las marcas de lugar libre y el marco de resalte). El personaje y la cámara salen iguales.
 - La opción `--quality` de las capturas solo queda anotada: el juego todavía tiene un solo nivel de calidad (llega en el paso 15).
+
+### 2026-10-22 — Arte 2.0, paso 3: kit de materiales, modelo de color y entorno
+
+**Qué se hizo**
+- **"Lo que dice el hex es lo que se ve".** Todo el mundo usa los sombreadores nuevos de `game/world/look/`: un color bajo luz neutra se ve exactamente como su código de color. Al arrancar, `ColorProbe` mide cómo dibuja colores el motor en ese aparato y ajusta los sombreadores; la captura nueva `00_calibracion` lo comprueba sola (tarjetas gris, blanca y de la paleta con ambiente, con sol y con los dos: salen exactas).
+- **Luces calculadas en el sombreador:** el ambiente de dos colores, un relleno desde el lado de la cámara, el brillo del monitor, el LED de la impresora del piso y el **parche de sol que entra por la ventana con las rayas de las rejas** (cae junto a la impresora del piso y sube por la pared del fondo). Cero luces extra y cero llamadas de dibujo extra. El sol sale de `DayCycle` (por ahora solo la mañana; el día y la noche llegan en el paso 13).
+- **Sin contorno en el mundo** y sin texturas pixel art: el piso es de baldosa clara con junta y bisel, las paredes de pintura crema, la madera con vetas, la cama de la impresora dorada, el cartón corrugado. El monitor, las pantallitas de la impresora y la vista del barrio por la ventana se dibujan en el sombreador y se animan.
+- **Fondo de diorama:** degradado azul con un resplandor detrás del cuarto y una sombra suave debajo, como una foto de producto.
+- **La pieza que se imprime muestra sus capas** de 1 cm y una **capa caliente naranja** arriba, que brilla sola (se ve con cualquier zoom).
+- Paleta nueva de la biblia de arte (`LookPalette`); el buzo del personaje pasa a gris carbón (D3).
+- **Menos costo:** el cuarto inicial pasa de 334 a 177 llamadas de dibujo (el lleno, de 1.042 a 535).
+
+**Verificado**
+- `check.sh` y `run_tests.sh` pasan: 544 pruebas (antes 524). Una prueba se adaptó (dos anotaciones de tipo: la comparación de materiales es la misma); 20 nuevas (materiales, `ColorProbe`, la mañana, los sombreadores). Detalle en `docs/DECISIONES.md`.
+- `screenshots.sh` saca las 37 capturas (nueva: `00_calibracion`) y falla si la calibración no da lo que dice la biblia.
+- Revisé 00, 01, 02, 03, 18, 23, 30, 33 y 34.
+
+**Qué revisar en el teléfono** (versión web)
+- Que el cuarto se vea cálido y limpio: piso claro de baldosa, paredes crema, sin bordes negros alrededor de las cosas.
+- Que se vea el parche de sol con rayas cerca de la impresora del piso.
+- Que la pantalla del computador y la pantallita de la impresora se muevan (texto que sube, barra que avanza al imprimir).
+- Que al imprimir se vea la línea naranja arriba de la pieza, también con el zoom lejos.
+
+**Problemas conocidos**
+- Los modelos siguen siendo las cajas de antes (se cambian en los pasos 4 a 12): el personaje tiene la cara un poco a la sombra del pelo, la puerta y la ventana son provisorias, las dos paredes son del mismo color.
+- La calibración solo se midió en llvmpipe (la computadora de Claude). En el teléfono, `ColorProbe` mide solo; lo que midió se verá en el panel de depuración del paso 15.
 
 ### 2026-10-22 — Arte 2.0, paso 2: el mundo a resolución alta, sin pixel art
 

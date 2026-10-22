@@ -28,14 +28,19 @@ static func build(parent: Node3D, node_name: String) -> MeshInstance3D:
 
 
 ## Tamaño, color y alto actual de la pieza. Se cambia el tamaño de la malla y
-## no la escala del nodo, para que el contorno no crezca con la pieza.
-static func set_shape(piece: MeshInstance3D, size_id: String, color_hex: String, height: float) -> void:
+## no la escala del nodo, así las capas y la capa caliente miden siempre lo
+## mismo. Mientras se imprime (`printing`), la capa de arriba brilla caliente.
+static func set_shape(piece: MeshInstance3D, size_id: String, color_hex: String, height: float, printing: bool = false) -> void:
 	var full: Vector3 = full_size(size_id)
 	var mesh: BoxMesh = piece.mesh
 	var shown: float = maxf(height, MIN_HEIGHT)
 	mesh.size = Vector3(full.x, shown, full.z)
 	piece.position.y = shown / 2.0
-	piece.material_override = WorldPalette.solid(color_hex)
+	if printing:
+		piece.material_override = WorldPalette.printing(color_hex)
+		piece.set_instance_shader_parameter(&"hot_top", shown / 2.0)
+	else:
+		piece.material_override = WorldPalette.solid(color_hex)
 
 
 ## Medidas de la pieza terminada; un tamaño desconocido se ve como S.

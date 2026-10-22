@@ -184,5 +184,9 @@ func _compose(r: float, u: float) -> Vector3:
 	return _right * r + _up * u + _forward * _home.dot(_forward)
 
 
+## Pone la cámara en su lugar y avisa a los sombreadores cuántos metros
+## mide un píxel (cc_px_m: grosor de la capa caliente, capas que se apagan).
 func _apply() -> void:
 	position = _compose(_target.dot(_right), _target.dot(_up)) - _forward * DISTANCE
+	if is_inside_tree():
+		RenderingServer.global_shader_parameter_set(&"cc_px_m", meters_per_pixel())

@@ -164,7 +164,7 @@ func _grow() -> void:
 	if height == _height:
 		return
 	_height = height
-	PieceModel.set_shape(_piece, _size_id, _piece_hex, height)
+	PieceModel.set_shape(_piece, _size_id, _piece_hex, height, _job.status == PrintJob.Status.PRINTING)
 	_place_head(height, _job.status != PrintJob.Status.PRINTING)
 
 

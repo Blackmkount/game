@@ -7,9 +7,9 @@ extends RefCounted
 
 static func build(parent: Node3D, node_name: String) -> Node3D:
 	var desk: Node3D = PropBuilder.group(parent, node_name)
-	var wood: StandardMaterial3D = WorldPalette.solid(WorldPalette.WOOD_MID)
-	var beige: StandardMaterial3D = WorldPalette.solid(WorldPalette.PLASTIC_BEIGE)
-	var beige_dark: StandardMaterial3D = WorldPalette.solid(WorldPalette.PLASTIC_BEIGE_DARK)
+	var wood: Material = WorldPalette.paint(WorldPalette.WOOD_MID, WorldPalette.Surface.WOOD, 0.15)
+	var beige: Material = WorldPalette.paint(WorldPalette.PLASTIC_BEIGE, WorldPalette.Surface.SMOOTH, 0.2)
+	var beige_dark: Material = WorldPalette.paint(WorldPalette.PLASTIC_BEIGE_DARK, WorldPalette.Surface.SMOOTH, 0.2)
 	PropBuilder.box(desk, "Top", Vector3(1.3, 0.06, 0.62), Vector3(0.0, 0.72, 0.0), wood)
 	for i: int in 4:
 		var x: float = 0.6 if i % 2 == 0 else -0.6
@@ -26,7 +26,7 @@ static func build(parent: Node3D, node_name: String) -> Node3D:
 	PropBuilder.box(desk, "Mouse", Vector3(0.05, 0.03, 0.08), Vector3(0.18, 0.765, 0.2), beige)
 	PropBuilder.box(desk, "Tower", Vector3(0.18, 0.4, 0.4), Vector3(0.42, 0.95, -0.08), beige_dark)
 	PropBuilder.box(desk, "TowerLight", Vector3(0.03, 0.03, 0.01), Vector3(0.42, 1.08, 0.125), WorldPalette.glow("7fe0a0"))
-	PropBuilder.box(desk, "Mug", Vector3(0.07, 0.09, 0.07), Vector3(0.4, 0.795, 0.2), WorldPalette.solid("e0453a"))
+	PropBuilder.box(desk, "Mug", Vector3(0.07, 0.09, 0.07), Vector3(0.4, 0.795, 0.2), WorldPalette.paint("e0453a", WorldPalette.Surface.SMOOTH, 0.3))
 
 	PropBuilder.box(desk, "CardboardSeat", Vector3(0.42, 0.4, 0.42), Vector3(0.05, 0.2, 0.6), WorldPalette.textured("cardboard"))
 	return desk

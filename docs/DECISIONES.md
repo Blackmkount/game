@@ -336,3 +336,45 @@ Registro de decisiones técnicas importantes: fecha, decisión y motivo. Las má
 ### Pruebas nuevas
 - `tests/unit/test_world_viewport.gd` (3): k para ventanas de 405, 720, 1.080 y 1.440 px con el tope; el dibujo tiene ese ancho y llena la pantalla; ida y vuelta interfaz ↔ dibujo y mundo → interfaz → dibujo, con el rayo pasando por el punto.
 - `tests/integration/test_world_controls.gd`: `test_taps_hit_the_same_object_at_any_phone_width` (con 1.080 × 2.400 y 1.440 × 3.200 el toque sobre la impresora la elige y abre su panel).
+
+## 2026-10-22 — Arte 2.0, paso 3: kit de materiales, modelo de color y entorno
+
+### Modelo de color en el espacio de la pantalla, medido con ColorProbe
+**Decisión:** todo el mundo se pinta y se ilumina en el espacio de la pantalla: un color `#rrggbb` bajo luz neutra 1,0 se ve exactamente así (`color = albedo × (ambiente + relleno + luces + parche) × oclusión + albedo × sol + luz propia`, biblia de arte §2.4). Los sombreadores terminan con `cc_out()` (pasada base) y `cc_sun_out()` (el sol, dentro de `light()`), en `game/world/look/look_globals.gdshaderinc`. `ColorProbe` (`game/world/look/color_probe.gd`) dibuja al arrancar dos cuadritos de 8 × 8 (0,25 de pasada base; 0,5 de sol con sombra), lee el píxel y pone los globales `cc_base_fix` y `cc_sun_fix`; si la lectura sale fuera de ±0,06 de las dos opciones quedan los valores de llvmpipe (base 0, sol 1). Sin pantalla (pruebas) no mide nada.
+**Lo que se midió en Compatibility (Godot 4.7.2, llvmpipe):**
+1. La pasada base pasa `EMISSION` (y el `ALBEDO` de lo que no tiene luz) a lineal con el cúbico aproximado de Godot y al final todo vuelve a sRGB con su potencia aproximada. La ida y vuelta no es exacta en lo oscuro: 0,05 se veía 0,027 y 0,02 se veía negro.
+2. Lo que suma `light()` ya es lineal y se pasa a sRGB al final: 0,5 se ve 0,737.
+3. El sol con sombra se dibuja en otra pasada que se pasa a sRGB por su cuenta y se suma en el espacio de la pantalla. Sin sombra se suma en lineal dentro de la pasada base.
+4. En la pasada del sol, `light()` recibe el `ALBEDO` ya pasado a lineal (el gris salía a menos de la mitad).
+**Por eso:** `cc_out()` entrega el valor que, después del cúbico y la potencia del motor, da exactamente el color pedido (tres pasos de Newton); `cc_sun_out()` deshace la potencia (con sombra) o suma en lineal sobre lo que ya puso la pasada base (sin sombra, el nivel Bajo del paso 15); y el color del objeto llega a `light()` por un `varying`, no por `ALBEDO`. La captura `00_calibracion` lo comprueba sola (falla `screenshots.sh` si no): blanco 64 / 128 / 191 con ambiente 0,25, sol 0,5 y los dos; gris la mitad; el sol sin sombra igual que con sombra; vértice y uniform iguales. Hoy da exacto (gris 32/64/96, blanco 64/128/191).
+**Motivo:** es la cuenta más fácil de ajustar mirando capturas, y hace que los niveles de calidad, la tienda y los retratos se vean igual. Nada queda escrito a mano sin medir: si una versión de Godot o un teléfono cambia el camino del color, `ColorProbe` y la captura de calibración lo muestran.
+
+### Tonemap lineal y entorno del motor apagado
+**Decisión:** `RoomView` y las vistas de la tienda (`ModelPreview`): ambiente y reflejos del motor apagados, tonemap lineal, sin glow, SSAO ni niebla. El ambiente (dos colores), el relleno desde el lado de la cámara, cuatro luces del sombreador, la tira LED, el parche de sol de la ventana (con rejas y lo que lo tapa) y la oclusión (rincones, mapa del piso y mancha del personaje) los calcula el sombreador del mundo (`world_light.gdshaderinc`) con globales (`[shader_globals]` de `project.godot`, 33 en total) que pone `DayCycle`. El sol: `shadow_bias 0,04`, `normal_bias 1,2`, `opacity 0,9` (biblia §2.6). La cáscara del cuarto (piso, paredes, ventana, puerta) no da sombra. Fondo degradado pegado a la cámara y sombra suave bajo la base.
+**Motivo:** un tonemap curvo rompe la suma de las dos pasadas; el glow multiplica el fondo ×4 y cuesta +104 %; las luces del motor extra no se agregan (D2: no).
+
+### Luces en el sombreador, día en "mañana"
+**Decisión:** `DayCycle` (`game/world/look/day_cycle.gd`, hijo de `Room`) tiene por ahora solo la mañana de la biblia §6.2 (sol (0,707; −0,566; −0,424) `#fff0dc` × 0,48, ambiente `#bfcdf0` × 0,62 / `#e6bb92` × 0,50, ventana igual que el sol `#ffe2b0` × 0,85, relleno `#fff4ea` × 0,22 + 0,25 del personaje, factores de las luces). `sample(hora)` es puro. Los demás momentos, la mezcla y el reloj llegan en el paso 13. El brillo del monitor y el LED de la cama de la impresora del piso se ubican por ahora con los modelos viejos (`Monitor/Screen` y `Bed`); los pasos 6 y 7 traen sus marcadores.
+
+### Sin contorno en el mundo
+**Decisión:** se borró `game/world/pixel/outline.gdshader` (el casco invertido de todos los materiales) y `PixelTextures`: las texturas pixel art pasan a superficies del sombreador (baldosa con junta y bisel, pintura, madera, cartón, metal, tela, PEI) y las pantallas y la vista de la ventana se dibujan en sus sombreadores (`screen.gdshader`, `window_view.gdshader`), animados con `cc_anim_time` para que las capturas salgan iguales.
+**Motivo:** el casco duplicaba las llamadas de color y de sombra (334 → 177 llamadas en el cuarto inicial) y no sirve en mallas unidas. Las siluetas salen del valor, del borde de luz y de la oclusión. El personaje tendrá su contorno fino propio en el paso 10.
+
+### `WorldPalette` se muda a `game/world/look/` con la misma interfaz
+**Decisión:** `git mv` con su `.uid`. Misma caché e identidad: `solid(hex)` es plástico impreso (capas de 1 cm), `glow("ffffff", estado)` una pantalla por estado, `glow(hex)` un color del kit con luz propia, `glow_transparent` una marca (`marker.gdshader`, latido en el sombreador en vez de `Tween`), `textured(nombre)` una superficie. Nuevas: `kit()`, `paint(hex, superficie, brillo)` (lo que no fue impreso: los modelos de cajas de antes ya no muestran capas en la cara del personaje), `printing(hex)` (la pieza que se imprime, con la capa caliente) y `halo()`. Los colores con nombre salen de `LookPalette` (biblia §4); el buzo pasa a gris carbón `#3e4250` (D3).
+
+### Solo la pieza que se imprime usa un "instance uniform"
+**Decisión:** la capa caliente vive en una variante aparte (`kit_printing.gdshader`, `instance uniform hot_top`), que solo usan las piezas mientras crecen; `kit` y `kit_tinted` no tienen ninguno. `project.godot`: `limits/global_shader_variables/buffer_size = 1024`.
+**Motivo:** medido: cada instancia que usa un material con un "instance uniform" ocupa 16 lugares del búfer de globales, aunque no lo cambie. Con la capa caliente en el kit, el cuarto lleno (279 mallas) llenó el búfer de llvmpipe (4.096) y salieron 107 errores. En la web y en muchos teléfonos el búfer tiene 1.024 lugares (16 KB): fijarlo en 1.024 hace que las capturas fallen aquí si alguna vez se pasa.
+
+### Prueba de presupuesto ajustada
+Topes nuevos (medido + 10 %, nunca por encima del anterior): inicio 194 llamadas (medido 177), 38 materiales (37), 68 mallas con sombra (62), 37 transparentes (35); lleno 588 llamadas (535), 45 materiales (44), 281 mallas con sombra (256), 12 transparentes (5).
+
+### Pruebas adaptadas (misma intención, no más débiles)
+- `tests/integration/test_world_views.gd`: en `test_finished_pieces_of_a_longer_order_wait_on_the_tray` y `test_the_dispatch_corner_shows_a_box_then_a_package_that_leaves`, el tipo de las variables `red` y `white` pasa de `StandardMaterial3D` a `Material` (los materiales ahora son del sombreador del kit). La comparación por identidad con `WorldPalette.solid(...)` es la misma.
+
+### Pruebas nuevas
+- `tests/unit/test_world_palette.gd` (7): misma instancia por clave; pedidos distintos, materiales distintos; `solid` lleva su color y las capas de la pieza; `paint` y `textured` su superficie; `glow(hex)` tiene luz propia; cada estado de pantalla es un material propio y estable; las marcas son transparentes.
+- `tests/unit/test_color_probe.gd` (6): `ColorProbe.decide` con las lecturas de llvmpipe (64/255; 0,68 y 0,251; 0,737 → base 0, sol 1), las dos convertidas (137/255; 0,735 → 1, 1), ninguna, fuera de rango (valores de llvmpipe), la tolerancia de ±0,06 y que sin pantalla no se arma nada.
+- `tests/unit/test_day_cycle.gd` (4): la mañana coincide con la tabla de la biblia §6.2 de 07:00 a 10:30, `sample()` es puro, el sol del cuarto la toma y cada luz del sombreador tiene su global.
+- `tests/integration/test_look_shaders.gd` (3): cada sombreador de `look/` se arma sin errores y expone sus parámetros; cada material de `WorldPalette` (y cada superficie) se dibuja sobre una malla; la pieza que se imprime lleva la capa caliente arriba y, terminada, vuelve a `solid`.

@@ -22,24 +22,27 @@ const SceneBudget: GDScript = preload("res://tests/helpers/scene_budget.gd")
 const FullRoom: GDScript = preload("res://tests/helpers/full_room.gd")
 const SEED: int = 1234
 
-## Cuarto inicial. Medido el 2026-10-22: 334 llamadas, 35 materiales, 75
-## mallas con sombra y 34 superficies transparentes (5 marcas de lugar libre
-## de 6 cajas cada una y el marco de resalte).
-const START_MAX_DRAW_CALLS: int = 345
+## Cuarto inicial. Medido el 2026-10-22 en el paso 3 de Arte 2.0 (sin el
+## contorno del mundo y sin sombra de la cáscara): 177 llamadas, 37
+## materiales, 62 mallas con sombra y 35 superficies transparentes (5 marcas
+## de lugar libre de 6 cajas cada una, el marco de resalte y la sombra bajo la
+## base). Antes (paso 1): 334 llamadas, 35 materiales, 75 mallas con sombra.
+const START_MAX_DRAW_CALLS: int = 194
 const START_MAX_VISIBLE_TRIANGLES: int = 45000
 const START_MAX_TOTAL_TRIANGLES: int = 80000
 const START_MAX_MATERIALS: int = 38
-const START_MAX_SHADOW_MESHES: int = 82
+const START_MAX_SHADOW_MESHES: int = 68
 const START_MAX_TRANSPARENT: int = 37
 
-## Cuarto lleno. Medido el 2026-10-22: 1.042 llamadas, 41 materiales, 269
-## mallas con sombra y 4 superficies transparentes (sin lugares libres no hay
-## marcas: el tope de transparentes es el final del cuarto inicial).
-const FULL_MAX_DRAW_CALLS: int = 1146
+## Cuarto lleno. Medido el 2026-10-22 en el paso 3: 535 llamadas, 44
+## materiales, 256 mallas con sombra y 5 superficies transparentes (sin
+## lugares libres no hay marcas: el tope de transparentes es el final del
+## cuarto inicial). Antes (paso 1): 1.042 llamadas, 41 materiales.
+const FULL_MAX_DRAW_CALLS: int = 588
 const FULL_MAX_VISIBLE_TRIANGLES: int = 60000
 const FULL_MAX_TOTAL_TRIANGLES: int = 99999
 const FULL_MAX_MATERIALS: int = 45
-const FULL_MAX_SHADOW_MESHES: int = 295
+const FULL_MAX_SHADOW_MESHES: int = 281
 const FULL_MAX_TRANSPARENT: int = 12
 
 var _main: Control

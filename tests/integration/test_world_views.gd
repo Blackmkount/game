@@ -107,7 +107,7 @@ func test_finished_pieces_of_a_longer_order_wait_on_the_tray() -> void:
 	Game.advance(76.0)
 	var printer_uid: int = state.printers[0].uid
 	assert_true(Game.start_print(offer.uid, printer_uid, spool.uid, "normal").ok)
-	var red: StandardMaterial3D = WorldPalette.solid(Game.rules.colors["rojo"]["hex"])
+	var red: Material = WorldPalette.solid(Game.rules.colors["rojo"]["hex"])
 	assert_eq(printer.get_node("Spool/Filament").material_override, red, "El carrete toma el color del filamento")
 	# Cada pieza tarda 50 min de juego (125 s reales).
 	Game.advance(130.0)
@@ -156,7 +156,7 @@ func test_the_dispatch_corner_shows_a_box_then_a_package_that_leaves() -> void:
 	assert_true(Game.remove_pieces(Game.state.printers[0].uid).ok)
 	await wait_process_frames(1)
 	assert_true(box.visible, "Caja abierta en la mesa")
-	var white: StandardMaterial3D = WorldPalette.solid(Game.rules.colors["blanco"]["hex"])
+	var white: Material = WorldPalette.solid(Game.rules.colors["blanco"]["hex"])
 	assert_eq((box.get_node("Piece") as MeshInstance3D).material_override, white, "Con la pieza de su color")
 	assert_false(corner.get_node("PackSpot1/OpenBox").visible)
 	assert_true(Game.pack_order(order.uid).ok)

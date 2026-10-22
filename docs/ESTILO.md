@@ -6,11 +6,11 @@ Esta guía mantiene el juego **coherente y consistente** de principio a fin. Tod
 
 ## 1. Idea general
 
-> **En transición a Arte 2.0 ("Mundo Impreso").** El dueño aprobó dejar el pixel art (2026-10-22, ver `docs/DECISIONES.md`). Desde el paso 2 el mundo ya se dibuja a resolución alta y con bordes suavizados (sección "Render"); el resto de esta guía se reescribe con la biblia de arte al terminar los 16 pasos. Mientras tanto, lo que aquí dice "pixel art" describe los modelos y materiales que todavía no se cambiaron.
+> **En transición a Arte 2.0 ("Mundo Impreso").** El dueño aprobó dejar el pixel art (2026-10-22, ver `docs/DECISIONES.md`). Desde el paso 2 el mundo ya se dibuja a resolución alta y con bordes suavizados (sección "Render"); desde el paso 3 usa el kit de materiales nuevo, sin contorno ni texturas pixel art (secciones "Luz", "Materiales" y "Paleta"). El resto de esta guía se reescribe con la biblia de arte al terminar los 16 pasos. Mientras tanto, lo que aquí dice "pixel art" describe los modelos de cajas que todavía no se cambiaron.
 
 **Pixel art isométrico cálido, con interfaz oscura de bordes cian.**
 
-- El mundo es 3D, armado con formas básicas (por ahora con el contorno y las texturas del pixel art), y se dibuja a **resolución alta con bordes suavizados**. Se puede animar, mover y ampliar como 3D.
+- El mundo es 3D, armado con formas básicas (por ahora las cajas de antes) y se dibuja a **resolución alta con bordes suavizados**, sin contorno. Se puede animar, mover y ampliar como 3D.
 - La interfaz se dibuja a resolución completa: texto nítido sobre paneles azul marino con bordes y brillos cian.
 - Ambiente: cálido y acogedor adentro (madera, luz de tarde), frío y oscuro afuera (fondo azul marino).
 
@@ -24,49 +24,57 @@ Esta guía mantiene el juego **coherente y consistente** de principio a fin. Tod
 - Con zoom normal y 1.080 px de ancho, un píxel equivale a unos **6 mm** del mundo (`CameraRig.meters_per_pixel()`). Lo menor a 1 cm no se modela.
 
 ### Luz
-- **Una sola luz direccional** cálida (`#fff1dc`, energía 0,45 provisoria), entrando por el lado de la ventana, más luz ambiental (`#ffe6c7`, 0,45 provisoria). El paso 3 de Arte 2.0 las reemplaza por el modelo de color nuevo.
+- **Modelo de color: lo que dice el hex es lo que se ve.** Todo se pinta e ilumina en el espacio de la pantalla: un color bajo luz neutra 1,0 se ve tal cual. `ColorProbe` mide al arrancar cómo escribe el motor cada pasada y la captura `00_calibracion` lo comprueba (ver `docs/DECISIONES.md`, paso 3).
+- **Una sola luz direccional del motor** (el sol, con sombra), orientada por `DayCycle` según la hora (por ahora solo la mañana: `#fff0dc` × 0,48, entrando por la ventana). Ambiente, relleno desde el lado de la cámara, lámpara, monitor, LED de la impresora, tira LED y el parche de sol de la ventana (con las rejas) los calcula el sombreador del mundo con globales (`[shader_globals]` de `project.godot`): cero luces extra, cero llamadas extra. Tonemap lineal; ambiente, reflejos, glow y SSAO del motor apagados.
 - Sombras **suaves**: filtro de calidad 2 y mapa de 2.048 en `project.godot`, también en móvil.
 - Sombra **ortogonal** de una sola pieza (`SHADOW_ORTHOGONAL`; con la cámara ortográfica cubre de `near` a `far` de la cámara): con la cámara en movimiento no tiembla y cuesta menos que el modo por defecto.
-- Las paredes no proyectan sombra, para que la luz "entre" a la habitación.
-- Pantallas, ventanas y marcas no se iluminan: brillan con su propio color (materiales `glow`). No se agregan luces extra.
+- El cuarto (piso, paredes, ventana, puerta) no proyecta sombra: la luz general "pasa" por arriba y la ventana se lee por el parche de sol.
+- Pantallas y marcas brillan con su propio color. Las luces de las cosas (un LED, un interior iluminado) son luz propia del material.
 
 ### Materiales
-Siempre se usan los de `WorldPalette` (`game/world/pixel/world_palette.gd`). Así se reutilizan los materiales y el estilo no se rompe:
+Siempre se usan los de `WorldPalette` (`game/world/look/world_palette.gd`), sobre los sombreadores del kit (`game/world/look/`). Así se reutilizan los materiales y el estilo no se rompe:
 
 | Función | Para qué |
 |---|---|
-| `solid(hex)` | Color liso con sombreado en bandas (toon) y contorno |
-| `textured(nombre)` | Textura pixel art proyectada según el mundo: 1 píxel de textura ≈ 1 píxel de pantalla |
-| `glow(hex, textura)` | Brilla sin sombreado ni contorno: pantallas, ventanas, luces |
-| `glow_transparent(hex, alfa)` | Marcas del piso (lugares libres) |
+| `kit()` | Las mallas del kit: color, superficie, capas y luz propia en los vértices (desde el paso 4) |
+| `solid(hex)` | Plástico impreso: la pieza, la bandeja, el filamento (capas de 1 cm) |
+| `printing(hex)` | La pieza mientras se imprime, con la capa caliente naranja arriba |
+| `paint(hex, superficie, brillo)` | Lo que no fue impreso: pintura, madera, metal, tela, PEI... |
+| `textured(nombre)` | El piso de baldosa, la pintura de las paredes y el cartón |
+| `glow(hex, estado)` | Pantallas dibujadas en el sombreador (`crt_screen`, `crt_modeling`, `printer_display*`) y la vista de la ventana; sin estado, un color con luz propia |
+| `glow_transparent(hex, alfa)` | Marcas del piso (lugares libres, cercanía, destino); laten en el sombreador |
+| `halo(hex)` | Halos de luz que suman (lámparas, pantallas) |
+
+- Un "instance uniform" le cuesta a cada instancia 16 lugares de un búfer de 1.024: solo la pieza que se imprime usa uno.
 
 ### Contorno
-- Todos los objetos sólidos llevan un **contorno oscuro de 1 píxel** (`#1a1320`) con la técnica "inverted hull" (`outline.gdshader`).
-- Por eso cada forma debe estar **centrada en su origen**: usa siempre `PropBuilder` (`box`, `cylinder`, `sphere`, `quad`).
+- **El mundo no lleva contorno.** Las siluetas salen del valor (fondos claros, objetos más oscuros), del borde de luz, de los biseles y de la oclusión. El personaje tendrá un contorno fino propio (paso 10 de Arte 2.0).
 
 ### Paleta del mundo
 
+La paleta completa es la de la biblia de arte §4, en `LookPalette` (`game/world/look/look_palette.gd`); todo color nuevo sale de ahí. Lo principal hoy:
+
 | Uso | Color |
 |---|---|
-| Contorno | `#1a1320` |
-| Fondo exterior | `#141b2d` |
-| Piso de madera | `#a86d43`, `#9c643c`, `#b3764a`, juntas `#6a3f22` |
-| Ladrillo de las paredes | `#4b4150`, `#52475a`, `#463c4c`, mortero `#2c2532` |
-| Madera de muebles | clara `#c98b4f`, media `#a86b3c`, oscura `#6e4426` |
-| Metal | oscuro `#2b2f3a`, medio `#4a5163` |
-| Plástico | negro `#23242b`, beige viejo `#d8ccb0` / `#b3a585` |
-| Acentos de impresoras | azul `#3a7bd5`, verde `#4cbf5a`, morado `#9b5de5` |
+| Fondo exterior | degradado `#26335c` → `#141b2d` (mañana) |
+| Piso de baldosa | `#e8c49c` / `#e2bb91`, junta clara `#f2e2cb` |
+| Paredes | crema `#f2dcbc` (la de la ventana será verde salvia `#bfd8c2` en el paso 5) |
+| Madera de muebles | clara `#d9a066`, media `#b97a48`, oscura `#7a4b2e` |
+| Metal | oscuro `#2b2f3a`, medio `#5a6274` |
+| Computador viejo | beige `#e6dcc4` / `#c9bb9a` |
+| Acentos de impresoras | azul `#3f86e0`, verde `#4cbf5a`, morado `#9b5de5` |
 | Marcas de lugar libre | cian `#38d6ff` |
-| Cama de impresión | gris `#737b8c`, para que se vean las piezas oscuras |
-| Cinta de embalar | `#c9b48a` |
+| Cama de impresión | PEI dorado `#c99a4e` |
+| Cinta de embalar | `#d8b97a` |
 | Pieza fallida | gris oscuro `#3b3b45` |
+| Personaje | piel `#e9b48e`, pelo `#5c341d`, buzo gris carbón `#3e4250`, jeans `#3d5c96` |
 | Filamentos | los 9 colores de `config.filament_colors` |
 
-### Texturas
-- Se generan por código en `PixelTextures` (no hay archivos de imagen). Tamaño de 8 a 48 píxeles.
-- De 3 a 4 tonos por material, juntas o mortero más oscuros y poco ruido. Nada de texturas realistas ni fotográficas.
-- En pantallas y ventanas se usa `PropBuilder.quad` (un plano), no una caja, para que la textura se vea completa.
-- Pantallas que cambian con el estado: el monitor del computador muestra un cubo de alambre cian mientras modela (`crt_modeling`), y la pantalla de la impresora tiene barras cian al imprimir, un ✓ verde al terminar y un "!" rojo al fallar (`printer_display_busy`, `_done` y `_error`). Las texturas son compartidas: se cambia cuál usa cada objeto, nunca la textura en sí.
+### Superficies
+- No hay archivos de imagen: las superficies las dibuja el sombreador del kit (biblia §3.3): lisa, baldosa (junta, variación por baldosa y bisel que atrapa la luz), madera (tablas y veta), pintura, tela, cartón, metal cepillado y PEI dorado. Lo que mide menos de un píxel se apaga solo (nunca centellea).
+- Lo impreso muestra sus **capas** (la pieza, la bandeja, el filamento): crestas, bandas claras y surcos, que se apagan cuando una capa mide menos de 1,3 píxeles.
+- En pantallas y ventanas se usa `PropBuilder.quad` (un plano), no una caja.
+- Pantallas que cambian con el estado: el monitor del computador muestra un cubo de alambre cian mientras modela (`crt_modeling`), y la pantalla de la impresora tiene una barra cian que avanza al imprimir, un ✓ verde al terminar y un "!" rojo al fallar (`printer_display_busy`, `_done` y `_error`). Cada estado es un material compartido: se cambia cuál usa cada objeto, nunca el material en sí.
 
 ### Modelos
 - Formas básicas a **escala real**: una impresora tipo Ender mide unos 0,45 m y una mesa 0,75 m de alto. El frente mira hacia **+Z** y la base queda en y = 0.
@@ -107,7 +115,7 @@ Todo sale del tema común `UiTheme`; no se crean estilos sueltos.
 - **Activo o seleccionado:** borde cian brillante, fondo `#0f2a40` y más brillo.
 - **Tipografía:** solo **Nunito** (`assets/fonts`), regular (peso 650) y negrita (peso 850). Tamaños: títulos 32, normal 24, secundario 21 y pequeño 19.
 - **Iconos:** SVG de 48×48 en `assets/icons`, de trazo blanco de 4 px con puntas redondeadas, teñidos por código. La moneda es el único icono a color. Para el ciclo de pedidos se agregaron `design` (lápiz) y `warning` (triángulo).
-- **Vistas 3D en la interfaz** (`ModelPreview`): el retrato del personaje y las impresoras y muebles de la tienda usan el mismo pixel art del mundo.
+- **Vistas 3D en la interfaz** (`ModelPreview`): el retrato del personaje y las impresoras y muebles de la tienda usan los mismos materiales y la misma cuenta de color del mundo (tonemap lineal, un sol con sombra).
 - **Panel inferior** (`BottomSheet`): la información de un objeto del mundo. Sube desde abajo en 0,18 s y tapa la barra de secciones. Arriba tiene una rayita para deslizar, la vista del objeto, el título y la X; en el medio, filas de icono y texto y un consejo destacado; abajo, botones de 96 px de alto a todo lo ancho, el principal en cian. Como máximo debería tapar la mitad de la pantalla.
 - **Joystick** (`JoystickRing`): un aro de 90 px de radio, azul marino al 35% con borde cian, y una perilla cian. Se dibuja sobre todo el HUD, solo mientras el dedo arrastra.
 - **Burbuja de cercanía** (`InteractBubble`): botón cuadrado de 88 px con el estilo `IconButton` y el icono del objeto, sobre el objeto cercano. Aparece con un pequeño rebote.
@@ -151,8 +159,8 @@ Todo sale del tema común `UiTheme`; no se crean estilos sueltos.
 
 ## 5. Qué evitar
 
-- Texturas realistas, degradados suaves en el mundo o efectos de posprocesado borrosos.
-- Más de una luz con sombras o luces de colores.
+- Texturas realistas o fotográficas y efectos de posprocesado borrosos (el único degradado es el fondo del diorama).
+- Luces del motor además del sol (las lámparas, pantallas y LEDs se calculan en el sombreador del mundo).
 - Tipografías o estilos de iconos distintos.
 - Marcas o productos reales (GDD, sección 3).
 - Estilos de interfaz sueltos fuera de `UiTheme`.
@@ -161,6 +169,6 @@ Todo sale del tema común `UiTheme`; no se crean estilos sueltos.
 
 1. ¿Usa `PropBuilder` y los materiales de `WorldPalette`?
 2. ¿Está a escala real, mira hacia +Z y se distingue de lo que ya existe?
-3. ¿Se ve bien en una captura a la mitad de la resolución, con contorno y sin detalles de menos de 3 cm?
+3. ¿Se ve bien con zoom lejos y cerca, sin contorno y sin detalles de menos de 1 cm? ¿Sus colores salen de `LookPalette`?
 4. ¿La interfaz usa `UiTheme`, `UiKit` e iconos de `assets/icons`?
 5. ¿Los textos usan `tr()`?

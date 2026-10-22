@@ -1,7 +1,7 @@
 class_name PropBuilder
 extends RefCounted
 ## Atajos para armar modelos con formas básicas. Cada forma queda centrada en
-## su origen, como necesita el shader de contorno.
+## su origen (la capa caliente de la pieza que se imprime lo supone).
 
 
 static func box(parent: Node3D, node_name: String, size: Vector3, position: Vector3, material: Material) -> MeshInstance3D:

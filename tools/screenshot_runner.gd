@@ -21,6 +21,7 @@ extends Node
 const MAIN_SCENE: String = "res://game/scenes/main.tscn"
 const SceneBudget: GDScript = preload("res://tests/helpers/scene_budget.gd")
 const FullRoom: GDScript = preload("res://tests/helpers/full_room.gd")
+const CalibrationBoard := preload("res://tools/calibration_board.gd")
 ## Semilla de las partidas: los mismos mensajes en cada corrida.
 const SEED: int = 1234
 ## Paso del mundo en cada cuadro (segundos).
@@ -48,6 +49,10 @@ const JOYSTICK_WALK_TO: Vector2 = Vector2(-1.1, -0.92)
 ## (metros) se suelta el joystick.
 const JOYSTICK_FRAMES_BEFORE_04: int = 6
 const JOYSTICK_ARRIVE_DISTANCE: float = 0.05
+## Tiempo de animación del mundo en cada captura (RoomView.anim_time): las
+## pantallas y los latidos de las marcas salen siempre en el mismo punto, con
+## las marcas en su alfa más alto y la barra de la pantallita a medias.
+const CAPTURE_ANIM_TIME: float = 4.8
 ## Lo más que se avanza la partida esperando que pase algo (segundos reales).
 const MAX_WAIT_SECONDS: int = 600
 ## Lo más que se espera a que se vayan el globo de diálogo y los avisos.
@@ -74,7 +79,7 @@ const CHARACTER_SHOTS: Array[String] = [
 	"32a_personaje_frente", "32b_personaje_perfil", "32c_personaje_espalda", "33_personaje_retrato",
 ]
 const ART_SHOTS: Array[String] = [
-	"30_heroe_sin_hud", "31_normal_sin_hud", "34_impresora_y_escritorio", "45_pieza_creciendo_lejos",
+	"00_calibracion", "30_heroe_sin_hud", "31_normal_sin_hud", "34_impresora_y_escritorio", "45_pieza_creciendo_lejos",
 	"46_tienda_impresoras", "26_familias_de_impresoras", "37_taller_lleno_sin_hud", "38_impresoras_de_cerca",
 ]
 ## Columnas de budget.csv. gl_*: lo que contó OpenGL al dibujar el mundo
@@ -173,6 +178,7 @@ func _run() -> void:
 		await _failed_piece()
 	await _character_shots()
 	if _only != ONLY_CHARACTER:
+		await _calibration()
 		await _art_room_shots()
 		await _families_room()
 		await _full_room()
@@ -408,6 +414,21 @@ func _character_shots() -> void:
 	await _frames(40)
 	await _capture("33_personaje_retrato")
 	await _back_to_game(base)
+
+
+## 00: el modelo de color (tools/calibration_board.gd). Falla si los píxeles
+## no dan lo que dice la biblia de arte §2.4.
+func _calibration() -> void:
+	var board: CalibrationBoard = CalibrationBoard.new()
+	add_child(board)
+	await board.render_all()
+	await _frames(2)
+	await _capture("00_calibracion")
+	for problem: String in board.problems:
+		push_error("Capturas: calibración: " + problem)
+	board.queue_free()
+	_room.day_cycle.apply_hour(Game.state.game_minutes / 60.0)
+	await _frames(2)
 
 
 ## 30, 31, 34, 45 y 46: el cuarto inicial a las 08:00 sin interfaz (entero y
@@ -654,6 +675,7 @@ func _seconds(seconds: float) -> void:
 func _capture(file_name: String) -> void:
 	if file_name not in _planned:
 		push_error("Capturas: %s no está en el manifiesto" % file_name)
+	_room.anim_time = CAPTURE_ANIM_TIME
 	await RenderingServer.frame_post_draw
 	get_tree().root.get_texture().get_image().save_png(_out.path_join(file_name + ".png"))
 	_captured.append(file_name)
