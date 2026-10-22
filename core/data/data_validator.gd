@@ -372,15 +372,17 @@ func _check_orders() -> void:
 			_error("%s: ninguna impresora puede imprimirlo (tamaño, calidad, material o multicolor)" % context)
 
 
+## Mayor quality_delta entre los modos, como lo calcula SimRules (puede ser
+## negativo). Sin modos válidos es 0: ese error ya se informa aparte.
 func _read_best_quality_delta() -> int:
-	var best_quality_delta: int = 0
+	var deltas: Array[int] = []
 	var config: Variant = _files.get("config", {})
 	var modes: Variant = (config as Dictionary).get("print_modes", []) if config is Dictionary else []
 	if modes is Array:
 		for mode: Variant in modes:
 			if mode is Dictionary and _matches(mode.get("quality_delta"), "int"):
-				best_quality_delta = maxi(best_quality_delta, int(mode["quality_delta"]))
-	return best_quality_delta
+				deltas.append(int(mode["quality_delta"]))
+	return int(deltas.max()) if not deltas.is_empty() else 0
 
 
 func _some_printer_can_make(order: Dictionary) -> bool:

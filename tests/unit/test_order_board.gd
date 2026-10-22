@@ -127,6 +127,28 @@ func test_makeability_checks_size_quality_and_material() -> void:
 	assert_false(OrderBoard.is_makeable(_state, _rules, "llavero"), "Sin impresoras no se puede")
 
 
+func test_makeability_needs_a_material_the_printer_takes() -> void:
+	_state.spools.append(Spool.new(_state.take_uid(), "tpu", "negro", 1000))
+	assert_true(OrderBoard.is_makeable(_state, _rules, "funda_flexible"), "La Cubo Uno imprime TPU")
+	_state.printers[0].printer_id = "prisma_mc"
+	assert_false(OrderBoard.is_makeable(_state, _rules, "funda_flexible"), "La Prisma MC no imprime TPU")
+
+
+func test_makeability_counts_the_quality_of_the_best_mode() -> void:
+	_state.spools.append(Spool.new(_state.take_uid(), "petg", "negro", 1000))
+	assert_true(OrderBoard.is_makeable(_state, _rules, "carcasa"), "Calidad 3: la Cubo Uno llega en fino")
+	_rules.best_quality_delta = 0
+	assert_false(OrderBoard.is_makeable(_state, _rules, "carcasa"), "Sin el modo fino la Cubo Uno da calidad 2")
+
+
+func test_orders_above_the_player_level_do_not_count_as_makeable() -> void:
+	_state.spools[0].material_id = "tpu"
+	assert_true(OrderBoard.is_makeable(_state, _rules, "funda_flexible"))
+	assert_false(OrderBoard.has_makeable(_state, _rules), "Con TPU solo se puede la funda, que es de nivel 3")
+	_state.xp = 300
+	assert_true(OrderBoard.has_makeable(_state, _rules))
+
+
 func test_a_busy_printer_still_counts() -> void:
 	_state.printers[0].job = PrintJob.new()
 	assert_true(OrderBoard.is_makeable(_state, _rules, "llavero"))
@@ -225,6 +247,14 @@ func test_fourth_order_is_refused() -> void:
 	assert_eq(_state.orders.size(), 3)
 	assert_eq(_state.offers.size(), 1, "Un comando que falla no cambia nada")
 	assert_true(_sim.changes.is_empty())
+
+
+func test_too_many_orders_is_checked_before_the_material() -> void:
+	for i: int in 3:
+		assert_true(_commands.accept_offer(_add_offer("llavero").uid).ok)
+	var fourth: OrderOffer = _add_offer("maceta")
+	_state.spools[0].grams = 0
+	assert_eq(_commands.accept_offer(fourth.uid).reason, "ERR_TOO_MANY_ORDERS", "El primer problema gana")
 
 
 func test_offer_without_material_is_refused() -> void:

@@ -136,6 +136,14 @@ func test_focus_needs_the_order_being_designed() -> void:
 	assert_true(DesignFlow.check_focus(_state, queued.uid).ok, "El siguiente de la fila ya se está modelando")
 
 
+func test_a_finished_design_says_it_is_not_being_designed() -> void:
+	var order: Order = _accept("llavero")
+	assert_true(_commands.focus_design(order.uid).ok)
+	_sim.advance_game_seconds(order.design_ends_at - _state.game_seconds)
+	assert_eq(order.stage, Order.Stage.READY_TO_PRINT)
+	assert_eq(_commands.focus_design(order.uid).reason, "ERR_NOT_DESIGNING", "Antes que ERR_ALREADY_FOCUSED")
+
+
 func test_focus_never_ends_the_design_on_the_spot() -> void:
 	var order: Order = _accept("soporte_celular")
 	_sim.advance_game_seconds(719)

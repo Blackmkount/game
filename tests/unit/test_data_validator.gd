@@ -84,6 +84,14 @@ func test_detects_missing_description() -> void:
 	_assert_error_mentions("FURNITURE_MESA_AUXILIAR_DESC")
 
 
+## La calidad con el mejor modo es la misma que usa el juego (SimRules): si
+## todos los modos bajan la calidad, la miniatura (calidad 5) no se puede hacer.
+func test_best_mode_quality_can_be_below_the_printer_quality() -> void:
+	for mode: Dictionary in _files["config"]["print_modes"]:
+		mode["quality_delta"] = int(mode["quality_delta"]) - 2
+	_assert_error_mentions("orders.miniatura: ninguna impresora puede imprimirlo")
+
+
 func test_detects_missing_file() -> void:
 	_files.erase("orders")
 	_assert_error_mentions("orders: el archivo debe ser una lista")

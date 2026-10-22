@@ -95,6 +95,23 @@ func test_unknown_order_ids_are_dropped() -> void:
 	assert_eq(loaded.recent_deliveries.size(), state.recent_deliveries.size() - 1)
 
 
+## Si al cargar se descartan todos los mensajes de un tablero lleno (sus
+## pedidos ya no existen en data/), el tablero no queda en pausa para siempre:
+## sin mensajes no hay nada que aceptar o rechazar para reanudarlo.
+func test_a_paused_board_with_free_slots_starts_again() -> void:
+	var state: GameState = GameState.new_game(_rules, 1234)
+	Simulation.new(state, _rules).advance_game_seconds(_rules.first_offer_seconds + _rules.starting_gap_seconds + _rules.offer_interval_seconds)
+	assert_eq(state.offers.size(), _rules.board_slots)
+	assert_eq(state.next_offer_at, -1)
+	assert_eq(_reload(state).next_offer_at, -1, "Con el tablero lleno sigue en pausa")
+	var doc: Dictionary = SaveCodec.encode(state)
+	for offer: Dictionary in doc["offers"]:
+		offer["order_id"] = "no_existe"
+	var loaded: GameState = _decode_ok(doc)
+	assert_true(loaded.offers.is_empty())
+	assert_eq(loaded.next_offer_at, state.game_seconds + _rules.offer_interval_seconds, "El próximo mensaje se espera desde ahora")
+
+
 func test_job_without_its_order_is_dropped() -> void:
 	var state: GameState = _busy_state()
 	var rayo: OwnedPrinter = state.printers[1]
@@ -130,6 +147,24 @@ func test_job_without_its_spool_is_dropped() -> void:
 	assert_eq(loaded.find_order(order_uid).stage, Order.Stage.READY_TO_PRINT)
 
 
+## Un trabajo cuyo pedido dice estar en otra impresora no es de esta: se
+## descarta y el pedido vuelve a esperar una impresora.
+func test_job_of_an_order_on_another_printer_is_dropped() -> void:
+	var state: GameState = _busy_state()
+	var cubo: OwnedPrinter = state.printers[0]
+	var rayo: OwnedPrinter = state.printers[1]
+	var order_uid: int = rayo.job.order_uid
+	var doc: Dictionary = SaveCodec.encode(state)
+	for order: Dictionary in doc["orders"]:
+		if int(order["uid"]) == order_uid:
+			order["printer_uid"] = cubo.uid
+	var loaded: GameState = _decode_ok(doc)
+	assert_null(loaded.find_printer(rayo.uid).job)
+	assert_eq(loaded.find_order(order_uid).stage, Order.Stage.READY_TO_PRINT)
+	assert_eq(loaded.find_order(order_uid).printer_uid, -1)
+	assert_eq(loaded.find_printer(cubo.uid).job.order_uid, cubo.job.order_uid, "El trabajo de la otra impresora sigue")
+
+
 func test_two_orders_designing_is_invalid() -> void:
 	var doc: Dictionary = SaveCodec.encode(_busy_state())
 	doc["orders"][0]["stage"] = "designing"
@@ -145,6 +180,9 @@ func test_events_in_the_past_are_invalid() -> void:
 	doc = SaveCodec.encode(state)
 	doc["printers"][1]["job"]["ends_at"] = state.game_seconds - 1
 	_assert_invalid(doc, "termina en el pasado")
+	doc = SaveCodec.encode(state)
+	doc["orders"][1]["design_ends_at"] = state.game_seconds - 1
+	_assert_invalid(doc, "el modelado del pedido %d termina en el pasado" % state.designing_uid)
 
 
 func test_uids_must_be_unique_and_below_next_uid() -> void:
@@ -161,6 +199,9 @@ func test_unknown_workshop_ids_are_invalid() -> void:
 	var doc: Dictionary = SaveCodec.encode(_busy_state())
 	doc["spools"][0]["material_id"] = "oro"
 	_assert_invalid(doc, "oro")
+	doc = SaveCodec.encode(_busy_state())
+	doc["spools"][1]["color_id"] = "dorado"
+	_assert_invalid(doc, "dorado")
 	doc = SaveCodec.encode(_busy_state())
 	doc["printers"][1]["furniture_uid"] = 999
 	_assert_invalid(doc, "mueble que no existe")
@@ -198,15 +239,37 @@ func test_garbage_gives_null_and_a_reason() -> void:
 	_assert_invalid(doc, "job")
 
 
-## Se guarda antes del primer mensaje y las dos partidas siguen 500 s reales.
+## El taller ocupado avanza 8 horas reales dos veces: sin guardar nunca, y
+## guardando y cargando cada media hora real, con piezas a mitad de imprimir y
+## fallas ya decididas. Las dos partidas terminan iguales.
 func test_continuing_after_save_and_load_equals_not_saving() -> void:
-	var state: GameState = GameState.new_game(_rules, 1234)
-	var simulation: Simulation = Simulation.new(state, _rules)
-	simulation.advance(2.0)
-	var loaded: GameState = _reload(state)
-	simulation.advance(500.0)
-	Simulation.new(loaded, _rules).advance(500.0)
-	assert_eq(_json(SaveCodec.encode(loaded)), _json(SaveCodec.encode(state)))
+	var played: Simulation = SimFixtures.busy_workshop(_rules)
+	var reloaded: GameState = _reload(played.state)
+	var events: SimChanges = SimChanges.new()
+	for i: int in 16:
+		played.advance(1800.0)
+		var relay: Simulation = Simulation.new(reloaded, _rules)
+		relay.advance(1800.0)
+		events.failures.append_array(relay.changes.failures)
+		events.computer = events.computer or relay.changes.computer
+		events.arrived_offers.append_array(relay.changes.arrived_offers)
+		reloaded = _reload(reloaded)
+	assert_eq(_json(SaveCodec.encode(reloaded)), _json(SaveCodec.encode(played.state)))
+	# Pasó de todo después de cargar. Si un cambio de semilla o de datos lo evita, esta prueba avisa.
+	assert_false(events.failures.is_empty(), "Alguna pieza falló")
+	assert_true(events.computer, "El computador terminó modelos")
+	assert_false(events.arrived_offers.is_empty(), "Llegaron mensajes")
+
+
+## Cada variable de cada objeto de la partida vuelve igual al cargar. Un campo
+## nuevo que se olvide en encode() y decode() a la vez no cambia la ida y
+## vuelta por JSON, pero sí hace fallar esta prueba.
+func test_every_field_survives_loading() -> void:
+	var state: GameState = _busy_state()
+	state.scripted_offers.append("maceta")
+	var differences: Array[String] = []
+	_compare_fields(state, _reload(state), "state", differences)
+	assert_eq(differences, [] as Array[String])
 
 
 ## Partida a mitad del ciclo armada a mano: un mensaje, un pedido en cada
@@ -309,6 +372,32 @@ func _assert_invalid(doc: Dictionary, expected_text: String) -> void:
 
 func _json(doc: Dictionary) -> String:
 	return JSON.stringify(doc, "", true)
+
+
+## Compara dos partidas variable por variable (las de los scripts), entrando
+## en los objetos y las listas. Anota en `differences` la ruta de lo distinto.
+func _compare_fields(expected: Variant, actual: Variant, path: String, differences: Array[String]) -> void:
+	if expected is RandomNumberGenerator:
+		var expected_rng: RandomNumberGenerator = expected
+		var actual_rng: RandomNumberGenerator = actual
+		if expected_rng.seed != actual_rng.seed or expected_rng.state != actual_rng.state:
+			differences.append(path)
+	elif expected is Object:
+		if not actual is Object:
+			differences.append(path)
+			return
+		for property: Dictionary in (expected as Object).get_property_list():
+			if property["usage"] & PROPERTY_USAGE_SCRIPT_VARIABLE:
+				var name: String = property["name"]
+				_compare_fields((expected as Object).get(name), (actual as Object).get(name), path + "." + name, differences)
+	elif expected is Array:
+		if not actual is Array or (expected as Array).size() != (actual as Array).size():
+			differences.append(path)
+			return
+		for i: int in (expected as Array).size():
+			_compare_fields(expected[i], actual[i], "%s[%d]" % [path, i], differences)
+	elif typeof(expected) != typeof(actual) or expected != actual:
+		differences.append(path)
 
 
 func _find_forbidden_types(value: Variant, path: String, found: Array[String]) -> void:

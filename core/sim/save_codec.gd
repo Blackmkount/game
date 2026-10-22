@@ -238,7 +238,10 @@ static func _decode_delivery(read: SaveReader, entry: Dictionary) -> Delivery:
 ## carrete, modo, color o tipo de fallo ya no existe, o que no corresponde a
 ## la etapa de su pedido, se descarta (la impresora queda libre). Un pedido
 ## "imprimiendo" o "impreso" sin su trabajo vuelve a "listo para imprimir".
+## Un tablero en pausa al que se le descartaron mensajes vuelve a esperar el
+## próximo: sin mensajes no habría nada que responder para reanudarlo.
 static func _repair(state: GameState, rules: SimRules) -> void:
+	OrderBoard.resume_if_paused(state, rules, state.game_seconds)
 	for printer: OwnedPrinter in state.printers:
 		if printer.job != null and not _job_fits(state, rules, printer):
 			printer.job = null

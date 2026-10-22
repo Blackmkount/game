@@ -310,6 +310,13 @@ func test_offer_estimate_plans_every_piece() -> void:
 	assert_eq(plan.profit_cents, 5440)
 
 
+func test_offer_estimate_without_printers() -> void:
+	_state.printers.clear()
+	var plan: PrintPlan = PrintPlanner.estimate_for_offer(_state, _rules, "llavero")
+	assert_false(plan.ok)
+	assert_eq(plan.reason.reason, "ERR_PRINTER_GONE")
+
+
 func test_offer_estimate_without_material() -> void:
 	_state.spools[0].grams = 50
 	var plan: PrintPlan = PrintPlanner.estimate_for_offer(_state, _rules, "maceta")
