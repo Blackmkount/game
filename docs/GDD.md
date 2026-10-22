@@ -2,7 +2,7 @@
 
 > Este documento es la fuente de verdad sobre **qué** es el juego. Las reglas técnicas sobre **cómo** se construye están en `CLAUDE.md`. Los números de este documento son valores iniciales para balancear, no definitivos: los valores reales viven en `data/*.json`.
 >
-> **Versión 2.2** (2026-10-21). Los cambios están resumidos en la sección 16. El estilo visual se detalla en `docs/ESTILO.md` y el orden de trabajo en `docs/RUTA.md`.
+> **Versión 2.3** (2026-10-22). Los cambios están resumidos en la sección 16. El estilo visual se detalla en `docs/ESTILO.md` y el orden de trabajo en `docs/RUTA.md`.
 
 ---
 
@@ -36,16 +36,16 @@ Cada función nueva debe apoyar al menos uno de estos pilares. Si no apoya ningu
 
 ## 4. Ciclo de juego
 
-**Ciclo corto (segundos a minutos)**
-1. Llega un pedido como mensaje de un cliente.
-2. El jugador lo acepta o lo rechaza.
-3. Asigna una impresora libre, un material compatible y un modo de impresión.
-4. La impresión avanza con el tiempo del juego. Puede fallar.
-5. Al terminar, el jugador toca la pieza para entregarla.
-6. Cobra dinero y gana experiencia.
+**Ciclo corto (segundos a minutos):** del mensaje a la puerta, en seis pasos (detalle en la sección 5.17).
+1. **Confirmar:** llega un pedido como mensaje de un cliente y el jugador lo acepta o lo rechaza.
+2. **Modelar:** el computador viejo modela el pedido en 3D. Empieza solo al aceptar.
+3. **Imprimir:** el jugador asigna una impresora, un carrete y un modo (el juego recomienda uno). La pieza crece capa a capa con el tiempo del juego y puede fallar.
+4. **Retirar:** al terminar, saca las piezas de la impresora. Quedan en el rincón de despacho.
+5. **Embalar:** las mete en una caja.
+6. **Despachar:** el paquete sale por la puerta. Cobra dinero y gana experiencia.
 
 **Ciclo medio (una sesión)**
-Revisar qué terminó mientras no estaba, entregar, recibir los envíos que llegaron, **pedir material antes de que se acabe** (tarda días en llegar), aceptar nuevos pedidos, dejar impresiones largas corriendo y comprar una impresora, un accesorio o un mueble.
+Revisar qué terminó mientras no estaba, retirar, embalar y despachar, recibir los envíos que llegaron, **pedir material antes de que se acabe** (tarda días en llegar), aceptar nuevos pedidos, dejar impresiones largas corriendo y comprar una impresora, un accesorio o un mueble.
 
 **Ciclo largo (días o semanas)**
 Subir de nivel, desbloquear impresoras, materiales y clientes, llenar la habitación de muebles y máquinas, mudarse al garaje y alcanzar hitos.
@@ -74,14 +74,17 @@ Cada pedido tiene:
 | Piezas | Cantidad de piezas que hay que imprimir |
 | Gramos por pieza | Material consumido |
 | Tiempo por pieza | Minutos de juego con una impresora de velocidad 1,0× en modo Normal |
-| Pago | Dinero al entregar, en dólares |
-| Plazo | Opcional, en días de juego. Si se entrega tarde, se cobra la mitad y no se gana experiencia |
-| Experiencia | Puntos de experiencia (XP) al entregarse a tiempo |
+| Pago | Dinero al despachar, en dólares |
+| Plazo | Opcional, en días de juego. Se revisa al despachar: si va tarde, se cobra la mitad y no se gana experiencia (igual cuenta como entregado) |
+| Experiencia | Puntos de experiencia (XP) al despacharse a tiempo |
 | Nivel mínimo | Nivel del jugador necesario para que este pedido aparezca |
+| Modelado | Cómo llega el diseño (plantilla, a medida, hay que medir o archivo del cliente) y cuántos minutos de juego tarda en modelarse (sección 5.17) |
+| Mensaje | Lo que escribe el cliente al pedirlo |
 
-- Hay un tablero con un número limitado de pedidos disponibles que se renueva con el tiempo.
-- Rechazar un pedido no tiene castigo; simplemente desaparece.
-- **Pedidos de varias piezas:** un pedido se imprime completo en una sola impresora, pieza por pieza. Cada pieza es una impresión independiente: al empezar se decide si fallará, y un fallo solo pierde esa pieza.
+- **Tablero:** hasta 3 mensajes sin responder y hasta 3 pedidos en curso. Los mensajes no vencen. El primero (un llavero) llega al minuto de juego de empezar, el segundo 27 minutos de juego después, y desde ahí uno cada 60 minutos de juego (2,5 minutos reales). Con el tablero lleno no llegan más hasta responder uno.
+- **Solo llegan pedidos que el jugador puede hacer** con sus impresoras y su material, y de su nivel.
+- Rechazar un mensaje no tiene castigo; simplemente desaparece. Cancelar un pedido aceptado tampoco, salvo el material que ya se usó.
+- **Pedidos de varias piezas:** un pedido se imprime completo en una sola impresora, pieza por pieza. Cada pieza es una impresión independiente: al empezar se decide si fallará, y un fallo solo pierde esa pieza. Al terminar una pieza, la siguiente empieza sola; la impresora guarda las terminadas hasta que el jugador las retira, una sola vez por pedido.
 - **Plazos y ausencia:** el plazo solo corre mientras el juego está abierto. Mientras el jugador no está, se congela (pilar 4).
 
 ### 5.3 Impresoras
@@ -89,7 +92,7 @@ Cada pedido tiene:
 | Atributo | Descripción |
 |---|---|
 | Tecnología | FDM (filamento) o resina |
-| Velocidad | Multiplicador sobre el tiempo por pieza |
+| Velocidad | Divide el tiempo por pieza: una impresora de 2,0× imprime en la mitad del tiempo |
 | Calidad máxima | De 1 a 5 |
 | Volumen | S (hasta 18 cm), M (hasta 25 cm) o L (más grande) |
 | Materiales compatibles | Lista |
@@ -125,7 +128,8 @@ La calidad final es la calidad máxima de la impresora ajustada por el modo, sin
 
 - El material se compra en la tienda (ver 5.6) y tarda días en llegar.
 - **Almacenamiento:** la habitación guarda hasta 4 kg de material. Las repisas y estanterías aumentan ese límite (ver 5.9). No se puede comprar más de lo que cabe, contando lo que viene en camino.
-- **Si el material no alcanza:** se puede empezar igual, con un aviso. La impresión se detiene justo donde se acaba el material, y eso se sabe desde el inicio. Sin sensor de filamento, la pieza falla; con sensor, se pausa y continúa al reponer material.
+- **Material apartado:** al empezar a imprimir se aparta todo el material del pedido. Si una pieza falla, se pierde solo lo impreso hasta el fallo y el resto vuelve al carrete. Por ahora no se puede empezar sin material suficiente.
+- **Si el material no alcanza** *(Fase 1, tarea 8)*: se puede empezar igual, con un aviso. La impresión se detiene justo donde se acaba el material, y eso se sabe desde el inicio. Sin sensor de filamento, la pieza falla; con sensor, se pausa y continúa al reponer material.
 - **Don Ernesto al rescate:** si el jugador no tiene material, ni dinero para un carrete, ni impresiones en curso, ni piezas por entregar, ni envíos en camino, Don Ernesto le regala un carrete de PLA. Así nunca se queda atascado.
 - **Colores:** cada carrete tiene un color (9 colores en `config.filament_colors`). Por ahora es solo visual: la pieza sale del color del carrete. Los pedidos que exigen un color son posteriores al MVP.
 - Mejora posterior: compra automática de material cuando se acaba.
@@ -159,7 +163,10 @@ Cuando una impresión falla, se detiene en un punto de su avance y el material u
 
 - Espagueti y warping ocurren al azar: probabilidad de fallo = (1 − fiabilidad) × modificador del material × modificador del modo × modificadores de accesorios y muebles.
 - El fin de filamento solo ocurre cuando el material no alcanza (ver 5.5).
-- Todo se decide al iniciar cada pieza: si fallará, de qué tipo y en qué porcentaje de avance.
+- Todo se decide al iniciar cada pieza: si fallará, de qué tipo y en qué porcentaje de avance. El espagueti se detiene entre el 10% y el 60% del avance; el warping, entre el 2% y el 25%, porque la pieza se despega en las primeras capas.
+- **Regalo de Don Ernesto:** las 3 primeras piezas de una partida nueva nunca fallan ("la dejó recién calibrada"), para que la primera venta salga bien.
+- Tras un fallo, el jugador elige **Limpiar y reintentar** (vuelve a imprimir esa pieza y puede cambiar el modo) o **Limpiar** (libera la impresora; el pedido vuelve a "listo para imprimir" y conserva las piezas terminadas).
+- Por ahora un fallo se ve como una pieza oscura detenida, la pantalla de la impresora en rojo y una burbuja ⚠. El espagueti dibujado, la cámara y el sensor llegan con la Fase 1, tarea 8.
 - Los fallos pueden ocurrir mientras el jugador no está. Volver y encontrar un espagueti es parte del humor del juego, pero la cámara está disponible desde el inicio para que no resulte frustrante.
 
 ### 5.8 Accesorios
@@ -276,6 +283,45 @@ Propuestas aprobadas por el dueño, basadas en datos reales (`docs/REFERENCIAS.m
 - **Impresoras modernas más fiables:** de 92–94% a 95–97%. En la vida real fallan de 2 a 5% de las veces; las clásicas, de 10 a 20%.
 - **Aprender reduce fallos:** el Manual del maker (sección 7) da un pequeño bono de fiabilidad. En un estudio real, leer el material de capacitación bajó los fallos de 33% a 6%.
 
+### 5.17 Del computador a la puerta (versión 2.3)
+
+Lo que pasa con un pedido después de aceptarlo. **Todo se puede hacer tocando desde cualquier parte** (sección 7.1): desde su tarjeta en Pedidos o tocando el objeto. Caminar cerca solo agrega un atajo.
+
+**Modelar**
+- Al aceptar, el computador viejo empieza a modelar el pedido solo. Modela uno a la vez, en fila, y trabaja mientras las impresoras imprimen.
+- Cuánto tarda depende de cómo llega el diseño, como en un taller real:
+
+| Cómo llega el diseño | Pedidos (minutos de juego) |
+|---|---|
+| Plantilla: solo hay que adaptarla | Llavero (4), funda flexible (8) |
+| A medida, desde cero | Soporte para celular (12), maceta (16), organizador (20), letrero (24) |
+| Hay que medir con pie de rey | Perilla (30), carcasa (30), engranaje (36) |
+| El cliente mandó el archivo | Figura (2), miniatura (2), casco de cosplay (6) |
+
+- **Concentrarse** (opcional, una vez por pedido): ahorra la mitad del tiempo que falta. Se puede apagar desde los datos si se siente como una obligación.
+- Mientras modela, la pantalla del computador muestra un cubo de alambre.
+
+**Imprimir**
+- Con el modelo listo, el juego **recomienda** impresora, carrete y modo, y muestra: el tiempo en tiempo real ("Lista en 50 s (20 min de juego)"), la calidad, el riesgo de fallo, los gramos y lo que queda en el carrete, el costo del material y la ganancia. Con botones se cambia el modo, el carrete o el pedido.
+- Si algo no sirve, el botón Imprimir se apaga y dice por qué ("No cabe: la Rayo Mini es tamaño S").
+- La pieza crece capa a capa sobre la cama. En pedidos de varias piezas, las terminadas esperan en una bandeja al frente de la impresora.
+
+**Retirar, embalar y despachar**
+- **Retirar:** al terminar aparece una burbuja ✓ sobre la impresora. Retirar saca todas las piezas del pedido de una vez y las lleva al **rincón de despacho**: una mesita para embalar con un cajón de salida, junto a la puerta. Es fijo: no ocupa ninguno de los 6 lugares de muebles y deja libres el paso por la puerta y el lugar donde llegarán las cajas de la tienda.
+- **Embalar:** la caja abierta con la pieza pasa a ser un paquete con cinta, sobre el cajón. No cuesta dinero ni usa cajas del inventario.
+- **Despachar:** el paquete sale por la puerta y **se cobra en ese momento**, sin tiempo de viaje. El plazo se revisa al despachar. Cada tipo de cliente tiene su forma de entrega, solo como texto: los amigos pasan a buscarlo, a los vecinos se lo lleva el jugador, a tiendas y talleres los atiende un mensajero en moto, y a makers y cosplayers les llega por encomienda.
+- Al cobrar, "+$6" vuela al dinero, la barra de experiencia se llena y el cliente agradece con una frase.
+
+**Avisos y atajos**
+- **Burbujas de estado:** sobre la impresora (tiempo que falta, ✓ o ⚠), el computador (tiempo que falta) y el rincón de despacho (cuántos paquetes esperan).
+- **Número en Pedidos:** cuántas cosas esperan al jugador (mensajes, piezas para retirar, embalar o despachar, fallos y modelos listos con una impresora libre).
+- El personaje comenta de vez en cuando el siguiente paso ("¡Terminó! Voy a sacar la pieza").
+- **Burbuja de cercanía:** si no hay nada que decidir (retirar, embalar, despachar o concentrarse), tocarla hace la acción directamente. Para imprimir y ante un fallo, siempre abre el panel.
+
+**Ferretería del barrio** (sección 5.6): mientras no existe la tienda, vende 1 kg de PLA o PETG blanco al instante, por $27 y $30. Aparece en Pedidos cuando no hay nada que se pueda hacer, y en Inventario.
+
+**Guardado:** la partida se guarda sola, después de cada acción, cada 10 segundos y al salir. Mientras el juego está cerrado, el tiempo no pasa: el progreso fuera del juego llega con la Fase 1, tarea 9. En Ajustes, "Empezar partida nueva" borra la partida con dos toques.
+
 ## 6. Datos iniciales
 
 ### 6.1 Impresoras
@@ -324,10 +370,10 @@ Propuestas aprobadas por el dueño, basadas en datos reales (`docs/REFERENCIAS.m
 El dueño eligió que **el personaje se maneje con un joystick** (2026-10-21).
 
 - **Joystick flotante:** se apoya el pulgar en cualquier parte del mundo (fuera de los botones) y se arrastra. Aparece un aro bajo el dedo y el personaje camina hacia donde apunta el pulgar en la pantalla, también en diagonal. Se juega con una mano.
-- **Tocar un objeto** (impresora, mueble, lugar libre, puerta): abre al instante su **panel inferior**, desde cualquier parte del cuarto. El personaje se gira a mirarlo.
+- **Tocar un objeto** (impresora, mueble, lugar libre, puerta, rincón de despacho): abre al instante su **panel inferior**, desde cualquier parte del cuarto. El personaje se gira a mirarlo.
 - **Tocar el piso:** el personaje camina solo hasta ese punto, rodeando los muebles. Sirve también a quien no puede o no quiere usar el joystick.
 - **Tocar al personaje:** dice una frase graciosa.
-- **Cercanía:** al caminar junto a una impresora, un mueble o la puerta, el objeto se marca con un marco cian en el piso y aparece una burbuja encima. Tocar la burbuja abre su panel.
+- **Cercanía:** al caminar junto a una impresora, un mueble, la puerta o el rincón de despacho, el objeto se marca con un marco cian en el piso y aparece una burbuja encima. Tocar la burbuja abre su panel, o hace la acción directamente cuando no hay nada que decidir (sección 5.17).
 - **Cámara:** sigue al personaje. Tiene tres niveles de zoom: **normal**, **cerca** y **lejos**, que muestra todo el espacio. Se cambian con el botón de abajo a la izquierda o pellizcando.
 - **Paneles inferiores:** se cierran con la X, deslizándolos hacia abajo, tocando el mundo o con el botón "atrás" de Android. Empezar a caminar también los cierra.
 - **Regla de diseño: caminar nunca es obligatorio para decidir.** El personaje es presentación. Toda la información y todas las decisiones (pedidos, tienda, asignar impresiones) se pueden hacer tocando. Caminar nunca bloquea los pagos ni el progreso fuera del juego. Si más adelante alguna acción pide ir hasta un lugar (por ejemplo, recoger piezas), será corta, dará gusto y se podrá automatizar.
@@ -342,7 +388,7 @@ Como la imagen de referencia; el detalle está en `docs/ESTILO.md`.
 - **Perfil:** al tocar el retrato. **Mapa:** al tocar la puerta y desde Perfil.
 - **Objetivos:** una línea compacta con el siguiente objetivo; al tocarla se abre Tareas.
 - **Inventario** reúne lo que antes estaba en "Taller": material, envíos en camino, impresoras con su estado y muebles con sus lugares libres.
-- **Burbujas de estado** sobre las impresoras (lista, fallo, sin material, avance), con icono y color.
+- **Burbujas de estado** sobre las impresoras, el computador y el rincón de despacho (sección 5.17), con icono y texto. El botón Pedidos muestra un número con lo que espera al jugador.
 - Las secciones se abren como un panel sobre la habitación, que sigue visible detrás. La información de un objeto del mundo se abre como panel inferior.
 - **Retroalimentación:** cada acción importante tiene sonido, animación y vibración ligera. Cobrar dinero y subir de nivel deben sentirse muy bien.
 - Diseño para pulgares: botones grandes en la mitad inferior de la pantalla, respetando las áreas seguras (notch y barra de gestos).
@@ -425,7 +471,6 @@ Lavado y curado de la resina, Titán Pro, local comercial y espacios mayores, em
 | Duración de impresiones | Sección 5.12, a ajustar con el simulador y pruebas reales |
 | Apariencia del protagonista | Se define en la fase de arte |
 | Compilación de iOS | Mac propia o servicio en la nube, a decidir antes de la Fase 5 |
-| Entregar con el joystick | ¿Se cobra tocando la impresora terminada, o el personaje recoge la pieza y la lleva a una caja de despacho junto a la puerta? Se decide antes de la Fase 1, tarea 7, respetando la regla de la sección 7.1 |
 | Monetización | Sección 11 |
 
 ## 15. Fases de desarrollo
@@ -493,3 +538,19 @@ Cada fase termina con algo que se puede probar. No se avanza a la siguiente sin 
 - Tocar un objeto abre su panel al instante, sin tener que caminar; tocar el piso hace caminar al personaje.
 - Resalte por cercanía con burbuja, cámara que sigue al personaje y tres niveles de zoom.
 - Regla de diseño: caminar nunca es obligatorio para decidir ni bloquea pagos ni progreso fuera del juego (7.1).
+
+### Versión 2.3 (2026-10-22)
+
+**Pedido del dueño:** trabajar la experiencia de confirmar pedidos, modelar en 3D el pedido, imprimirlo, retirar la pieza impresa, embalarla y despacharla. Esto responde la pregunta abierta de la entrega (sección 14): el personaje retira la pieza, la embala y la despacha.
+
+**Diseño propuesto por Claude, para que el dueño lo confirme:**
+- El ciclo corto pasa a 6 pasos (sección 4) y se detalla en la nueva sección 5.17.
+- Se cobra al despachar, sin tiempo de viaje, y el plazo se revisa en ese momento (5.2).
+- Modelar empieza solo en el computador, uno a la vez y mientras se imprime, con tiempos según cómo llega el diseño, y un botón opcional "Concentrarse" (5.17).
+- Rincón de despacho fijo junto a la puerta, sin ocupar lugares de muebles (5.17).
+- Tablero de pedidos: 3 mensajes y 3 pedidos en curso como máximo, el primer mensaje al minuto de juego y uno nuevo cada 60 minutos de juego en lugar de 120, solo pedidos que se pueden hacer (5.2).
+- Las 3 primeras piezas no fallan, puntos de falla por tipo, y "Limpiar y reintentar" o "Limpiar" (5.7).
+- El material se aparta al empezar a imprimir (5.5).
+- La velocidad de la impresora divide el tiempo; se corrige la redacción (5.3).
+- La burbuja de cercanía hace la acción cuando no hay nada que decidir (7.1).
+- Se adelantan un guardado mínimo (de la Fase 1, tarea 4) y la ferretería (de la tarea 5).

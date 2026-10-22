@@ -35,6 +35,45 @@ func test_room_starts_with_table_printer_on_floor_and_character() -> void:
 	assert_eq(free_slots.size(), 5, "La habitación tiene 6 lugares y la mesa ocupa uno")
 
 
+func test_the_dispatch_corner_stands_by_the_door_without_taking_a_slot() -> void:
+	var corner: Node3D = _room.get_node_or_null("DispatchCorner")
+	assert_not_null(corner)
+	for i: int in 3:
+		assert_true(corner.get_node_or_null("PackSpot%d" % i) is Marker3D, "PackSpot%d" % i)
+		assert_true(corner.get_node_or_null("OutSpot%d" % i) is Marker3D, "OutSpot%d" % i)
+	var room: RoomView = _room
+	assert_eq(room.dispatch_item.kind, WorldInteractable.Kind.DISPATCH)
+	assert_eq(room.item_for(WorldInteractable.Kind.DISPATCH, 0), room.dispatch_item)
+	assert_true(room.dispatch_item.reachable)
+	assert_eq(_room.find_children("FreeSlot*", "", false, false).size(), 5, "No usa ninguno de los 6 lugares")
+
+
+func test_the_room_shows_a_loaded_print_halfway() -> void:
+	# Un llavero a mitad de impresión, guardado y cargado de nuevo.
+	Game.advance(3.0)
+	Game.accept_offer(Game.state.offers[0].uid)
+	Game.advance(10.0)
+	var order: Order = Game.state.orders[0]
+	var plan: PrintPlan = PrintPlanner.recommend(Game.state, Game.rules, order)
+	assert_true(Game.start_print(order.uid, plan.printer_uid, plan.spool_uid, plan.mode_id).ok)
+	Game.advance(25.0)
+	var errors: Array[String] = []
+	var loaded: GameState = SaveCodec.decode(SaveCodec.encode(Game.state), Game.rules, errors)
+	assert_true(errors.is_empty(), str(errors))
+	_main.queue_free()
+	await wait_process_frames(1)
+	Game._start(loaded)
+	_main = MAIN_SCENE.instantiate()
+	add_child_autofree(_main)
+	await wait_process_frames(2)
+	_room = _main.get_node("WorldView/SubViewport/Room")
+	var piece: MeshInstance3D = _room.get_node("Printer%d/PieceSpot/Piece" % plan.printer_uid)
+	assert_true(piece.visible, "La pieza está en la cama")
+	var height: float = (piece.mesh as BoxMesh).size.y
+	assert_gt(height, 0.0)
+	assert_lt(height, PieceModel.SIZES["S"].y, "Va por la mitad")
+
+
 func test_top_bar_shows_level_and_money() -> void:
 	var labels: Array[String] = _label_texts(_hud.get_node("TopBar"))
 	assert_has(labels, "Nivel 1")
@@ -56,6 +95,17 @@ func test_closing_a_screen_goes_back_home() -> void:
 	await wait_process_frames(1)
 	assert_eq(_hud.current_screen_id(), "home")
 	assert_null(_hud.get_node_or_null("ScreenHost/Screen"))
+
+
+func test_the_inventory_hides_empty_spools() -> void:
+	var empty: Spool = Spool.new(Game.state.take_uid(), "petg", "negro", 0)
+	Game.state.spools.append(empty)
+	_hud.open_screen("inventory")
+	var texts: Array[String] = _label_texts(_hud.get_node("ScreenHost/Screen"))
+	assert_has(texts, "PLA · Blanco")
+	assert_does_not_have(texts, "PETG · Negro", "El carrete vacío no se muestra")
+	_hud.open_screen("home")
+	await wait_process_frames(1)
 
 
 func test_every_screen_opens() -> void:

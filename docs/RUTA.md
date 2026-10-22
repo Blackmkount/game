@@ -171,13 +171,14 @@ Se propusieron tres opciones (A: tocar y el personaje lo hace; B: joystick; C: p
 
 ## 5. Jugabilidad: el ciclo y sus decisiones
 
-### 5.1 Un pedido, paso a paso (Fase 1)
-1. **Llega un mensaje** al chat de Pedidos: burbuja con número, sonido de mensaje y la frase del cliente.
-2. **Lo abres:** tarjeta con los requisitos en iconos (tamaño, calidad, material, multicolor, plazo), el pago y la XP. Botones **Aceptar** y **Rechazar**.
-3. **Imprimir:** el juego **recomienda** impresora, material y modo y muestra: tiempo (en tiempo real), calidad, riesgo de fallo, costo del material y ganancia. Un toque en "Imprimir"; "Cambiar" para elegir otra cosa. Si algo no sirve, dice por qué ("No cabe: la Rayo Mini es tamaño S").
-4. **La pieza crece** capa a capa en la impresora, con una burbuja de avance encima.
-5. **Termina:** burbuja ✓ sobre la impresora. **Pendiente de decidir antes de la tarea 7** (sección 11): o se cobra tocando la impresora, o el personaje recoge la pieza y la lleva a una caja de despacho junto a la puerta, al estilo de los juegos con joystick.
-6. **Cobras:** monedas que vuelan al contador, "+$6" flotante y la barra de XP que se llena.
+### 5.1 Un pedido, paso a paso (Fase 1) · Hecho
+Del mensaje a la puerta en seis pasos, como pidió el dueño. El detalle está en el GDD, sección 5.17.
+1. **Llega un mensaje** a Pedidos: número rojo en el botón y el personaje lo comenta. La tarjeta tipo chat muestra lo que escribe el cliente, los requisitos con iconos (tamaño, calidad, material, piezas, plazo), cuánto tardan modelar e imprimir, el pago, la XP y la ganancia. Botones **Aceptar** y **Rechazar**.
+2. **Modelar:** el computador empieza solo. La tarjeta muestra el paso (2 de 6) con su barra.
+3. **Imprimir:** el juego **recomienda** impresora, carrete y modo y muestra el tiempo real, la calidad, el riesgo de fallo, el material y la ganancia. Un toque en "Imprimir"; botones para cambiar el modo, el carrete o el pedido. Si algo no sirve, dice por qué ("No cabe: la Rayo Mini es tamaño S").
+4. **La pieza crece** capa a capa en la impresora, con una burbuja de tiempo encima. Al terminar, burbuja ✓.
+5. **Retirar, embalar y despachar** en el rincón de despacho junto a la puerta: tocando desde cualquier parte o con la burbuja de cercanía, sin que caminar sea obligatorio.
+6. **Cobras:** "+$6" vuela al dinero, la barra de XP se llena y el cliente agradece. Los sonidos y la vibración llegan en la Fase 2.
 
 ### 5.2 Las decisiones que hacen el juego (pilar 2)
 - **Qué pedido aceptar:** corto y bien pagado por hora, contra largo para dejarlo corriendo; con plazo o sin plazo; mucha XP o mucho dinero.
@@ -320,15 +321,17 @@ Proyecto Godot, pruebas, integración continua y versión web en GitHub Pages.
 | # | Tarea | Qué podrás probar en el teléfono | Tamaño |
 |---|---|---|---|
 | 1 | Datos de balance y su validación | — | Hecha |
-| 2 | **Controles del mundo con joystick:** joystick flotante, personaje que camina con choques y animación, tocar objetos y piso, cercanía con resalte y burbuja, paneles inferiores, cámara que sigue con tres niveles de zoom, teclado y mouse en la web, ajustes de controles para probar. Capturas automáticas para que Claude revise la interfaz | Caminas con el pulgar, tocas la impresora y ves su panel, cambias el zoom | L |
+| 2 | **Controles del mundo con joystick:** joystick flotante, personaje que camina con choques y animación, tocar objetos y piso, cercanía con resalte y burbuja, paneles inferiores, cámara que sigue con tres niveles de zoom, teclado y mouse en la web, ajustes de controles para probar. Capturas automáticas para que Claude revise la interfaz | Caminas con el pulgar, tocas la impresora y ves su panel, cambias el zoom | Hecha |
 | 3 | **Navegación y HUD despejado** (sección 7.1): barra inferior nueva, objetivo compacto, sin botones laterales | Pedidos queda abajo y se ve más habitación | M |
-| 4 | **Guardado, azar reproducible y menú de pruebas:** guardar en `user://save.json` (versión, archivo temporal, guardado después de cada comando, cada cierto tiempo y al salir), semilla del azar en el estado, versión visible en Ajustes y menú de pruebas oculto | Cierras y abres el juego: sigue igual | M |
-| 5 | **Tienda y envíos:** comprar con confirmación, días de envío, exprés, ferretería, almacenamiento y desbloqueo por nivel; "En camino" en Inventario; la caja llega a la puerta, se abre al tocarla y el objeto aparece en su lugar | Compras la mesa auxiliar, llega días después, la abres y la impresora sube a la mesa | L |
-| 6 | **Pedidos tipo chat:** tablero limitado que se renueva, aceptar y rechazar, plazos, mensajes con personalidad por tipo de cliente | Te llegan mensajes y aceptas un llavero | M |
-| 7 | **Imprimir y entregar:** asignación con recomendación (tiempo real, calidad, riesgo, costo y ganancia), la pieza crece capa a capa, retirar y entregar, dinero y XP con animación básica, subir de nivel. Prueba de que un paso grande da lo mismo que muchos pequeños | Imprimes el llavero, lo ves crecer, cobras $6 y sube la XP | L |
-| 8 | **Fallos y accesorios:** espagueti, warping y fin de filamento visibles; limpiar y reintentar; instalar accesorios; rescate de Don Ernesto | Ves un espagueti y lo limpias; instalas la lámina PEI | M |
+| 4 | **Guardado, azar reproducible y menú de pruebas:** guardar en `user://save.json` (versión, archivo temporal, guardado después de cada comando, cada cierto tiempo y al salir), semilla del azar en el estado, versión visible en Ajustes y menú de pruebas oculto | Cierras y abres el juego: sigue igual | M (parte hecha) |
+| 5 | **Tienda y envíos:** comprar con confirmación, días de envío, exprés, ferretería, almacenamiento y desbloqueo por nivel; "En camino" en Inventario; la caja llega a la puerta, se abre al tocarla y el objeto aparece en su lugar | Compras la mesa auxiliar, llega días después, la abres y la impresora sube a la mesa | L (ferretería hecha) |
+| 6 | **Pedidos tipo chat:** tablero limitado que se renueva, aceptar y rechazar, plazos, mensajes con personalidad por tipo de cliente | Te llegan mensajes y aceptas un llavero | Hecha |
+| 7 | **Modelar, imprimir y despachar:** modelado en el computador, asignación con recomendación (tiempo real, calidad, riesgo, costo y ganancia), la pieza crece capa a capa, retirar, embalar y despachar en el rincón de despacho, dinero y XP con animación básica, subir de nivel. Prueba de que un paso grande da lo mismo que muchos pequeños | Imprimes el llavero, lo ves crecer, lo despachas, cobras $6 y sube la XP | Hecha |
+| 8 | **Fallos y accesorios:** espagueti, warping y fin de filamento visibles; limpiar y reintentar; instalar accesorios; rescate de Don Ernesto | Ves un espagueti y lo limpias; instalas la lámina PEI | M (parte hecha) |
 | 9 | **Fuera del juego y objetivos:** progreso de hasta 8 horas, resumen al volver, protección contra cambios de reloj, objetivos con avance real y recompensas, prueba de rendimiento | Cierras una hora, vuelves y ves "Mientras no estabas..." | M |
 | 10 | **Simulador y primer balance:** `tools/simulate.sh` juega 7 días con un jugador automático; informe y ajustes en `data/` | El informe en el PR, con propuestas para que las apruebes | M |
+
+**Avance (2026-10-22):** el dueño pidió adelantar el ciclo de pedidos. Quedaron hechas las tareas 6 y 7, y partes de otras: de la 4, el guardado automático y el azar guardado; de la 5, la ferretería; de la 8, los fallos decididos al empezar cada pieza, con limpiar y reintentar. Lo que falta de esas tareas sigue en ellas.
 
 **Criterio de terminado:** en tu teléfono juegas desde el día 1 hasta comprar una segunda impresora y llegar al nivel 2, cerrando y abriendo el juego entre sesiones. El simulador muestra un ritmo cercano a las metas de la sección 5.3.
 
@@ -436,12 +439,14 @@ Respuestas del 2026-10-21:
 | 6 | Contenido del MVP a unos 36 pedidos con clientes con nombre, y ritmo meta de unas 2 semanas (secciones 5.3 y 8) | Aprobado |
 | 7 | Versión de prueba por PR (sección 10) | Sin respuesta: queda para cuando la pidas |
 | 8 | *(Antes de la Fase 5)* iOS: Mac propio o servicio en la nube | Pendiente |
+| 9 | Valores de los controles, después de probarlos en el teléfono | Caminar a 2,2 m/s, joystick de 60 px, cámara de 0,10 s y resaltar a 0,60 m; sin deslizadores en Ajustes |
+| 10 | Siguiente trabajo (2026-10-21) | El ciclo de pedidos: confirmar, modelar en 3D, imprimir, retirar, embalar y despachar. Responde la pregunta de la entrega: el personaje retira la pieza, la embala y la despacha (GDD 5.17) |
 
 ### Preguntas abiertas
 
 | Pregunta | Cuándo hace falta |
 |---|---|
-| **Entregar con el joystick:** ¿se cobra tocando la impresora terminada, o el personaje recoge la pieza y la lleva a una caja de despacho junto a la puerta? En el segundo caso, las impresoras guardan lo terminado mientras no estás (nada se pierde) y más adelante se puede automatizar | Antes de la Fase 1, tarea 7 |
+| Confirmar el diseño propuesto para el ciclo de pedidos (GDD, versión 2.3 en la sección 16): cobro al despachar, tiempos de modelado, rincón de despacho, un mensaje cada 60 minutos de juego, 3 piezas de regalo y la burbuja que hace la acción | Antes de la tarea 10 (simulador), que ajusta esos números |
 
 ## 12. Cómo se mantiene esta ruta
 - `docs/PROGRESO.md` dice en qué tarea vamos. Esta ruta solo cambia cuando cambia el plan.

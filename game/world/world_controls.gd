@@ -7,7 +7,10 @@ extends Control
 ##
 ## Las partes que se pueden separar viven aparte: TouchTracker (gestos),
 ## StickMapping (dirección en el piso), KeyBindings (teclado), HintFlow
-## (pistas) y ReachTracker (cercanía).
+## (pistas), ReachTracker (cercanía) y, como hijos de este nodo, el ciclo de
+## pedidos: OrderLoopController (lo que hacen los paneles, las tarjetas y la
+## burbuja de cercanía), StatusPresenter (las burbujas de estado) y
+## LoopFeedback (lo que se celebra y lo que dice el personaje).
 ##
 ## Está entre la vista del mundo y el HUD. El HUD, que va encima, se queda con
 ## los toques sobre sus botones; el resto llega aquí. Una vez que un dedo
@@ -31,6 +34,13 @@ var reach: ReachTracker
 var room: RoomView
 var hud: Hud
 var world_view: SubViewportContainer
+## Lleva las acciones del ciclo de pedidos (paneles, tarjetas de Pedidos y
+## burbuja de cercanía) a Game.
+var loop: OrderLoopController
+## Burbujas de estado sobre los objetos y qué muestra la burbuja de cercanía.
+var status: StatusPresenter
+## Lo que se cobra vuela al HUD; el personaje comenta y recuerda.
+var loop_feedback: LoopFeedback
 ## Objeto resaltado por cercanía (o null).
 var highlighted: WorldInteractable = null
 ## Objeto con el panel abierto (o null).
@@ -74,6 +84,15 @@ func _setup() -> void:
 	world_view.offset_transform_visual_only = true
 	_hints = HintFlow.new(UserSettings.load_settings())
 	hud.move_hint.set_mode(_hints.mode())
+	loop = OrderLoopController.new(self)
+	loop.name = "OrderLoop"
+	add_child(loop)
+	status = StatusPresenter.new(self)
+	status.name = "StatusPresenter"
+	add_child(status)
+	loop_feedback = LoopFeedback.new(self)
+	loop_feedback.name = "LoopFeedback"
+	add_child(loop_feedback)
 	_ready_done = true
 
 
@@ -136,7 +155,7 @@ func _world_origin() -> Vector2:
 func open_sheet(item: WorldInteractable) -> void:
 	if room.character == null:
 		return
-	var sheet: BottomSheet = WorldSheets.build(item)
+	var sheet: BottomSheet = loop.build_sheet(item)
 	if sheet == null:
 		return
 	sheet_item = item
@@ -148,13 +167,20 @@ func open_sheet(item: WorldInteractable) -> void:
 	_hints.sheet_opened()
 
 
-## Toque en el mundo (píxeles de la interfaz).
+## Toque en el mundo (píxeles de la interfaz). Primero las burbujas: la de
+## cercanía (va encima) corre su acción o abre el panel; una de estado abre el
+## panel de su objeto, a cualquier distancia. Después, los objetos y el piso.
 func tap(ui_position: Vector2) -> void:
 	# Sin partida (datos con errores) no hay personaje ni objetos que tocar.
 	if hud.current_screen_id() != "home" or room.character == null:
 		return
-	if hud.bubble.visible and highlighted != null and hud.bubble.get_global_rect().has_point(ui_position + global_position):
-		open_sheet(highlighted)
+	var point: Vector2 = ui_position + global_position
+	if hud.bubble.visible and highlighted != null and hud.bubble.get_global_rect().has_point(point):
+		_use_nearby()
+		return
+	var bubble_item: WorldInteractable = hud.status_bubbles.hit(point)
+	if bubble_item != null:
+		open_sheet(bubble_item)
 		return
 	var view_position: Vector2 = ui_to_view(ui_position)
 	var item: WorldInteractable = room.pick(view_position, MIN_TOUCH_PX / float(world_view.stretch_shrink))
@@ -167,8 +193,8 @@ func tap(ui_position: Vector2) -> void:
 			hud.close_sheet()
 		return
 	if item == null:
-		var point: Variant = room.floor_point(view_position)
-		if point != null and room.character.walk_to(point):
+		var floor_at: Variant = room.floor_point(view_position)
+		if floor_at != null and room.character.walk_to(floor_at):
 			room.show_destination(room.character.path_end())
 			_hints.walked_by_tap()
 		return
@@ -223,7 +249,7 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		return
 	if event.is_action_pressed("interact"):
 		if not hud.has_sheet() and highlighted != null:
-			open_sheet(highlighted)
+			_use_nearby()
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("zoom_cycle"):
 		_cycle_zoom()
@@ -239,6 +265,13 @@ func _notification(what: int) -> void:
 			_cancel_gestures()
 		NOTIFICATION_WM_GO_BACK_REQUEST:
 			_go_back()
+
+
+## La burbuja de cercanía: corre la acción del objeto si no hay nada que
+## decidir; si no, abre su panel.
+func _use_nearby() -> void:
+	if not loop.run_quick(highlighted):
+		open_sheet(highlighted)
 
 
 func _press(index: int, position: Vector2) -> void:
@@ -300,6 +333,7 @@ func _update_reach() -> void:
 	var target: WorldInteractable = reach.update(character.floor_position, room.interactables)
 	if target != highlighted:
 		highlighted = target
+		status.on_highlight_changed(target)
 		if sheet_item == null:
 			room.set_highlight(target)
 	character.look_target = target.bounds.get_center() if target != null else null
@@ -311,9 +345,10 @@ func _update_overlays() -> void:
 	else:
 		hud.joystick.hide_stick()
 	if highlighted != null and sheet_item == null and hud.current_screen_id() == "home":
-		hud.place_bubble(InteractBubble.icon_for(highlighted), world_to_ui(highlighted.top_center()))
+		hud.place_bubble(status.bubble_icon, world_to_ui(highlighted.top_center()))
 	else:
 		hud.bubble.hide_bubble()
+	status.place_bubbles()
 	if hud.speech.is_talking() and room.character != null:
 		hud.place_speech(world_to_ui(room.character.model.position + Vector3(0.0, CharacterModel.HEIGHT, 0.0)))
 

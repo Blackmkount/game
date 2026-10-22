@@ -9,21 +9,25 @@ static func build(parent: Node3D, node_name: String, printer_id: String, spool_c
 	var printer: Node3D = PropBuilder.group(parent, node_name)
 	match printer_id:
 		"cubo_uno":
-			_open_frame(printer, WorldPalette.PLASTIC_BLACK, WorldPalette.ACCENT_BLUE, spool_color, 1.0)
-		"rayo_mini":
-			_open_frame(printer, "e6e8ee", "4cbf5a", spool_color, 0.82)
-		"rayo_x1":
-			_open_frame(printer, "e6e8ee", "4cbf5a", spool_color, 1.0)
+			_open_frame(printer, WorldPalette.PLASTIC_BLACK, WorldPalette.ACCENT_BLUE, spool_color, frame_scale(printer_id))
+		"rayo_mini", "rayo_x1":
+			_open_frame(printer, "e6e8ee", "4cbf5a", spool_color, frame_scale(printer_id))
 		"prisma_mc":
-			_open_frame(printer, "e6e8ee", "9b5de5", spool_color, 1.0)
+			_open_frame(printer, "e6e8ee", "9b5de5", spool_color, frame_scale(printer_id))
 			_color_box(printer, Vector3(0.0, 0.62, -0.05))
 		"boveda_p1", "titan_pro":
 			_enclosed(printer, printer_id == "titan_pro", spool_color)
 		"gota_r1":
 			_resin(printer)
 		_:
-			_open_frame(printer, WorldPalette.METAL_MID, WorldPalette.ACCENT_BLUE, spool_color, 1.0)
+			_open_frame(printer, WorldPalette.METAL_MID, WorldPalette.ACCENT_BLUE, spool_color, frame_scale(printer_id))
 	return printer
+
+
+## Escala del modelo de las impresoras abiertas: la Rayo Mini es más chica.
+## PrinterView la usa para ubicar la pieza, el cabezal y la bandeja.
+static func frame_scale(printer_id: String) -> float:
+	return 0.82 if printer_id == "rayo_mini" else 1.0
 
 
 ## Impresora abierta de cama móvil (tipo "bedslinger"), como la Cubo Uno.
@@ -33,7 +37,7 @@ static func _open_frame(printer: Node3D, frame_hex: String, accent_hex: String, 
 	var metal: StandardMaterial3D = WorldPalette.solid(WorldPalette.METAL_MID)
 	var s: float = size
 	PropBuilder.box(printer, "Base", Vector3(0.44, 0.08, 0.42) * s, Vector3(0.0, 0.04, 0.0) * s, frame)
-	PropBuilder.box(printer, "Bed", Vector3(0.28, 0.02, 0.28) * s, Vector3(0.0, 0.1, 0.03) * s, dark)
+	PropBuilder.box(printer, "Bed", Vector3(0.28, 0.02, 0.28) * s, Vector3(0.0, 0.1, 0.03) * s, WorldPalette.solid(WorldPalette.PRINT_BED))
 	PropBuilder.box(printer, "LeftPost", Vector3(0.035, 0.44, 0.04) * s, Vector3(-0.19, 0.3, -0.09) * s, frame)
 	PropBuilder.box(printer, "RightPost", Vector3(0.035, 0.44, 0.04) * s, Vector3(0.19, 0.3, -0.09) * s, frame)
 	PropBuilder.box(printer, "TopBar", Vector3(0.415, 0.035, 0.04) * s, Vector3(0.0, 0.535, -0.09) * s, frame)

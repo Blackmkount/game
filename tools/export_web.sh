@@ -16,6 +16,8 @@ fi
 out_dir="$ROOT_DIR/build/web"
 rm -rf "${out_dir:?}"
 mkdir -p "$out_dir"
+# Godot no debe importar lo que se genera aquí (capturas, archivos de la web).
+touch "$ROOT_DIR/build/.gdignore"
 
 import_project > /dev/null
 "$GODOT_BIN" --headless --path "$ROOT_DIR" --export-release "Web" "$out_dir/index.html"

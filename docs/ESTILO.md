@@ -55,12 +55,16 @@ Siempre se usan los de `WorldPalette` (`game/world/pixel/world_palette.gd`). As�
 | Plástico | negro `#23242b`, beige viejo `#d8ccb0` / `#b3a585` |
 | Acentos de impresoras | azul `#3a7bd5`, verde `#4cbf5a`, morado `#9b5de5` |
 | Marcas de lugar libre | cian `#38d6ff` |
+| Cama de impresión | gris `#737b8c`, para que se vean las piezas oscuras |
+| Cinta de embalar | `#c9b48a` |
+| Pieza fallida | gris oscuro `#3b3b45` |
 | Filamentos | los 9 colores de `config.filament_colors` |
 
 ### Texturas
 - Se generan por código en `PixelTextures` (no hay archivos de imagen). Tamaño de 8 a 48 píxeles.
 - De 3 a 4 tonos por material, juntas o mortero más oscuros y poco ruido. Nada de texturas realistas ni fotográficas.
 - En pantallas y ventanas se usa `PropBuilder.quad` (un plano), no una caja, para que la textura se vea completa.
+- Pantallas que cambian con el estado: el monitor del computador muestra un cubo de alambre cian mientras modela (`crt_modeling`), y la pantalla de la impresora tiene barras cian al imprimir, un ✓ verde al terminar y un "!" rojo al fallar (`printer_display_busy`, `_done` y `_error`). Las texturas son compartidas: se cambia cuál usa cada objeto, nunca la textura en sí.
 
 ### Modelos
 - Formas básicas a **escala real**: una impresora tipo Ender mide unos 0,45 m y una mesa 0,75 m de alto. El frente mira hacia **+Z** y la base queda en y = 0.
@@ -70,6 +74,8 @@ Siempre se usan los de `WorldPalette` (`game/world/pixel/world_palette.gd`). As�
 - **Lugares libres:** un marco cian semitransparente con un "+" en el piso, que late suavemente. Invita a comprar muebles (pilar 1).
 - **Objeto cercano** (`HighlightFrame`): un marco cian más brillante en el piso alrededor del objeto que el personaje tiene al lado. Mismo estilo que los lugares libres, para que se lea como "esto se puede usar".
 - **Destino al tocar el piso:** un círculo cian que se agranda y se desvanece en medio segundo.
+- **Pieza impresa** (`PieceModel`): un bloque del color del carrete, más grande que la pieza real para que se vea (tamaño S de 0,12 m, M de 0,18 m y L de 0,24 m). Crece sobre la cama en escalones de un píxel de pantalla. Al terminar da un saltito; si falla, queda detenida en gris oscuro (el warping además se inclina). En pedidos de varias piezas, las terminadas esperan en una bandeja al frente de la impresora.
+- **Rincón de despacho** (`DispatchCornerModel`): una mesita de madera para embalar, con cartones planos y un rollo de cinta, y un cajón de salida casi tan alto como la mesa. Va fijo junto a la puerta, sin ocupar un lugar de muebles. Encima de la mesa aparecen las cajas abiertas con la pieza; sobre el cajón, los paquetes con cinta (`PackageModel`). Al despachar, el paquete se desliza hacia la puerta y desaparece.
 - El personaje tiene articulaciones en caderas y hombros (`HipL`, `HipR`, `Body/ShoulderL`, `Body/ShoulderR`) para la animación de caminar, que se hace por código.
 
 ## 3. Interfaz
@@ -98,14 +104,19 @@ Todo sale del tema común `UiTheme`; no se crean estilos sueltos.
 - **Paneles:** esquinas redondeadas de 18 px, borde de 2 px y brillo cian suave. Las tarjetas internas tienen esquinas de 14 px.
 - **Activo o seleccionado:** borde cian brillante, fondo `#0f2a40` y más brillo.
 - **Tipografía:** solo **Nunito** (`assets/fonts`), regular (peso 650) y negrita (peso 850). Tamaños: títulos 32, normal 24, secundario 21 y pequeño 19.
-- **Iconos:** SVG de 48×48 en `assets/icons`, de trazo blanco de 4 px con puntas redondeadas, teñidos por código. La moneda es el único icono a color.
+- **Iconos:** SVG de 48×48 en `assets/icons`, de trazo blanco de 4 px con puntas redondeadas, teñidos por código. La moneda es el único icono a color. Para el ciclo de pedidos se agregaron `design` (lápiz) y `warning` (triángulo).
 - **Vistas 3D en la interfaz** (`ModelPreview`): el retrato del personaje y las impresoras y muebles de la tienda usan el mismo pixel art del mundo.
 - **Panel inferior** (`BottomSheet`): la información de un objeto del mundo. Sube desde abajo en 0,18 s y tapa la barra de secciones. Arriba tiene una rayita para deslizar, la vista del objeto, el título y la X; en el medio, filas de icono y texto y un consejo destacado; abajo, botones de 96 px de alto a todo lo ancho, el principal en cian. Como máximo debería tapar la mitad de la pantalla.
 - **Joystick** (`JoystickRing`): un aro de 90 px de radio, azul marino al 35% con borde cian, y una perilla cian. Se dibuja sobre todo el HUD, solo mientras el dedo arrastra.
 - **Burbuja de cercanía** (`InteractBubble`): botón cuadrado de 88 px con el estilo `IconButton` y el icono del objeto, sobre el objeto cercano. Aparece con un pequeño rebote.
-- **Globo de diálogo** (`SpeechBubble`, variación `BubblePanel`): papel claro `#f4f1e8` con borde oscuro de 3 px, como el contorno del mundo, y texto oscuro (`BubbleLabel`). Es lo único claro de la interfaz, para que se lea como "habla el personaje".
+- **Globo de diálogo** (`SpeechBubble`, variación `BubblePanel`): papel claro `#f4f1e8` con borde oscuro de 3 px, como el contorno del mundo, y texto oscuro (`BubbleLabel`). Es lo único claro de la interfaz, para que se lea como "habla alguien": el personaje, o un cliente en su mensaje de Pedidos. Nunca tapa la burbuja de cercanía: se corre al costado o arriba.
 - **Pista para jugadores nuevos** (`MoveHint`): texto en negrita con contorno oscuro y un joystick fantasma que se mueve solo, en la zona del pulgar.
 - **Botón de zoom:** `IconButton` de 96×104 px abajo a la izquierda, con la lupa y el nivel actual ("Normal", "Cerca", "Lejos").
+- **Burbujas de estado** (`StatusBubble`): oscuras (`PillPanel`), de al menos 72 px, con un icono de 36 px y un texto corto debajo; se tocan en un área de 88 px. Cian para lo que avanza (imprimiendo, modelando, lista para imprimir), verde con latido para "lista" (✓), roja con latido para un fallo (⚠) y dorada para el rincón de despacho. Siempre icono y texto, nunca solo color. Se esconden sobre las secciones y para el objeto que muestra la burbuja de cercanía.
+- **Celebraciones** (`FeedbackLayer`): "+$6" en dorado y "+5 XP" en verde vuelan desde el rincón de despacho hasta el dinero y la barra de experiencia. El agradecimiento del cliente es un aviso oscuro que aparece unos 2 segundos debajo de los objetivos, sin tapar el HUD; los textos que vuelan pasan por encima.
+- **Tarjetas de Pedidos:** un mensaje nuevo (`OfferCard`) tiene el icono del cliente en su color, el mensaje en papel claro, el nombre del pedido, los requisitos como píldoras con icono y texto, la estimación y el pago, y abajo Rechazar y Aceptar. Un pedido en curso (`OrderCard`) muestra el paso con 6 iconos (`StepTracker`: mensaje, lápiz, impresora, ✓, caja y camión; verde lo hecho, cian el paso actual y gris lo que falta), el estado con su barra y un botón para el siguiente paso.
+- **Panel inferior, extras:** opciones como botones de 64 px (la elegida en cian), filas con barra de avance, notas grises bajo un botón apagado que dicen por qué no se puede, y una línea roja arriba cuando algo falla.
+- **Número en un botón:** el círculo rojo de Pedidos da un saltito cuando el número sube.
 
 ### Estructura del HUD (imagen de referencia)
 

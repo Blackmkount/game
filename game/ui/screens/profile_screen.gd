@@ -33,7 +33,7 @@ func _build_content() -> void:
 	_stat(grid, "calendar", "PROFILE_DAY", str(GameClock.day(state.game_minutes)))
 	_stat(grid, "coin", "PROFILE_MONEY", UiFormat.money(state.money_cents))
 	_stat(grid, "printer", "PROFILE_PRINTERS", str(state.printers.size()))
-	_stat(grid, "chat", "PROFILE_ORDERS", "0")
+	_stat(grid, "chat", "PROFILE_ORDERS", str(state.delivered_total))
 	_stat(grid, "tasks", "PROFILE_OBJECTIVES", "0 / %d" % (Game.catalog.files["objectives"] as Array).size())
 	_stat(grid, "spool", "PROFILE_MATERIAL", UiFormat.grams(state.total_grams()))
 

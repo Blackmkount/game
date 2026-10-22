@@ -213,3 +213,72 @@ Registro de decisiones técnicas importantes: fecha, decisión y motivo. Las má
 ### `run_tests.sh` exige el resumen de GUT
 **Decisión:** además del código de salida, `run_tests.sh` falla si el registro de GUT no trae la línea `Totals`.
 **Motivo:** si una prueba cierra el juego antes de tiempo (por ejemplo, el botón "atrás" en la última pantalla), Godot sale con código 0 y nadie se entera de las pruebas que no corrieron. Por eso el cierre del juego en `WorldControls` pasa por `quit_game`, que las pruebas reemplazan.
+
+---
+
+## 2026-10-22 — Ciclo de pedidos: del mensaje a la puerta
+
+### El ciclo de pedidos antes que la navegación, el guardado y la tienda
+**Decisión:** se hizo el ciclo completo (tareas 6 y 7 de la Fase 1) antes de las tareas 3 a 5. Se adelantaron solo las partes necesarias: el guardado automático y el azar guardado (de la tarea 4) y la ferretería (de la tarea 5).
+**Motivo:** lo pidió el dueño. Sin guardado, el ciclo se perdería en cada recarga de la página. Sin la ferretería, el jugador se quedaría sin material antes de que exista la tienda.
+
+### Reloj de segundos de juego enteros
+**Decisión:** la partida cuenta segundos de juego enteros (`game_seconds`) y, aparte, los segundos que pasaron con el juego abierto (`live_seconds`), que se usan para los plazos. `game_minutes` queda como lectura para el HUD y `GameClock`. La fracción de segundo que sobra en cada cuadro no se guarda.
+**Motivo:** con enteros, avanzar 8 horas de un golpe da exactamente lo mismo que en miles de pasos pequeños. Una prueba lo comprueba comparando el estado completo, con fallos, piezas terminadas, modelos y mensajes en el medio. Con números decimales, una diferencia mínima podía cambiar el orden de dos eventos.
+
+### Dos flujos de azar y cuántos números se sacan
+**Decisión:** el tablero de pedidos y los fallos usan dos generadores distintos, los dos con la semilla de la partida. Cada vez que toca un mensaje nuevo se saca exactamente 1 número del primero, y al empezar cada pieza, exactamente 2 del segundo (si falla y en qué punto), aunque sea una pieza de regalo. Los comandos del jugador no sacan ninguno. El estado de los generadores se guarda como texto.
+**Motivo:** así aceptar o rechazar mensajes nunca cambia si una pieza va a fallar (no se puede "volver a tirar los dados"), y el resultado no depende de en qué orden se tocaron las cosas. Se guarda como texto porque es un número de 64 bits que el JSON no guarda exacto.
+
+### Simulación por eventos
+**Decisión:** `Simulation` busca el próximo evento (una pieza que termina o falla, un modelo listo, un mensaje nuevo) y salta hasta él. Los eventos del mismo segundo se procesan en orden fijo: impresoras por uid, después el computador y después el tablero. Cada evento programa el siguiente desde su propia hora, no desde "ahora". Si no hay evento en el cuadro, el avance es una suma.
+**Motivo:** así es exacto y rápido: 8 horas con 40 impresoras tardan unos 6 ms en una computadora, y la prueba pide menos de 20 ms. `SimRules` convierte los datos a enteros una sola vez para que el avance no arme diccionarios.
+
+### Material apartado al empezar a imprimir
+**Decisión:** al empezar un pedido se aparta del carrete el material de todas sus piezas. Si una pieza falla, vuelve al carrete lo que no se llegó a imprimir. Por ahora no se puede empezar sin material suficiente.
+**Motivo:** ninguna impresión puede quedarse esperando material, y una prueba verifica que los gramos nunca aparecen ni desaparecen. Quedarse sin filamento a mitad de pieza, con el sensor, llega con la tarea 8.
+
+### Se cobra al despachar
+**Decisión:** el pago y la experiencia llegan al tocar Despachar, sin tiempo de viaje. El plazo se revisa en ese momento. La forma de entrega de cada cliente es solo texto.
+**Motivo:** cobrar debe sentirse muy bien y al instante (GDD 7.2). Un viaje con tiempo agregaría una espera que no se decide ni se juega.
+
+### Modelar empieza solo
+**Decisión:** al aceptar, el computador empieza a modelar el pedido, uno a la vez y en fila, mientras las impresoras imprimen. "Concentrarse" es opcional y se puede apagar en los datos (`design.focus_multiplier = 1.0`).
+**Motivo:** modelar no tiene una decisión que tomar, así que no pide un toque. Así el paso existe y se ve, pero no frena.
+
+### Rincón de despacho fijo
+**Decisión:** el rincón de despacho es un objeto propio del cuarto (`WorldInteractable.Kind.DISPATCH`, `RoomLayout.dispatch_spot`), no un mueble que ocupa un lugar. Embalar y despachar pasan ahí para todos los pedidos a la vez.
+**Motivo:** no le quita lugares al jugador y deja libres el paso por la puerta y el lugar donde llegarán las cajas de la tienda (tarea 5).
+
+### Guardado mínimo
+**Decisión:** `SaveManager` guarda en `user://save.json` un sobre con `version`, un número de guardado (`save_seq`) y la partida. Escribe primero un archivo temporal y lo renombra; al cargar elige el más nuevo entre los dos. Un archivo roto se renombra a `.bad`; uno de una versión más nueva no se carga ni se pisa. Guarda después de cada comando, cada 10 segundos y al perder el foco o cerrar. Mientras el juego está cerrado el tiempo no pasa, y un cuadro largo (pestaña escondida) avanza como mucho 1 segundo.
+**Motivo:** son las reglas de `CLAUDE.md` para el guardado. El progreso fuera del juego, con la protección contra cambios de reloj, es la tarea 9. Al cargar, `SaveCodec` revisa cada valor (`SaveReader`) y repara o descarta lo que no cuadra en lugar de fallar.
+
+### El guardado nunca corre en las pruebas ni en las herramientas
+**Decisión:** `SaveManager` se apaga solo cuando Godot se abre con `-s` (pruebas, `check.sh` y capturas). Las pruebas de integración reinician la partida con `Game.reset_game(<semilla>)` antes de cada prueba.
+**Motivo:** así ninguna prueba toca la partida real del jugador y todas empiezan igual. GUT no acepta argumentos propios, por eso se mira `-s`.
+
+### Las señales se avisan desde una copia
+**Decisión:** `Game` junta los cambios de cada comando o avance en `SimChanges` y los avisa en un orden fijo. Antes de avisar, cambia el acumulador por uno nuevo.
+**Motivo:** si algo que escucha una señal ejecuta otro comando (por ejemplo, encadenar paneles), sus cambios van al acumulador nuevo y no se avisan dos veces.
+
+### Los botones usan la misma revisión que los comandos
+**Decisión:** cada comando tiene una función que revisa si se puede hacer (`OrderBoard.check_accept`, `PrintRules.check`, `PrintFlow.check_retry`...). La interfaz la usa para apagar el botón y mostrar el motivo exacto, y el comando usa la misma antes de cambiar nada.
+**Motivo:** nunca hay un botón encendido que falle al tocarlo, y una prueba compara que el plan y el comando den el mismo motivo.
+
+### Los paneles se rearman al final del cuadro
+**Decisión:** cuando cambia la partida, el panel abierto se rearma una sola vez al final del cuadro, nunca dentro del botón que se tocó. Si hay un dedo sobre un botón del panel, espera a que lo suelte. Las barras y cuentas regresivas se actualizan en su lugar, una vez por segundo.
+**Motivo:** rearmar dentro del botón tocado lo borraría mientras Godot lo usa, y rearmar con el dedo encima perdería el toque.
+
+### Burbujas de estado oscuras
+**Decisión:** las burbujas sobre las impresoras, el computador y el rincón son oscuras (`PillPanel`), no de papel claro.
+**Motivo:** `docs/ESTILO.md` reserva el papel claro para cuando habla alguien, y los iconos cian, verdes y dorados casi no se ven sobre papel claro.
+
+### Pieza más grande que la real
+**Decisión:** la pieza que crece en la impresora es un bloque de 0,12 a 0,24 m según el tamaño del pedido, y crece en escalones de un píxel de pantalla.
+**Motivo:** un llavero real mide unos 4 cm y se vería como un punto (en `docs/ESTILO.md`, 1 píxel son unos 3 cm). Se agrandó el modelo cambiando el tamaño de la malla, no la escala del nodo, para que el contorno no se deforme.
+
+### La ferretería cobra por gramo
+**Decisión:** la ferretería cobra el precio del material por gramo, un 50% más caro.
+**Motivo:** así lo dice el GDD (5.6). Hoy vende carretes de 1 kg, así que da $27 por PLA y $30 por PETG, pero si cambia el tamaño en los datos, el precio sigue siendo justo.
+

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Saca capturas de la escena principal en varias situaciones (pantallas,
-# paneles, zoom, joystick) y las deja en build/screenshots/.
+# paneles, zoom, joystick y cada paso del ciclo de pedidos) y las deja en
+# build/screenshots/.
 #
 # Sirve para revisar la interfaz sin un teléfono. Necesita xvfb-run (una
 # pantalla virtual): en modo headless Godot no dibuja nada.
@@ -18,6 +19,8 @@ fi
 out_dir="$ROOT_DIR/build/screenshots"
 rm -rf "${out_dir:?}"
 mkdir -p "$out_dir"
+# Godot no debe importar lo que se genera aquí (capturas, archivos de la web).
+touch "$ROOT_DIR/build/.gdignore"
 
 import_project > /dev/null
 timeout 300 xvfb-run -a -s "-screen 0 800x1400x24" "$GODOT_BIN" --path "$ROOT_DIR" \

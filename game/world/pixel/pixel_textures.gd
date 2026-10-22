@@ -19,8 +19,16 @@ static func get_texture(texture_name: String) -> Texture2D:
 				image = _window_view()
 			"crt_screen":
 				image = _crt_screen()
+			"crt_modeling":
+				image = _crt_modeling()
 			"printer_display":
 				image = _printer_display()
+			"printer_display_busy":
+				image = _printer_display_busy()
+			"printer_display_done":
+				image = _printer_display_done()
+			"printer_display_error":
+				image = _printer_display_error()
 			"cardboard":
 				image = _cardboard()
 			_:
@@ -132,13 +140,73 @@ static func _crt_screen() -> Image:
 	return image
 
 
-## Pantallita de la impresora.
+## El computador modelando: fondo azul marino con líneas de barrido y un cubo
+## de alambre cian en 3 tonos (atrás oscuro, aristas medias, frente claro).
+static func _crt_modeling() -> Image:
+	var image: Image = _new_image(16, 12, "1b2a4a")
+	for y: int in range(1, 12, 2):
+		for x: int in 16:
+			image.set_pixel(x, y, Color("16223d"))
+	var back: Color = Color("1f7fa3")
+	var edge: Color = Color("38d6ff")
+	var front: Color = Color("b8f4ff")
+	_square(image, Vector2i(6, 1), 6, back)
+	for corner: Vector2i in [Vector2i(3, 4), Vector2i(9, 4), Vector2i(3, 10), Vector2i(9, 10)]:
+		for step: int in range(1, 4):
+			image.set_pixel(corner.x + step, corner.y - step, edge)
+	_square(image, Vector2i(3, 4), 6, front)
+	return image
+
+
+## Contorno de un cuadrado de `side` + 1 píxeles con la esquina de arriba a la
+## izquierda en `corner`.
+static func _square(image: Image, corner: Vector2i, side: int, color: Color) -> void:
+	for i: int in side + 1:
+		image.set_pixel(corner.x + i, corner.y, color)
+		image.set_pixel(corner.x + i, corner.y + side, color)
+		image.set_pixel(corner.x, corner.y + i, color)
+		image.set_pixel(corner.x + side, corner.y + i, color)
+
+
+## Pantallita de la impresora libre.
 static func _printer_display() -> Image:
 	var image: Image = _new_image(8, 6, "2f6fd6")
 	for x: int in range(1, 6):
 		image.set_pixel(x, 1, Color("bfe0ff"))
 	for x: int in range(1, 4):
 		image.set_pixel(x, 3, Color("bfe0ff"))
+	return image
+
+
+## Pantallita imprimiendo: fondo cian con barras de avance claras. De lejos se
+## lee por el color.
+static func _printer_display_busy() -> Image:
+	var image: Image = _new_image(8, 6, "1f7fa3")
+	for x: int in range(1, 7):
+		image.set_pixel(x, 1, Color("b8f4ff"))
+	for x: int in range(1, 5):
+		image.set_pixel(x, 3, Color("38d6ff"))
+	for x: int in range(1, 3):
+		image.set_pixel(x, 4, Color("38d6ff"))
+	return image
+
+
+## Pantallita con las piezas listas: fondo verde con un visto claro.
+static func _printer_display_done() -> Image:
+	var image: Image = _new_image(8, 6, "2f9e55")
+	for point: Vector2i in [Vector2i(1, 3), Vector2i(2, 4), Vector2i(3, 3), Vector2i(4, 2), Vector2i(5, 1), Vector2i(6, 0)]:
+		image.set_pixel(point.x, point.y, Color("d8ffe4"))
+	return image
+
+
+## Pantallita con una falla: fondo rojo con un "!" claro.
+static func _printer_display_error() -> Image:
+	var image: Image = _new_image(8, 6, "c43a40")
+	for y: int in range(0, 3):
+		image.set_pixel(3, y, Color("ffe3e3"))
+		image.set_pixel(4, y, Color("ffe3e3"))
+	image.set_pixel(3, 4, Color("ffe3e3"))
+	image.set_pixel(4, 4, Color("ffe3e3"))
 	return image
 
 

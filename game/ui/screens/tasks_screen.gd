@@ -14,5 +14,5 @@ func _build_header(column: VBoxContainer) -> void:
 func _build_content() -> void:
 	for objective: Dictionary in Game.catalog.files["objectives"]:
 		var card: PanelContainer = UiKit.panel("CardPanel")
-		card.add_child(ObjectiveRow.new(objective, 0, false))
+		card.add_child(ObjectiveRow.new(objective, ObjectiveProgress.progress(objective, Game.state), false))
 		content.add_child(card)

@@ -143,6 +143,12 @@ func cancel_order(order_uid: int) -> CommandResult:
 	return _finish(commands.cancel_order(order_uid))
 
 
+func buy_local_material(material_id: String) -> CommandResult:
+	if state == null:
+		return CommandResult.fail(ERR_NO_GAME)
+	return _finish(commands.buy_local_material(material_id))
+
+
 ## Embala todos los pedidos con las piezas retiradas. `count` dice cuántos.
 func pack_all() -> CommandResult:
 	if state == null:

@@ -1,11 +1,17 @@
 class_name ProfileCard
 extends PanelContainer
 ## Tarjeta superior izquierda: retrato del personaje, nivel y barra de
-## experiencia hacia el siguiente nivel.
+## experiencia hacia el siguiente nivel. Cuando se gana experiencia dentro del
+## mismo nivel, la barra se llena de a poco.
+
+const XP_FILL_TIME: float = 0.4
 
 var _level_label: Label
 var _xp_bar: ProgressBar
 var _xp_label: Label
+## Nivel que muestra la barra; 0 antes de la primera vez.
+var _shown_level: int = 0
+var _xp_tween: Tween
 
 
 func _ready() -> void:
@@ -38,12 +44,29 @@ func refresh() -> void:
 	if Game.state == null:
 		return
 	var xp: int = Game.state.xp
-	_level_label.text = UiFormat.tr_format("HUD_LEVEL", [Game.level()])
+	var level: int = Game.level()
+	_level_label.text = UiFormat.tr_format("HUD_LEVEL", [level])
 	var span: int = Game.levels.xp_span_of_level(xp)
 	var into: int = Game.levels.xp_into_level(xp)
-	_xp_bar.max_value = maxi(span, 1)
-	_xp_bar.value = into if span > 0 else 1
+	var target: float = into if span > 0 else 1
+	if _xp_tween != null:
+		_xp_tween.kill()
+	if level == _shown_level and target > _xp_bar.value:
+		_xp_tween = create_tween().set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		_xp_tween.tween_property(_xp_bar, "value", target, XP_FILL_TIME)
+	else:
+		# Al cambiar de nivel (o al empezar) la barra cambia de escala: va
+		# directo a su valor.
+		_xp_bar.max_value = maxi(span, 1)
+		_xp_bar.value = target
+	_shown_level = level
 	if span > 0:
 		_xp_label.text = UiFormat.tr_format("HUD_XP", [UiFormat.number(into), UiFormat.number(span)])
 	else:
 		_xp_label.text = tr("HUD_XP_MAX")
+
+
+## Centro de la barra de experiencia, en coordenadas de la interfaz: hacia ahí
+## vuela la experiencia ganada.
+func xp_bar_center() -> Vector2:
+	return _xp_bar.get_global_rect().get_center()

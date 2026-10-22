@@ -6,6 +6,7 @@ extends RefCounted
 
 ## Hace que la pieza en curso de la impresora falle con `failure_type` al
 ## llegar a `stop` de su avance, o en el próximo segundo si ese punto ya pasó.
+## Se pierde lo impreso hasta donde se detiene, como en una falla de verdad.
 ## Devuelve false, sin cambiar nada, si la impresora no está imprimiendo o el
 ## tipo de fallo no existe.
 static func force_fail(sim: Simulation, printer_uid: int, failure_type: String, stop: float = 0.35) -> bool:
@@ -19,6 +20,7 @@ static func force_fail(sim: Simulation, printer_uid: int, failure_type: String, 
 	job.fails = true
 	job.failure_type = failure_type
 	job.ends_at = maxi(sim.state.game_seconds + 1, job.piece_started_at + stop_seconds)
-	job.lost_grams = clampi(ceili(job.grams_per_piece * stop), 1, job.grams_per_piece)
+	var stopped_at: float = float(job.ends_at - job.piece_started_at) / float(job.piece_seconds)
+	job.lost_grams = clampi(ceili(job.grams_per_piece * stopped_at), 1, job.grams_per_piece)
 	sim.mark_dirty()
 	return true

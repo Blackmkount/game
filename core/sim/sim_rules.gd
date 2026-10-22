@@ -70,6 +70,14 @@ var floor_reliability_penalty: float = 0.0
 var floor_printer_limit: int = 0
 var base_storage_grams: int = 0
 
+# Ferretería del barrio: un carrete al instante, más caro que la tienda.
+## Precio en centavos de un carrete, por material que vende (en el orden de
+## config.local_store.materials).
+var local_store_cents: Dictionary[String, int] = {}
+var local_store_price_multiplier: float = 1.0
+var local_store_color: String = ""
+var local_store_grams: int = 0
+
 # Ritmo del tiempo.
 var game_seconds_per_real_second: int = 1
 
@@ -100,6 +108,7 @@ static func from_catalog(p_catalog: DataCatalog) -> SimRules:
 	rules.floor_reliability_penalty = float(config["floor_printing"]["reliability_penalty"])
 	rules.floor_printer_limit = int(config["floor_printing"]["max_printers"])
 	rules.base_storage_grams = int(config["storage"]["base_capacity_grams"])
+	rules._read_local_store(config["local_store"])
 	rules.game_seconds_per_real_second = roundi(float(config["time"]["game_seconds_per_real_second"]))
 	return rules
 
@@ -136,6 +145,18 @@ func _read_failures(failures: Dictionary) -> void:
 	for type: String in stops:
 		var stop: Array = stops[type]
 		stop_ranges[type] = Vector2(float(stop[0]), float(stop[1]))
+
+
+## El precio por gramo es el de la tienda por el recargo: un carrete de
+## `grams` cuesta price × price_multiplier × grams / unit_grams.
+func _read_local_store(store: Dictionary) -> void:
+	local_store_price_multiplier = float(store["price_multiplier"])
+	local_store_color = store["color"]
+	local_store_grams = int(store["grams"])
+	for material_id: String in store["materials"]:
+		var material: Dictionary = materials[material_id]
+		var unit_cents: float = float(material["price"]) * local_store_price_multiplier * 100.0
+		local_store_cents[material_id] = roundi(unit_cents * local_store_grams / float(material["unit_grams"]))
 
 
 ## Minutos de juego del JSON a segundos de juego; nunca menos de 1.

@@ -3,15 +3,15 @@
 ## Estado actual
 
 - **Fase actual:** 1. Ciclo jugable, en curso (ruta aprobada por el dueño en `docs/RUTA.md`).
-- **Diseño:** GDD versión 2.2, guía de estilo en `docs/ESTILO.md` y ruta en `docs/RUTA.md`.
-- **Última tarea:** Fase 1, tarea 2, controles del mundo con joystick (2026-10-21).
-- **Siguiente paso:** tarea 3, navegación nueva y HUD despejado.
-- **Pregunta abierta para el dueño**, antes de la tarea 7: ¿se cobra tocando la impresora terminada o el personaje lleva la pieza a una caja de despacho? Ver `docs/RUTA.md`, sección 11.
+- **Diseño:** GDD versión 2.3, guía de estilo en `docs/ESTILO.md` y ruta en `docs/RUTA.md`.
+- **Última tarea:** el ciclo de pedidos completo, pedido por el dueño: tareas 6 y 7 de la Fase 1, con partes de las tareas 4, 5 y 8 (2026-10-22).
+- **Siguiente paso sugerido:** tarea 3, navegación nueva y HUD despejado (el número de Pedidos pasa a la barra de abajo). Después, lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
+- **Para el dueño:** confirmar el diseño propuesto para el ciclo (GDD, versión 2.3 en la sección 16).
 
 | Fase | Estado |
 |---|---|
 | 0. Base | Completada (2026-10-21) |
-| 1. Ciclo jugable | En curso: tareas 1 y 2 terminadas |
+| 1. Ciclo jugable | En curso: tareas 1, 2, 6 y 7 terminadas; 4, 5 y 8 en parte |
 | 2. Personaje vivo y game feel | Sin empezar (el estilo visual ya se adelantó) |
 | 3. UX/UI y primera experiencia | Sin empezar |
 | 4. Contenido y MVP completo | Sin empezar |
@@ -28,11 +28,11 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 | 1 | Datos de balance y su validación | Terminada |
 | 2 | Controles del mundo con joystick: caminar, tocar objetos, paneles, cercanía, cámara y zoom | Terminada |
 | 3 | Navegación y HUD despejado | Pendiente |
-| 4 | Guardado, azar reproducible y menú de pruebas (con la versión visible en Ajustes) | Pendiente |
-| 5 | Tienda y envíos | Pendiente |
-| 6 | Pedidos tipo chat | Pendiente |
-| 7 | Imprimir y entregar. Antes hay que responder cómo se entrega con el joystick | Pendiente |
-| 8 | Fallos y accesorios | Pendiente |
+| 4 | Guardado, azar reproducible y menú de pruebas (con la versión visible en Ajustes) | En parte: guardado automático y azar guardado hechos; faltan la versión en Ajustes y el menú de pruebas |
+| 5 | Tienda y envíos | En parte: ferretería hecha |
+| 6 | Pedidos tipo chat | Terminada |
+| 7 | Modelar, imprimir, retirar, embalar y despachar | Terminada |
+| 8 | Fallos y accesorios | En parte: los fallos se deciden al empezar cada pieza, con limpiar y reintentar; falta verlos dibujados, el fin de filamento, los accesorios y el rescate |
 | 9 | Fuera del juego y objetivos | Pendiente |
 | 10 | Simulador y primer balance | Pendiente |
 
@@ -184,4 +184,45 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 - Algunos botones de los paneles llevan a pantallas que todavía son de solo lectura (Pedidos, Tienda): lo dicen con un aviso.
 - Si el personaje queda en el borde de adelante del cuarto, con zoom "Cerca" queda bajo en la pantalla, cerca del pulgar.
 - La vibración y los sonidos llegan en la Fase 2.
+
+### 2026-10-22 — Ciclo de pedidos: del mensaje a la puerta
+
+**Pedido del dueño:** fijar los controles con los valores que probó (caminar a 2,2 m/s, joystick de 60 px, cámara de 0,10 s, resaltar a 0,60 m) y quitar los deslizadores; después, "trabajar en la experiencia de confirmar pedidos, modelar en 3D el pedido e imprimirlo, retirar la pieza impresa, embalarla y despacharla".
+
+**Cómo se trabajó**
+- Cuatro revisores leyeron en paralelo el diseño, la simulación, la interfaz y cómo trabaja un taller de impresión 3D real (con fuentes).
+- Tres diseños independientes (experiencia del jugador, arquitectura y realismo) y dos jueces; la síntesis quedó como especificación.
+- Se construyó en 14 pasos, cada uno con sus pruebas en verde y su commit, con una revisión adversaria de la simulación a mitad de camino y otra final jugando con toques reales.
+
+**Qué se hizo**
+- **Controles** con los valores del dueño y sin deslizadores en Ajustes.
+- **Tocar el lugar libre detrás de la impresora del suelo** ahora abre ese lugar: el toque gana para lo que está justo bajo el dedo y las cajas de toque giran con el modelo.
+- **El ciclo en seis pasos** (GDD 5.17), todo también tocando desde Pedidos o desde el objeto:
+  1. Confirmar: mensajes tipo chat con lo que pide el cliente, requisitos, tiempos, pago y ganancia.
+  2. Modelar: el computador empieza solo, con tiempos según cómo llega el diseño y un "Concentrarse" opcional.
+  3. Imprimir: plan recomendado con tiempo real, calidad, riesgo, material y ganancia; la pieza crece capa a capa; las piezas siguientes empiezan solas.
+  4. Retirar las piezas al rincón de despacho, junto a la puerta.
+  5. Embalar.
+  6. Despachar y cobrar: "+$6" y la XP vuelan al HUD y el cliente agradece.
+- **Fallos:** se deciden al empezar cada pieza; las 3 primeras de una partida nueva no fallan; "Limpiar y reintentar" o "Limpiar".
+- **Tablero:** 3 mensajes y 3 pedidos como máximo, primer mensaje a los 2,5 segundos, después uno cada 2,5 minutos reales; solo pedidos que se pueden hacer.
+- **Avisos:** burbujas de estado sobre la impresora, el computador y el rincón; número en Pedidos; el personaje comenta el siguiente paso; la burbuja de cercanía hace la acción cuando no hay nada que decidir.
+- **Objetivos con avance real** ("Entrega 3 llaveros (1/3)"); los premios llegan con la tarea 9.
+- **Guardado automático** en `user://save.json`. En Ajustes, "Empezar partida nueva".
+- **Ferretería del barrio:** PLA o PETG al instante, 50% más caro, en Pedidos (cuando no hay nada que hacer) y en Inventario.
+- **Núcleo:** reloj de segundos enteros, dos flujos de azar guardados, simulación por eventos, material apartado, comandos que devuelven el motivo de error y señales en `Events`. Las decisiones están en `docs/DECISIONES.md`.
+- **Capturas:** `tools/screenshots.sh` saca ahora 24 situaciones, 12 de ellas del ciclo.
+
+**Verificado**
+- `check.sh` y `run_tests.sh` pasan: 496 pruebas (antes 135). Entre ellas: un paso de 8 horas igual a miles de pasos pequeños (con fallos, modelos y mensajes en el medio), 8 horas con 40 impresoras en menos de 20 ms, la primera venta en menos de 2 minutos, guardar y cargar a mitad de una impresión, gramos que nunca aparecen ni desaparecen, el ciclo completo solo con tarjetas (sin caminar) y con toques reales.
+- Revisé las 24 capturas.
+
+**Problemas conocidos**
+- Mientras el juego está cerrado o la pestaña escondida, el tiempo no pasa: el progreso fuera del juego llega con la tarea 9.
+- Con 1 kg de PLA alcanzan unos 20 a 25 pedidos de nivel 1; después hay que comprar en la ferretería (la tienda llega con la tarea 5).
+- Fuera de los 3 primeros, la impresora en el suelo falla 1 de cada 5 piezas en modo Normal: es intencional para que la mesa auxiliar valga la pena, pero hay que confirmarlo con el simulador (tarea 10).
+- Dos impresoras sobre la misma mesa tendrían burbujas encimadas: todavía no se puede tener una segunda impresora (llega con la tienda).
+- Las impresoras cerradas y de resina no muestran la pieza que crece; solo la pantalla y la burbuja.
+- Los números de ritmo (un mensaje cada 60 minutos de juego, tiempos de modelado, 3 piezas de regalo, 3 pedidos en curso) son una propuesta: se ajustan con el simulador.
+- El número de Pedidos sigue en el botón de la izquierda hasta la navegación nueva (tarea 3).
 

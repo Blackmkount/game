@@ -1,7 +1,8 @@
 class_name ObjectivesPanel
 extends PanelContainer
-## Panel "Objetivos": muestra los próximos objetivos sin completar. Al
-## tocarlo se abre la lista completa.
+## Panel "Objetivos": muestra los próximos objetivos sin completar, con su
+## avance. Al tocarlo se abre la lista completa. Hud lo refresca cuando se
+## entrega un pedido.
 
 signal pressed
 
@@ -47,5 +48,5 @@ func refresh() -> void:
 	for objective: Dictionary in Game.catalog.files["objectives"]:
 		if shown >= VISIBLE_OBJECTIVES:
 			break
-		_list.add_child(ObjectiveRow.new(objective, 0, true))
+		_list.add_child(ObjectiveRow.new(objective, ObjectiveProgress.progress(objective, Game.state), true))
 		shown += 1
