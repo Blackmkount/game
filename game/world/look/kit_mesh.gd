@@ -77,6 +77,10 @@ var ao_enabled: bool = true
 ## Multiplica los lados de las formas redondas (biblia §5.1: impresora del
 ## piso 1,0; de mueble 0,6; lejana 0,35; cabeza 1,1).
 var detail: float = 1.0
+## Los biseles más chicos que esto (m) no se hacen: las copias que se ven
+## chicas (impresoras de mueble, versiones lejanas) ahorran sus triángulos
+## (una caja con bisel tiene 44; sin él, 12). 0 = todos.
+var bevel_cutoff: float = 0.0
 ## Transformación de todo lo que se agrega (para armar grupos girados).
 var origin: Transform3D = Transform3D.IDENTITY
 
@@ -157,7 +161,7 @@ func box(size: Vector3, pos: Vector3, bevel: float = 0.01, rot_deg: Vector3 = Ve
 	_place(pos, rot_deg)
 	var h: Vector3 = size * 0.5
 	var b: float = clampf(bevel, 0.0, minf(h.x, minf(h.y, h.z)) * MAX_BEVEL)
-	if b < MIN_BEVEL:
+	if b < maxf(MIN_BEVEL, bevel_cutoff):
 		b = 0.0
 	for axis: int in 3:
 		var u: int = (axis + 1) % 3
@@ -222,7 +226,7 @@ func cylinder(radius: float, height: float, pos: Vector3, rot_deg: Vector3 = Vec
 	var r1: float = radius if top_radius < 0.0 else top_radius
 	var hh: float = height * 0.5
 	var b: float = clampf(bevel, 0.0, minf(minf(r0, r1) * 0.5, hh * MAX_BEVEL))
-	if b < MIN_BEVEL:
+	if b < maxf(MIN_BEVEL, bevel_cutoff):
 		b = 0.0
 	# Perfil para lathe: cada esquina va repetida una vez (canto vivo).
 	var profile: PackedVector2Array = PackedVector2Array()

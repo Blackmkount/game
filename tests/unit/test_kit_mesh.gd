@@ -144,6 +144,20 @@ func test_detail_changes_the_number_of_vertices() -> void:
 	assert_eq(boxes[0], boxes[1], "Una caja no tiene lados redondos")
 
 
+func test_bevel_cutoff_drops_only_the_small_bevels() -> void:
+	var counts: Array[int] = []
+	for cutoff: float in [0.0, 0.009]:
+		var kit: KitMesh = KitMesh.new()
+		kit.bevel_cutoff = cutoff
+		kit.box(Vector3.ONE * 0.1, Vector3.ZERO, 0.005)
+		kit.box(Vector3.ONE * 0.1, Vector3(0.3, 0.0, 0.0), 0.02)
+		counts.append(kit.triangle_count())
+		var bounds: AABB = kit.commit().get_aabb()
+		assert_almost_eq(bounds.size, Vector3(0.4, 0.1, 0.1), Vector3.ONE * 0.0001, "Las cajas miden lo mismo con o sin bisel")
+	assert_eq(counts[0], 88, "Sin corte, las dos cajas con bisel (44 triángulos cada una)")
+	assert_eq(counts[1], 56, "Con corte, la del bisel chico sale sin bisel (12) y la otra lo mantiene (44)")
+
+
 func test_contact_occlusion_is_baked_into_the_vertices() -> void:
 	var standing: KitMesh = KitMesh.new()
 	standing.quad(Vector2(0.4, 0.5), Vector3(0.0, 0.25, 0.0))

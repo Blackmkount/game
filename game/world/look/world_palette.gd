@@ -6,8 +6,10 @@ extends RefCounted
 ##
 ## Los materiales se guardan en caché: el mismo pedido devuelve el mismo
 ## material (las pruebas lo comparan) y se reutilizan (mejor en móvil). Las
-## mallas del kit usan kit(), un solo material con todo en los vértices; los
-## modelos de cajas de antes usan las variantes por uniform.
+## mallas del kit usan kit(), un solo material con todo en los vértices; lo
+## que cambia de color (la pieza, el filamento, la luz de adentro de las
+## impresoras cerradas) y los modelos de cajas que quedan usan las variantes
+## por uniform.
 
 ## Colores con nombre que usan los modelos (salen de LookPalette).
 const BACKGROUND: String = LookPalette.BACKGROUND
@@ -15,9 +17,7 @@ const WOOD_LIGHT: String = LookPalette.WOOD_LIGHT
 const WOOD_MID: String = LookPalette.WOOD_MID
 const METAL_DARK: String = LookPalette.METAL_DARK
 const METAL_MID: String = LookPalette.METAL_MID
-const PLASTIC_BLACK: String = LookPalette.CUBE_FRAME
 const PLASTIC_BEIGE: String = LookPalette.COMPUTER_BEIGE
-const ACCENT_BLUE: String = LookPalette.CUBE_ACCENT
 const SKIN: String = LookPalette.SKIN
 const HAIR: String = LookPalette.HAIR
 const HAIR_LIGHT: String = LookPalette.HAIR_MID
@@ -26,8 +26,6 @@ const JEANS: String = LookPalette.JEANS
 const SHOES: String = LookPalette.SHOES
 const EYES: String = LookPalette.PUPIL
 const SLOT_MARK: String = LookPalette.INTERACTION
-## Cama de las impresoras abiertas: lámina PEI dorada texturizada.
-const PRINT_BED: String = LookPalette.PEI_BED
 ## Pieza que falló: plástico quemado y opaco.
 const FAILED_PIECE: String = LookPalette.FAILED_PIECE
 
@@ -37,6 +35,7 @@ enum Surface { SMOOTH, TILE, WOOD, PAINT, FABRIC, CARDBOARD, METAL, PEI }
 const KIT_SHADER: Shader = preload("res://game/world/look/kit.gdshader")
 const TINTED_SHADER: Shader = preload("res://game/world/look/kit_tinted.gdshader")
 const PRINTING_SHADER: Shader = preload("res://game/world/look/kit_printing.gdshader")
+const GLASS_SHADER: Shader = preload("res://game/world/look/kit_glass.gdshader")
 const SCREEN_SHADER: Shader = preload("res://game/world/look/screen.gdshader")
 const WINDOW_VIEW_SHADER: Shader = preload("res://game/world/look/window_view.gdshader")
 const MARKER_SHADER: Shader = preload("res://game/world/look/marker.gdshader")
@@ -89,6 +88,17 @@ static func printing(hex: String) -> ShaderMaterial:
 	var key: String = "printing:" + hex
 	if not _cache.has(key):
 		_cache[key] = _tinted(hex, Surface.SMOOTH, PRINTED_GLOSS, PieceModel.LAYER_STEP, 0.0, PRINTING_SHADER)
+	return _cache[key]
+
+
+## Plástico transparente de un color con su opacidad `alpha`, visto de los
+## dos lados (la tapa ámbar de la impresora de resina). No da sombra.
+static func glass(hex: String, alpha: float) -> ShaderMaterial:
+	var key: String = "glass:%s:%s" % [hex, alpha]
+	if not _cache.has(key):
+		var material: ShaderMaterial = _tinted(hex, Surface.SMOOTH, 0.7, 0.0, 0.0, GLASS_SHADER)
+		material.set_shader_parameter("alpha", alpha)
+		_cache[key] = material
 	return _cache[key]
 
 

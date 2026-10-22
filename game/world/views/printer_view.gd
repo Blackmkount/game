@@ -4,22 +4,28 @@ extends Node
 ## modelo de la impresora (RoomView lo crea).
 ##
 ## - La pantallita cambia: libre, imprimiendo, lista o con falla.
-## - El carrete toma el color del filamento que se usa.
-## - En las impresoras abiertas (las que tienen "Bed"), la pieza crece sobre la
-##   cama capa a capa con la capa caliente arriba, el cabezal va y viene
-##   mientras imprime, las piezas terminadas esperan en una bandeja al frente
-##   y la pieza lista da un saltito y suelta unos destellos. Si falla, la
-##   pieza queda a medias y oscura: con warping, despegada y torcida; con
+## - El carrete (o la resina) toma el color del filamento que se usa.
+## - En TODAS las familias la pieza crece capa a capa, con la capa caliente
+##   donde crece, y la falla se ve. Cómo, depende del modo del modelo (ver
+##   PrinterModel), que la vista reconoce por sus partes:
+##   - abiertas ("Bed"): la pieza crece sobre la cama, el cabezal y su barra
+##     suben con ella y el cabezal va y viene;
+##   - cerradas ("Platform"): el cabezal va y viene arriba y la cama baja; la
+##     luz de adentro cambia con el estado (cálida, verde, roja);
+##   - de resina ("Plate"): la pieza cuelga de la placa, que sube, y crece
+##     hacia abajo (la capa caliente queda abajo, sobre la resina); si falla,
+##     cae a la tina.
+## - Las piezas terminadas esperan en una bandeja; la pieza lista da un
+##   saltito (menos la de resina, que cuelga) y suelta unos destellos. Si
+##   falla, queda a medias y oscura: con warping, despegada y torcida; con
 ##   espagueti, con el nido de hilos encima y el cabezal sobre él.
+## - De noche, un halo en el piso del color del estado (HaloField).
 ##
-## Dónde va cada cosa lo dicen los marcadores del modelo (PieceAnchor,
-## HeadRest, HeadPark, TrayAnchor; ver PrinterModel). Los modelos que todavía
-## no los tienen usan las constantes de abajo × su escala.
-##
-## Se actualiza con Events.printer_changed y Events.clock_ticked, nunca en
-## cada cuadro. Las cerradas y las de resina solo cambian la pantallita.
+## Dónde va cada cosa lo dicen los marcadores del modelo. Se actualiza con
+## Events.printer_changed y Events.clock_ticked, nunca en cada cuadro.
 
 enum Shown { IDLE, PRINTING, DONE, FAILED }
+enum Mode { OPEN, CLOSED, RESIN }
 
 ## Textura de la pantallita en cada caso.
 const DISPLAY_TEXTURES: Dictionary[Shown, String] = {
@@ -28,22 +34,30 @@ const DISPLAY_TEXTURES: Dictionary[Shown, String] = {
 	Shown.DONE: "printer_display_done",
 	Shown.FAILED: "printer_display_error",
 }
-## Medidas de las impresoras abiertas con escala 1, en metros, para los
-## modelos sin marcadores (se multiplican por la escala de la impresora). En
-## la Cubo Uno sus marcadores valen esto mismo.
+## Color del halo de noche y de la luz de adentro de las cerradas en cada
+## caso (biblia §9.2). Sin trabajo, el halo se apaga; imprimiendo, las
+## cerradas usan su propia luz (PrinterModel.interior_hex).
+const STATE_COLORS: Dictionary[Shown, String] = {
+	Shown.PRINTING: LookPalette.STATE_PRINTING,
+	Shown.DONE: LookPalette.STATE_DONE,
+	Shown.FAILED: LookPalette.STATE_FAILED,
+}
+## Medidas de la impresora de referencia (la Cubo Uno pone ahí sus
+## marcadores: CuboUnoModel), en metros.
 const BED_TOP: float = 0.11
 const PIECE_Z: float = 0.03
 const HEAD_REST_Y: float = 0.25
-## Espacio entre la punta de la pieza y el centro del cabezal.
+## Espacio entre la punta de la pieza y el centro del cabezal (× escala).
 const HEAD_CLEARANCE: float = 0.045
 ## El cabezal va de -HEAD_SWING a +HEAD_SWING (sobre la pieza) mientras
 ## imprime.
 const HEAD_SWING: float = 0.06
 const HEAD_SWING_TIME: float = 1.2
-## Donde se estaciona el cabezal con la pieza lista o despegada: a un lado,
-## para que la pieza se vea entera.
+## Donde se estaciona el cabezal de la Cubo Uno con la pieza lista o
+## despegada: a un lado, para que la pieza se vea entera.
 const HEAD_PARK_X: float = -0.15
-## Bandeja de piezas terminadas, al frente sobre la base.
+## Bandeja de piezas terminadas: bloquecitos uno al lado del otro desde el
+## marcador "TrayAnchor" (en la Cubo Uno, al frente sobre la caja de control).
 const TRAY_BLOCKS: int = 6
 const TRAY_BLOCK: float = 0.05
 const TRAY_START_X: float = -0.15
@@ -57,26 +71,43 @@ const HOP_TIME: float = 0.25
 ## una esquina; su esquina más baja queda apoyada en la cama.
 const WARP_TILT_DEGREES: float = 12.0
 const WARP_ROLL_DEGREES: float = 7.0
+## La pieza de resina que falla cae a la tina, inclinada.
+const RESIN_FALL_DEGREES: Vector3 = Vector3(16.0, 20.0, -22.0)
 
 var printer_uid: int
+## Los halos de noche del cuarto (RoomView lo pone antes de agregar la
+## vista; sin él, la impresora no tiene halo).
+var halos: HaloField
 
 var _scale: float
+var _mode: Mode = Mode.OPEN
+var _lit_hex: String
 var _display: MeshInstance3D
 var _filament: MeshInstance3D
 var _idle_filament: Material
 var _head: Node3D
 var _gantry: Node3D
-## Base de la pieza sobre la cama (PieceAnchor), el cabezal quieto
-## (HeadRest) y estacionado (HeadPark, solo su x).
+## Cerradas: la cama que baja, la luz de adentro y su material sin trabajo.
+var _platform: Node3D
+var _interior: MeshInstance3D
+var _idle_interior: Material
+## Resina: la placa que sube y el fondo de la tina.
+var _plate: Node3D
+var _vat_floor: float
+## Base de la pieza al empezar (PieceAnchor), el cabezal quieto (HeadRest) y
+## estacionado (HeadPark, solo su x), y el lugar de reposo de la cama
+## (cerradas, PlatformLow) o de la placa (resina, PlateTop).
 var _anchor: Vector3
 var _head_rest: Vector3
 var _head_park_x: float
+var _rest_y: float
 ## Base de la pieza: gira con el warping y salta al terminar.
 var _piece_spot: Node3D
 var _piece: MeshInstance3D
 var _spaghetti: MeshInstance3D
 var _sparkles: ReadySparkles
 var _tray: Array[MeshInstance3D] = []
+var _halo: int = -1
 var _job: PrintJob
 ## Lo que se mostró la última vez; -1 = todavía nada (no da el saltito).
 var _shown: int = -1
@@ -88,19 +119,40 @@ var _swing: Tween
 var _hop: Tween
 
 
-func _init(p_printer_uid: int, model_scale: float) -> void:
+func _init(p_printer_uid: int, printer_id: String) -> void:
 	printer_uid = p_printer_uid
-	_scale = model_scale
+	_scale = PrinterModel.frame_scale(printer_id)
+	_lit_hex = PrinterModel.interior_hex(printer_id)
 
 
 func _ready() -> void:
 	var model: Node3D = get_parent()
-	_display = model.get_node_or_null("Display")
+	_display = model.get_node("Display")
 	_filament = model.get_node_or_null("Spool/Filament")
+	if _filament == null:
+		_filament = model.get_node_or_null("Resin")
 	if _filament != null:
 		_idle_filament = _filament.material_override
-	if model.has_node("Bed"):
-		_build_piece_parts(model)
+	_anchor = _marker(model, "PieceAnchor")
+	if model.has_node("Platform"):
+		_mode = Mode.CLOSED
+		_platform = model.get_node("Platform")
+		_interior = model.get_node("Interior")
+		_idle_interior = _interior.material_override
+		_rest_y = _marker(model, "PlatformLow").y
+	elif model.has_node("Plate"):
+		_mode = Mode.RESIN
+		_plate = model.get_node("Plate")
+		_rest_y = _marker(model, "PlateTop").y
+		_vat_floor = _marker(model, "VatFloor").y
+	if _mode != Mode.RESIN:
+		_head = model.get_node("PrintHead")
+		_gantry = model.get_node_or_null("Gantry")
+		_head_rest = _marker(model, "HeadRest")
+		_head_park_x = _marker(model, "HeadPark").x
+	_build_piece_parts(model)
+	if halos != null:
+		_add_halo(model)
 	Events.printer_changed.connect(_on_printer_changed)
 	Events.clock_ticked.connect(_on_clock_ticked)
 	Events.game_loaded.connect(_on_game_loaded)
@@ -108,15 +160,12 @@ func _ready() -> void:
 
 
 func _build_piece_parts(model: Node3D) -> void:
-	_head = model.get_node("PrintHead")
-	_gantry = model.get_node("Gantry")
-	_anchor = _marker(model, "PieceAnchor", Vector3(0.0, BED_TOP, PIECE_Z) * _scale)
-	# Sin marcador, el cabezal está quieto donde lo dejó el modelo.
-	_head_rest = _marker(model, "HeadRest", _head.position)
-	_head_park_x = _marker(model, "HeadPark", Vector3(HEAD_PARK_X * _scale, 0.0, 0.0)).x
-	var tray: Vector3 = _marker(model, "TrayAnchor", Vector3(TRAY_START_X, TRAY_BASE_Y, TRAY_Z) * _scale)
+	var tray: Vector3 = _marker(model, "TrayAnchor")
 	_piece_spot = PropBuilder.group(model, "PieceSpot", _anchor)
 	_piece = PieceModel.build(_piece_spot, "Piece")
+	if _mode == Mode.RESIN:
+		# Crece hacia abajo: la capa nueva (la caliente) queda abajo.
+		_piece.rotation_degrees = Vector3(180.0, 0.0, 0.0)
 	_spaghetti = PieceModel.build_spaghetti(_piece_spot, "Spaghetti")
 	_spaghetti.scale = Vector3.ONE * _scale
 	_sparkles = ReadySparkles.new()
@@ -128,10 +177,18 @@ func _build_piece_parts(model: Node3D) -> void:
 		_tray.append(block)
 
 
-## Lugar de un marcador del modelo, o `fallback` si el modelo no lo tiene.
-static func _marker(model: Node3D, marker_name: String, fallback: Vector3) -> Vector3:
-	var marker: Node3D = model.get_node_or_null(marker_name)
-	return marker.position if marker != null else fallback
+## El halo de noche, bajo la huella de "Body" (en el espacio del padre de
+## los halos).
+func _add_halo(model: Node3D) -> void:
+	var body: AABB = (model.get_node("Body") as MeshInstance3D).get_aabb()
+	var center: Vector3 = body.get_center()
+	var base: Transform3D = halos.get_parent_node_3d().global_transform.affine_inverse() * model.global_transform * Transform3D(Basis.IDENTITY, Vector3(center.x, 0.0, center.z))
+	_halo = halos.add(base, Vector2(body.size.x, body.size.z))
+
+
+## Lugar de un marcador del modelo.
+static func _marker(model: Node3D, marker_name: String) -> Vector3:
+	return (model.get_node(marker_name) as Node3D).position
 
 
 ## Pone todo como está el trabajo de la impresora ahora.
@@ -139,15 +196,28 @@ func _sync() -> void:
 	var printer: OwnedPrinter = Game.state.find_printer(printer_uid)
 	_job = printer.job if printer != null else null
 	var shown: Shown = _shown_for(_job)
-	if _display != null:
-		_display.material_override = WorldPalette.glow("ffffff", DISPLAY_TEXTURES[shown])
+	_display.material_override = WorldPalette.glow("ffffff", DISPLAY_TEXTURES[shown])
 	if _filament != null:
 		_filament.material_override = _idle_filament if _job == null else WorldPalette.solid(PieceModel.filament_hex(Game.rules, _job.color_id))
-	if _piece != null:
-		_sync_piece(shown)
-		if shown == Shown.DONE and _shown == Shown.PRINTING:
-			_celebrate()
+	if _interior != null:
+		_interior.material_override = _interior_material(shown)
+	if _halo >= 0:
+		halos.set_color(_halo, Color(STATE_COLORS[shown]) if STATE_COLORS.has(shown) else HaloField.OFF)
+	_sync_piece(shown)
+	if shown == Shown.DONE and _shown == Shown.PRINTING:
+		_celebrate()
 	_shown = shown
+
+
+## La luz de adentro de una cerrada: la tenue de siempre sin trabajo, la
+## suya imprimiendo, verde lista y roja con falla.
+func _interior_material(shown: Shown) -> Material:
+	match shown:
+		Shown.IDLE:
+			return _idle_interior
+		Shown.PRINTING:
+			return WorldPalette.glow(_lit_hex)
+	return WorldPalette.glow(STATE_COLORS[shown])
 
 
 func _sync_piece(shown: Shown) -> void:
@@ -159,11 +229,9 @@ func _sync_piece(shown: Shown) -> void:
 		_sparkles.stop()
 		_piece.visible = false
 		_spaghetti.visible = false
-		_piece_spot.position = _anchor
-		_piece_spot.rotation = Vector3.ZERO
 		_show_tray(0)
 		_height = -1.0
-		_place_head(0.0)
+		_place(0.0)
 		return
 	var order: Order = Game.state.find_order(_job.order_uid)
 	var definition: Dictionary = Game.rules.orders.get(order.order_id, {}) if order != null else {}
@@ -174,7 +242,7 @@ func _sync_piece(shown: Shown) -> void:
 	if _spaghetti.visible:
 		_spaghetti.material_override = PieceModel.spaghetti_material(hex)
 	# Las piezas terminadas esperan en la bandeja; la última, ya lista, se
-	# queda en la cama.
+	# queda en la impresora.
 	var finished: int = order.pieces_done if order != null else 0
 	if shown == Shown.DONE:
 		finished -= 1
@@ -199,49 +267,96 @@ func _grow() -> void:
 	_height = height
 	PieceModel.set_shape(_piece, _size_id, _piece_hex, height, _job.status == PrintJob.Status.PRINTING)
 	_spaghetti.position.y = maxf(height, PieceModel.MIN_HEIGHT)
-	_tilt_if_warped()
-	_place_head(height)
+	_place(height)
 
 
-## Warping: la pieza se inclina y se le levanta una esquina, con la esquina
-## más baja apoyada en la cama. Si no, derecha sobre la cama.
-func _tilt_if_warped() -> void:
-	var warped: bool = _job.status == PrintJob.Status.FAILED and _job.failure_type == FailureRules.WARPING
+## Pone la pieza, el cabezal, la cama o la placa para una pieza de este alto
+## (0 sin trabajo), según el modo.
+func _place(height: float) -> void:
+	match _mode:
+		Mode.OPEN:
+			_rest_piece(_anchor)
+			_place_head(height, _anchor.y + HEAD_CLEARANCE * _scale + height)
+		Mode.CLOSED:
+			# La cama baja para que la pieza (y el nido, si hay espagueti)
+			# termine justo bajo la boquilla, que no se mueve de altura.
+			var bed: float = _rest_y
+			if _job != null:
+				bed = _anchor.y - height
+				if _is_spaghetti():
+					bed -= PieceModel.SPAGHETTI_RISE * _scale
+				bed = maxf(bed, _rest_y)
+			_platform.position.y = bed
+			_rest_piece(Vector3(_anchor.x, bed, _anchor.z))
+			_place_head(height, _head_rest.y)
+		Mode.RESIN:
+			_place_resin(height)
+
+
+## La pieza derecha en `base` o, con warping, torcida con su esquina más
+## baja apoyada en `base`.
+func _rest_piece(base: Vector3) -> void:
+	var warped: bool = _job != null and _job.status == PrintJob.Status.FAILED and _job.failure_type == FailureRules.WARPING
 	if not warped:
 		_piece_spot.rotation = Vector3.ZERO
-		_piece_spot.position = _anchor
+		_piece_spot.position = base
 		return
-	_piece_spot.rotation_degrees = Vector3(WARP_TILT_DEGREES, 0.0, WARP_ROLL_DEGREES)
+	_tilt_onto(base, Vector3(WARP_TILT_DEGREES, 0.0, WARP_ROLL_DEGREES))
+
+
+## Gira la pieza `degrees` y la apoya en `base` por su esquina más baja.
+func _tilt_onto(base: Vector3, degrees: Vector3) -> void:
+	_piece_spot.rotation_degrees = degrees
 	var half: Vector3 = PieceModel.full_size(_size_id) / 2.0
 	var lowest: float = 0.0
 	for x: float in [-half.x, half.x]:
 		for z: float in [-half.z, half.z]:
 			lowest = minf(lowest, (_piece_spot.basis * Vector3(x, 0.0, z)).y)
-	_piece_spot.position = _anchor - Vector3(0.0, lowest, 0.0)
+	_piece_spot.position = base - Vector3(0.0, lowest, 0.0)
 
 
-## Sube el cabezal y su barra sobre la pieza. Imprimiendo va y viene; quieto,
-## en su lugar; con la pieza lista o despegada se estaciona a un lado; con
-## espagueti se queda sobre el nido, de donde salen las hebras.
-func _place_head(piece_height: float) -> void:
-	var y: float = maxf(_head_rest.y, _anchor.y + HEAD_CLEARANCE * _scale + piece_height)
+## Resina: imprimiendo, la placa sube con la pieza colgando (su borde de
+## arriba pegado a la placa, su base sobre la resina). Lista o sin trabajo,
+## la placa arriba del todo (con la pieza colgando). Si falló, la placa
+## arriba y la pieza caída en la tina.
+func _place_resin(height: float) -> void:
+	var plate: float = _rest_y
+	if _job != null and _job.status == PrintJob.Status.PRINTING:
+		plate = _anchor.y + height
+	_plate.position.y = plate
+	if _job != null and _job.status == PrintJob.Status.FAILED:
+		_tilt_onto(Vector3(_anchor.x, _vat_floor, _anchor.z), RESIN_FALL_DEGREES)
+		return
+	_piece_spot.rotation = Vector3.ZERO
+	_piece_spot.position = Vector3(_anchor.x, plate - height, _anchor.z)
+
+
+## El cabezal (y su barra, en las abiertas) a la altura `y`, nunca más abajo
+## que su lugar de reposo. Imprimiendo va y viene; quieto, en su lugar; con la
+## pieza lista o despegada se estaciona a un lado; con espagueti se queda
+## sobre el nido, de donde salen las hebras.
+func _place_head(piece_height: float, y: float) -> void:
+	y = maxf(_head_rest.y, y)
 	var x: float = _head_rest.x
 	if _is_spaghetti():
-		y = maxf(y, _anchor.y + piece_height + (PieceModel.SPAGHETTI_RISE + HEAD_CLEARANCE) * _scale)
+		if _mode == Mode.OPEN:
+			y = maxf(y, _anchor.y + piece_height + (PieceModel.SPAGHETTI_RISE + HEAD_CLEARANCE) * _scale)
 		x = _anchor.x
 	elif _job != null and _job.status != PrintJob.Status.PRINTING:
 		x = _head_park_x
 	_head.position.y = y
-	_gantry.position.y = y
+	if _gantry != null:
+		_gantry.position.y = y
 	if _swing == null:
 		_head.position.x = x
 
 
 func _is_spaghetti() -> bool:
-	return _job != null and _job.status == PrintJob.Status.FAILED and _job.failure_type == FailureRules.SPAGHETTI
+	return _mode != Mode.RESIN and _job != null and _job.status == PrintJob.Status.FAILED and _job.failure_type == FailureRules.SPAGHETTI
 
 
 func _set_swing(on: bool) -> void:
+	on = on and _head != null
 	if on == (_swing != null):
 		return
 	if not on:
@@ -260,15 +375,16 @@ func _show_tray(count: int) -> void:
 		_tray[i].visible = i < count
 
 
-## La pieza recién terminada da un saltito y suelta sus destellos.
+## La pieza recién terminada da un saltito (la de resina no: cuelga) y suelta
+## sus destellos.
 func _celebrate() -> void:
-	if _hop != null:
-		_hop.kill()
-	var base: float = _anchor.y
-	_piece_spot.position.y = base
-	_hop = create_tween().set_trans(Tween.TRANS_SINE)
-	_hop.tween_property(_piece_spot, "position:y", base + HOP_HEIGHT, HOP_TIME / 2.0).set_ease(Tween.EASE_OUT)
-	_hop.tween_property(_piece_spot, "position:y", base, HOP_TIME / 2.0).set_ease(Tween.EASE_IN)
+	if _mode != Mode.RESIN:
+		if _hop != null:
+			_hop.kill()
+		var base: float = _piece_spot.position.y
+		_hop = create_tween().set_trans(Tween.TRANS_SINE)
+		_hop.tween_property(_piece_spot, "position:y", base + HOP_HEIGHT, HOP_TIME / 2.0).set_ease(Tween.EASE_OUT)
+		_hop.tween_property(_piece_spot, "position:y", base, HOP_TIME / 2.0).set_ease(Tween.EASE_IN)
 	_sparkles.play(Vector3(0.0, PieceModel.full_size(_size_id).y, 0.0))
 
 
@@ -289,7 +405,7 @@ func _on_printer_changed(uid: int) -> void:
 
 
 func _on_clock_ticked(_game_seconds: int) -> void:
-	if _piece != null and _shown == Shown.PRINTING:
+	if _shown == Shown.PRINTING:
 		_grow()
 
 

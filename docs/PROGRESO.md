@@ -4,8 +4,8 @@
 
 - **Fase actual:** 1. Ciclo jugable, en curso (ruta aprobada por el dueño en `docs/RUTA.md`).
 - **Diseño:** GDD versión 2.3, guía de estilo en `docs/ESTILO.md` y ruta en `docs/RUTA.md`.
-- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 7 de 16: el escritorio del comienzo (mesa con cajonera, monitor de tubo, torre, teclado, lámpara articulada, taza, portalápices impreso, papeles y la caja de cartón con cojín como silla), el rincón de despacho (mesa de embalar y guacal) y los paquetes, todo del kit (2026-10-22). Antes: paso 6, la impresora estrella.
-- **Siguiente paso sugerido:** Arte 2.0, paso 8: las otras seis familias de impresoras y el estado de noche por impresora. Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
+- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 8 de 16: las otras seis familias de impresoras (Rayo Mini, Rayo X1, Prisma MC, Bóveda P1, Titán Pro y Gota R1), cada una con su silueta, la pieza que crece y su falla, y el estado de noche por impresora (halo del color del estado y luz de adentro de las cerradas) (2026-10-22). Antes: paso 7, escritorio, despacho y paquetes.
+- **Siguiente paso sugerido:** Arte 2.0, paso 9: muebles y estantería arreglada (con lugar para impresoras de 0,72 m). Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
 - **Diseño del ciclo:** aprobado por el dueño (GDD, versión 2.3 en la sección 16).
 
 | Fase | Estado |
@@ -32,7 +32,7 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 | 5 | Tienda y envíos | En parte: ferretería hecha |
 | 6 | Pedidos tipo chat | Terminada |
 | 7 | Modelar, imprimir, retirar, embalar y despachar | Terminada |
-| 8 | Fallos y accesorios | En parte: los fallos se deciden al empezar cada pieza, con limpiar y reintentar; falta verlos dibujados, el fin de filamento, los accesorios y el rescate |
+| 8 | Fallos y accesorios | En parte: los fallos se deciden al empezar cada pieza, con limpiar y reintentar, y ya se ven dibujados en las siete familias (espagueti, warping, la pieza de resina que cae; Arte 2.0, pasos 6 y 8); faltan el fin de filamento, los accesorios y el rescate |
 | 9 | Fuera del juego y objetivos | Pendiente |
 | 10 | Simulador y primer balance | Pendiente |
 
@@ -415,3 +415,25 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 - Con el zoom normal el rincón de despacho sigue siendo chico (mide lo mismo que antes, a propósito); se lee mejor que el de cajas porque el guacal tiene espacios entre listones y la mesa tiene cosas encima.
 - El cable de la regleta a la pared llega con la decoración (paso 12).
 - Las otras seis familias de impresoras, los muebles y el personaje siguen con los modelos de cajas (pasos 8 a 10).
+
+### 2026-10-22 — Arte 2.0, paso 8: las siete familias de impresoras
+
+**Qué se hizo**
+- **Seis impresoras nuevas, todas distintas por su forma:** la **Rayo Mini** (chiquita y achatada, blanca, con un cabezal redondo de aro verde que brilla y el carrete en un soporte aparte a la derecha); la **Rayo X1** (una sola columna alta con una barra de luz, el carrete arriba y la pantalla táctil en un brazo); la **Prisma MC** (como la X1 pero morada y con una caja de 4 carretes de colores arriba, sus tubos y la rampa de purga con restos de 4 colores); la **Bóveda P1** (un cubo grafito con puerta y techo de vidrio, la luz de adentro y el carrete asomando atrás); la **Titán Pro** (la grande, grafito con naranja, dos boquillas, pantalla ancha y la caja de colores arriba); y la **Gota R1** (la de resina: base negra y tapa ámbar transparente).
+- **Todas muestran la pieza que crece y su falla.** En las cerradas el cabezal va arriba y la cama baja mientras la pieza crece; adentro la luz es cálida al imprimir, verde al terminar y roja si falla (con el espagueti adentro). En la de resina la pieza cuelga de la placa y crece hacia abajo mientras la placa sube; si falla, cae a la tina.
+- **De noche cada impresora tiene un halo en el piso del color de su estado** (cálido imprimiendo, verde lista, rojo con falla). Todavía no hay noche en el juego (llega en el paso 13): se probó con una noche puesta a mano.
+- Las impresoras de los muebles se dibujan con menos detalle que la del piso (no se nota a esa distancia) y solo su cuerpo da sombra: el taller lleno bajó de 395 a **230 llamadas de dibujo** y de 29 a 20 materiales.
+
+**Verificado**
+- `check.sh` y `run_tests.sh` pasan: 611 pruebas (antes 600); 10 nuevas en `tests/integration/test_printer_families.gd` (medidas, partes, presupuesto, que crezcan y fallen, halos) y 1 en `tests/unit/test_kit_mesh.gd` (el corte de biseles chicos). La herramienta que mide el presupuesto ahora entiende los `#ifdef` de los sombreadores (detalle en `docs/DECISIONES.md`).
+- `screenshots.sh` saca las 38 capturas. Revisé 26 y 38 (y 36, 37 y 46), y aparte (laboratorio) cada familia de muy cerca: quieta, imprimiendo, lista y con falla, de día y con una noche puesta a mano.
+
+**Qué revisar en el teléfono** (versión web)
+- La tienda, pestaña Impresoras: los dibujitos de cada impresora ahora son los modelos nuevos (cada una con su forma).
+- Hoy en una partida nueva solo está la Cubo Uno; las otras se ven cuando se puedan comprar (tarea 5). Si quieres verlas ya, la captura 26 de `build/screenshots/` las muestra a todas en el cuarto.
+
+**Problemas conocidos**
+- La estantería metálica todavía es la vieja (tablas cada 0,62 m): las impresoras altas la atraviesan (se ve en 38). La arregla el paso 9 (0,74 m por nivel).
+- El carrete de las cerradas no cambia de color con el trabajo (es parte del cuerpo, para que cuesten 6 llamadas); se ve poco.
+- La noche y sus halos solo se vieron en el laboratorio (paso 13).
+

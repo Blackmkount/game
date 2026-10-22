@@ -132,6 +132,12 @@ const REVEAL_CUT: String = "ff8030"
 const REVEAL_PREVIEW: String = "38d0ff"
 ## Destellos de "pieza lista" (§9.5): el dorado de la guirnalda.
 const READY_SPARKLE: String = STRING_LIGHTS
+## Estado de cada impresora de noche (§9.2): el halo del piso y la luz de
+## adentro de las cerradas. Imprimiendo, cálido (el halo de la lámpara);
+## lista, verde; falla, rojo (el verde y el rojo de los filamentos).
+const STATE_PRINTING: String = LAMP_HALO
+const STATE_DONE: String = PRINTER_GREEN
+const STATE_FAILED: String = "e0453a"
 
 # Interacción (§4.8): marcas del piso, marco de cercanía y destino.
 const INTERACTION: String = "38d6ff"

@@ -1,0 +1,321 @@
+extends GutTest
+## Las siete familias de impresoras (biblia de arte §9.2–9.3): se arman sin
+## errores, caben en la estantería, tienen las partes del contrato de su modo
+## (abiertas, cerradas, de resina), cuestan lo que dice el presupuesto (§5.2)
+## y, en el cuarto, TODAS muestran la pieza que crece y su falla. De noche
+## cada una tiene su halo del color del estado.
+
+const MAIN_SCENE: PackedScene = preload("res://game/scenes/main.tscn")
+const SceneBudget: GDScript = preload("res://tests/helpers/scene_budget.gd")
+const SEED: int = 1234
+const FAMILIES: Array[String] = ["cubo_uno", "rayo_mini", "rayo_x1", "prisma_mc", "boveda_p1", "titan_pro", "gota_r1"]
+const OPEN: Array[String] = ["cubo_uno", "rayo_mini", "rayo_x1", "prisma_mc"]
+const CLOSED: Array[String] = ["boveda_p1", "titan_pro"]
+## Presupuesto por impresora (biblia §5.2): triángulos y llamadas de dibujo
+## con la pasada de sombra, en el piso y en un mueble.
+const FLOOR_MAX_TRIANGLES: int = 2400
+const FLOOR_MAX_DRAW_CALLS: int = 9
+const FURNITURE_MAX_TRIANGLES: int = 1200
+const FURNITURE_MAX_DRAW_CALLS: int = 6
+## Dos familias se distinguen por la silueta: su caja difiere al menos esto
+## en alguna medida (m).
+const SILHOUETTE_GAP: float = 0.02
+
+var _root: Node3D
+var _main: Control
+var _room: RoomView
+var _previous_processing: bool
+
+
+func before_each() -> void:
+	_main = null
+	_room = null
+	_root = Node3D.new()
+	add_child_autofree(_root)
+	_previous_processing = Game.is_processing()
+	Game.set_process(false)
+	Game.reset_game(SEED)
+
+
+func after_each() -> void:
+	Game.set_process(_previous_processing)
+
+
+func test_the_catalog_has_these_seven_families() -> void:
+	var ids: Array[String] = []
+	for printer: Dictionary in Game.catalog.files["printers"]:
+		ids.append(String(printer["id"]))
+	ids.sort()
+	var expected: Array[String] = FAMILIES.duplicate()
+	expected.sort()
+	assert_eq(ids, expected, "Cada impresora del catálogo tiene su modelo")
+
+
+func test_every_family_builds_and_fits_the_shelf() -> void:
+	for id: String in FAMILIES:
+		for detail: float in [PrinterParts.FLOOR_DETAIL, PrinterParts.FURNITURE_DETAIL]:
+			var printer: Node3D = PrinterModel.build(_root, "P", id, "f2efe6", detail)
+			var bounds: AABB = PropBounds.local_aabb(printer)
+			assert_almost_eq(bounds.position.y, 0.0, 0.001, "%s apoyada (detalle %s)" % [id, detail])
+			assert_lte(bounds.end.y, PrinterModel.MAX_HEIGHT, "%s cabe en la estantería (detalle %s)" % [id, detail])
+			assert_lte(bounds.size.x, 0.6, "%s cabe en la mesa auxiliar" % id)
+			assert_lte(bounds.size.z, 0.55, "%s cabe en el fondo de la mesa auxiliar" % id)
+			var display: MeshInstance3D = printer.get_node_or_null("Display")
+			assert_not_null(display, "%s tiene pantallita" % id)
+			if display != null:
+				assert_eq(display.material_override, WorldPalette.glow("ffffff", "printer_display"))
+				assert_eq(display.cast_shadow, GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+			assert_same((printer.get_node("Body") as MeshInstance3D).material_override, WorldPalette.kit(), "%s: lo fijo es una malla del kit" % id)
+			for marker_name: String in ["PieceAnchor", "TrayAnchor", "BedLight"]:
+				assert_true(printer.get_node_or_null(marker_name) is Marker3D, "%s: %s" % [id, marker_name])
+			_root.remove_child(printer)
+			printer.free()
+
+
+func test_each_mode_has_its_parts() -> void:
+	for id: String in OPEN:
+		var printer: Node3D = PrinterModel.build(_root, id, id)
+		for part: String in ["Gantry", "PrintHead/Carriage", "Spool/Filament"]:
+			assert_true(printer.get_node_or_null(part) is MeshInstance3D, "%s: %s" % [id, part])
+		for marker_name: String in ["Bed", "HeadRest", "HeadPark"]:
+			assert_true(printer.get_node_or_null(marker_name) is Marker3D, "%s: %s" % [id, marker_name])
+	for id: String in CLOSED:
+		var printer: Node3D = PrinterModel.build(_root, id, id)
+		for part: String in ["Platform", "Interior", "PrintHead/Carriage"]:
+			assert_true(printer.get_node_or_null(part) is MeshInstance3D, "%s: %s" % [id, part])
+		for marker_name: String in ["PlatformLow", "HeadRest", "HeadPark"]:
+			assert_true(printer.get_node_or_null(marker_name) is Marker3D, "%s: %s" % [id, marker_name])
+		assert_false(printer.has_node("Bed"), "%s no es abierta" % id)
+		var anchor: Vector3 = (printer.get_node("PieceAnchor") as Node3D).position
+		var rest: Vector3 = (printer.get_node("HeadRest") as Node3D).position
+		assert_almost_eq(rest.y - anchor.y, PrinterView.HEAD_CLEARANCE, 0.0001, "%s: la cama empieza bajo la boquilla" % id)
+		assert_lt((printer.get_node("PlatformLow") as Node3D).position.y, anchor.y - PieceModel.SIZES["M"].y, "%s: la cama baja más que la pieza más alta" % id)
+	var resin: Node3D = PrinterModel.build(_root, "gota_r1", "gota_r1")
+	for part: String in ["Plate", "Resin", "Lid"]:
+		assert_true(resin.get_node_or_null(part) is MeshInstance3D, "gota_r1: %s" % part)
+	for marker_name: String in ["PlateTop", "VatFloor"]:
+		assert_true(resin.get_node_or_null(marker_name) is Marker3D, "gota_r1: %s" % marker_name)
+	var lid: MeshInstance3D = resin.get_node("Lid")
+	assert_true(SceneBudget.is_transparent(lid.material_override), "La tapa ámbar es transparente")
+	assert_eq(lid.cast_shadow, GeometryInstance3D.SHADOW_CASTING_SETTING_OFF, "La tapa no da sombra")
+	var top: float = (resin.get_node("PlateTop") as Node3D).position.y
+	var anchor_y: float = (resin.get_node("PieceAnchor") as Node3D).position.y
+	assert_gte(top - anchor_y, PieceModel.SIZES["S"].y, "Arriba, la placa deja colgar la pieza entera")
+
+
+func test_every_family_fits_its_budget_on_the_floor_and_on_furniture() -> void:
+	var sun: DirectionalLight3D = DirectionalLight3D.new()
+	sun.shadow_enabled = true
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
+	_root.add_child(sun)
+	for id: String in FAMILIES:
+		var floor_budget: RefCounted = _measure(id, PrinterParts.FLOOR_DETAIL)
+		assert_lte(floor_budget.get("triangles"), FLOOR_MAX_TRIANGLES, "%s en el piso: triángulos" % id)
+		assert_lte(floor_budget.get("draw_calls"), FLOOR_MAX_DRAW_CALLS, "%s en el piso: llamadas" % id)
+		var furniture_budget: RefCounted = _measure(id, PrinterParts.FURNITURE_DETAIL)
+		assert_lte(furniture_budget.get("triangles"), FURNITURE_MAX_TRIANGLES, "%s en un mueble: triángulos" % id)
+		assert_lte(furniture_budget.get("draw_calls"), FURNITURE_MAX_DRAW_CALLS, "%s en un mueble: llamadas" % id)
+		assert_lte(furniture_budget.get("shadow_meshes"), 1, "%s en un mueble: solo el cuerpo da sombra" % id)
+
+
+func test_the_seven_silhouettes_differ() -> void:
+	var sizes: Dictionary[String, Vector3] = {}
+	for id: String in FAMILIES:
+		sizes[id] = PropBounds.local_aabb(PrinterModel.build(_root, id, id)).size
+	for a: int in FAMILIES.size():
+		for b: int in range(a + 1, FAMILIES.size()):
+			var gap: Vector3 = (sizes[FAMILIES[a]] - sizes[FAMILIES[b]]).abs()
+			assert_gt(maxf(gap.x, maxf(gap.y, gap.z)), SILHOUETTE_GAP, "%s y %s se distinguen por la silueta" % [FAMILIES[a], FAMILIES[b]])
+
+
+func test_furniture_printers_are_lighter_than_the_floor_one() -> void:
+	var state: GameState = GameState.new_game(Game.rules, SEED)
+	var table: OwnedFurniture = OwnedFurniture.new(state.take_uid(), "mesa_trabajo", 2)
+	state.furniture.append(table)
+	state.printers.append(OwnedPrinter.new(state.take_uid(), "cubo_uno", table.uid))
+	await _load(state)
+	var floor_printer: Node3D = _room.get_node("Printer%d" % state.printers[0].uid)
+	var table_printer: Node3D = _room.get_node("Printer%d" % state.printers[1].uid)
+	assert_eq((floor_printer.get_node("Gantry") as MeshInstance3D).cast_shadow, GeometryInstance3D.SHADOW_CASTING_SETTING_ON, "La del piso: todo da sombra")
+	for part: String in ["Gantry", "PrintHead/Carriage", "Spool/Filament"]:
+		assert_eq((table_printer.get_node(part) as MeshInstance3D).cast_shadow, GeometryInstance3D.SHADOW_CASTING_SETTING_OFF, "La del mueble: %s sin sombra" % part)
+	var floor_triangles: int = (floor_printer.get_node("Body") as MeshInstance3D).mesh.get_faces().size()
+	var table_triangles: int = (table_printer.get_node("Body") as MeshInstance3D).mesh.get_faces().size()
+	assert_lt(table_triangles, floor_triangles, "La del mueble, con menos detalle")
+
+
+func test_an_open_compact_printer_grows_the_piece_and_raises_its_head() -> void:
+	await _load(_with_floor_printer("rayo_mini"))
+	var printer: Node3D = _floor_printer()
+	var scale: float = PrinterModel.frame_scale("rayo_mini")
+	_start_print("llavero")
+	Game.advance(20.0)
+	var piece: MeshInstance3D = printer.get_node("PieceSpot/Piece")
+	var height: float = PieceModel.shown_height(piece)
+	assert_true(piece.visible)
+	assert_gt(height, PieceModel.LAYER_STEP, "Crece")
+	var anchor: Vector3 = (printer.get_node("PieceAnchor") as Node3D).position
+	assert_eq((printer.get_node("PieceSpot") as Node3D).position, anchor, "Sobre la cama")
+	var head: Node3D = printer.get_node("PrintHead")
+	assert_almost_eq(head.position.y, maxf((printer.get_node("HeadRest") as Node3D).position.y, anchor.y + PrinterView.HEAD_CLEARANCE * scale + height), 0.0001, "El cabezal sube con la pieza")
+	assert_almost_eq((printer.get_node("Gantry") as Node3D).position.y, head.position.y, 0.0001, "Y su brazo")
+
+
+func test_a_closed_printer_lowers_its_bed_and_lights_up_by_state() -> void:
+	for id: String in CLOSED:
+		await _load(_with_floor_printer(id))
+		var printer: Node3D = _floor_printer()
+		var interior: MeshInstance3D = printer.get_node("Interior")
+		var platform: Node3D = printer.get_node("Platform")
+		var piece: MeshInstance3D = printer.get_node("PieceSpot/Piece")
+		var idle_interior: Material = interior.material_override
+		assert_almost_eq(platform.position.y, (printer.get_node("PlatformLow") as Node3D).position.y, 0.0001, "%s: sin trabajo, la cama abajo" % id)
+		_start_print("llavero")
+		var previous: float = 0.0
+		var grew: int = 0
+		var anchor: Vector3 = (printer.get_node("PieceAnchor") as Node3D).position
+		for second: int in 8:
+			Game.advance(2.0)
+			var height: float = PieceModel.shown_height(piece)
+			assert_gte(height, previous, "%s: nunca baja" % id)
+			if height > previous:
+				grew += 1
+			previous = height
+			if height >= PieceModel.LAYER_STEP:
+				var top: float = (printer.get_node("PieceSpot") as Node3D).position.y + height
+				assert_almost_eq(top, anchor.y, 0.0001, "%s: la pieza termina bajo la boquilla" % id)
+				assert_almost_eq(platform.position.y, anchor.y - height, 0.0001, "%s: la cama baja con la pieza" % id)
+		assert_gt(grew, 2, "%s: la pieza crece mientras imprime" % id)
+		assert_eq(interior.material_override, WorldPalette.glow(PrinterModel.interior_hex(id)), "%s: adentro, la luz de imprimir" % id)
+		assert_ne(interior.material_override, idle_interior)
+		var hex: String = PieceModel.filament_hex(Game.rules, Game.state.printers[0].job.color_id)
+		assert_true(DebugTools.force_fail(Game.sim, Game.state.printers[0].uid, FailureRules.SPAGHETTI))
+		Game.advance(30.0)
+		assert_eq(Game.state.printers[0].job.status, PrintJob.Status.FAILED)
+		assert_eq(piece.material_override, WorldPalette.solid(WorldPalette.FAILED_PIECE), "%s: la pieza fallida, oscura" % id)
+		var nest: MeshInstance3D = printer.get_node("PieceSpot/Spaghetti")
+		assert_true(nest.visible, "%s: el espagueti se ve adentro" % id)
+		assert_eq(nest.material_override, PieceModel.spaghetti_material(hex))
+		assert_eq(interior.material_override, WorldPalette.glow(LookPalette.STATE_FAILED), "%s: el interior pasa a rojo" % id)
+		assert_true(Game.clean_printer(Game.state.printers[0].uid).ok)
+		assert_eq(interior.material_override, idle_interior, "%s: limpia, la luz de siempre" % id)
+		assert_false(piece.visible)
+
+
+func test_a_resin_piece_hangs_from_the_rising_plate_and_falls_when_it_fails() -> void:
+	await _load(_with_floor_printer("gota_r1"))
+	var printer: Node3D = _floor_printer()
+	var plate: Node3D = printer.get_node("Plate")
+	var spot: Node3D = printer.get_node("PieceSpot")
+	var piece: MeshInstance3D = printer.get_node("PieceSpot/Piece")
+	var top_y: float = (printer.get_node("PlateTop") as Node3D).position.y
+	assert_almost_eq(plate.position.y, top_y, 0.0001, "Sin trabajo, la placa arriba")
+	_start_print("llavero", "resina")
+	var resin: MeshInstance3D = printer.get_node("Resin")
+	var hex: String = PieceModel.filament_hex(Game.rules, Game.state.printers[0].job.color_id)
+	assert_eq(resin.material_override, WorldPalette.solid(hex), "La resina, del color del trabajo")
+	var previous: float = 0.0
+	var grew: int = 0
+	for second: int in 10:
+		Game.advance(2.0)
+		var height: float = PieceModel.shown_height(piece)
+		assert_gte(height, previous, "Nunca baja")
+		if height > previous:
+			grew += 1
+		previous = height
+		if height < PieceModel.LAYER_STEP:
+			continue
+		var bounds: AABB = piece.global_transform * piece.mesh.get_aabb()
+		var plate_bottom: float = (printer.global_transform * plate.position).y
+		assert_almost_eq(bounds.end.y, plate_bottom, 0.0005, "El borde de arriba de la pieza, pegado a la placa")
+		assert_almost_eq(plate.position.y, (printer.get_node("PieceAnchor") as Node3D).position.y + height, 0.0001, "La placa sube con la pieza")
+		assert_eq(piece.material_override, WorldPalette.printing(hex), "Con la capa caliente")
+		var hot: float = piece.get_instance_shader_parameter(&"hot_top")
+		assert_almost_eq((piece.global_transform * Vector3(0.0, hot, 0.0)).y, bounds.position.y, 0.0005, "La capa nueva (caliente) queda abajo, sobre la resina")
+	assert_gt(grew, 2, "La pieza crece hacia abajo mientras imprime")
+	assert_true(DebugTools.force_fail(Game.sim, Game.state.printers[0].uid, FailureRules.WARPING))
+	Game.advance(30.0)
+	assert_eq(Game.state.printers[0].job.status, PrintJob.Status.FAILED)
+	assert_true(piece.visible, "La pieza fallida se ve")
+	assert_eq(piece.material_override, WorldPalette.solid(WorldPalette.FAILED_PIECE))
+	assert_almost_eq(plate.position.y, top_y, 0.0001, "La placa sube vacía")
+	var fallen: AABB = piece.global_transform * piece.mesh.get_aabb()
+	var vat_floor: float = (printer.global_transform * (printer.get_node("VatFloor") as Node3D).position).y
+	assert_almost_eq(fallen.position.y, vat_floor, 0.002, "Cayó a la tina")
+	assert_gt(absf(spot.rotation_degrees.z) + absf(spot.rotation_degrees.x), 10.0, "Inclinada")
+	assert_false((printer.get_node("PieceSpot/Spaghetti") as Node3D).visible, "La resina no hace espagueti")
+
+
+func test_each_printer_has_a_night_halo_of_its_state_color() -> void:
+	var state: GameState = _with_floor_printer("boveda_p1")
+	var table: OwnedFurniture = OwnedFurniture.new(state.take_uid(), "mesa_trabajo", 2)
+	state.furniture.append(table)
+	state.printers.append(OwnedPrinter.new(state.take_uid(), "rayo_x1", table.uid))
+	await _load(state)
+	var halos: HaloField = _room.halos
+	assert_eq(halos.count(), 2, "Un halo por impresora")
+	assert_false(halos.visible, "De día no se dibujan")
+	assert_eq(halos.color_of(0), HaloField.OFF, "Sin trabajo, apagado")
+	halos.set_night(1.0)
+	assert_true(halos.visible, "De noche sí")
+	_start_print("llavero")
+	assert_eq(halos.color_of(0), Color(LookPalette.STATE_PRINTING), "Imprimiendo: cálido")
+	assert_eq(halos.color_of(1), HaloField.OFF, "La otra sigue apagada")
+	Game.advance(60.0)
+	assert_eq(Game.state.printers[0].job.status, PrintJob.Status.DONE)
+	assert_eq(halos.color_of(0), Color(LookPalette.STATE_DONE), "Lista: verde")
+	assert_eq((_floor_printer().get_node("Interior") as MeshInstance3D).material_override, WorldPalette.glow(LookPalette.STATE_DONE), "Y su interior, verde")
+	# El halo queda bajo la impresora, apoyado donde ella apoya.
+	var at: Transform3D = halos.transform_of(0)
+	var printer: Node3D = _floor_printer()
+	assert_almost_eq(Vector2(at.origin.x, at.origin.z).distance_to(Vector2(printer.position.x, printer.position.z)), 0.0, 0.1)
+	assert_almost_eq(at.origin.y, printer.position.y + HaloField.LIFT, 0.001)
+	halos.set_night(0.0)
+	assert_false(halos.visible)
+
+
+## Una partida nueva con la impresora del piso de otra familia.
+func _with_floor_printer(printer_id: String) -> GameState:
+	var state: GameState = GameState.new_game(Game.rules, SEED)
+	state.printers[0].printer_id = printer_id
+	return state
+
+
+func _load(state: GameState) -> void:
+	if _main != null and is_instance_valid(_main):
+		_main.queue_free()
+		await wait_process_frames(1)
+	Game._start(state)
+	_main = MAIN_SCENE.instantiate()
+	add_child_autofree(_main)
+	await wait_process_frames(2)
+	_room = _main.get_node("WorldView/SubViewport/Room")
+
+
+func _floor_printer() -> Node3D:
+	return _room.get_node("Printer%d" % Game.state.printers[0].uid)
+
+
+## Empieza a imprimir un pedido `order_id` en la impresora del piso con un
+## carrete nuevo de `material_id` (sin pasar por el computador ni revisar el
+## material: aquí solo importa lo que se ve).
+func _start_print(order_id: String, material_id: String = "pla") -> Order:
+	var state: GameState = Game.state
+	var order: Order = Order.new(state.take_uid(), order_id, state.game_seconds)
+	order.stage = Order.Stage.READY_TO_PRINT
+	state.orders.append(order)
+	var spool: Spool = Spool.new(state.take_uid(), material_id, "rojo", 5000)
+	state.spools.append(spool)
+	PrintFlow.start_job(Game.sim, order, state.printers[0], spool, "normal", state.game_seconds)
+	Game.advance(0.0)
+	return order
+
+
+## Triángulos y llamadas de una impresora sola con ese detalle (con el sol
+## de _root dando sombra).
+func _measure(id: String, detail: float) -> RefCounted:
+	var printer: Node3D = PrinterModel.build(_root, "Measured", id, "f2efe6", detail)
+	var budget: RefCounted = SceneBudget.measure(_root)
+	_root.remove_child(printer)
+	printer.free()
+	return budget

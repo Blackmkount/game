@@ -11,7 +11,9 @@
 // kit_tinted.gdshader (define KIT_TINTED) toma lo mismo de los uniform: la
 // pieza, la bandeja, el filamento y los modelos de cajas de antes.
 // kit_printing.gdshader (además HOT_LAYER) es la pieza mientras se imprime,
-// con la capa caliente arriba.
+// con la capa caliente arriba. kit_glass.gdshader (además KIT_GLASS) es
+// transparente y se ve de los dos lados (la tapa ámbar de la impresora de
+// resina).
 //
 // OJO: un "instance uniform" le cuesta a CADA instancia que use el material
 // 16 lugares del búfer de globales (en la web y en muchos teléfonos caben
@@ -31,6 +33,9 @@ uniform float emit = 0.0;
 uniform float toon = 0.0;
 // Luz de borde, solo del lado iluminado y teñida con el color del objeto.
 uniform float rim = 0.28;
+#ifdef KIT_GLASS
+uniform float alpha = 0.5;
+#endif
 #ifdef HOT_LAYER
 // Borde de arriba de la pieza que se imprime, en el espacio de la malla: ahí
 // va la capa caliente. -100 = no hay.
@@ -188,6 +193,10 @@ vec3 cc_surface(int kind, vec3 base, inout vec3 n, inout float shine) {
 
 void fragment() {
 	vec3 n = normalize(v_wnormal);
+#ifdef KIT_GLASS
+	// Las caras de atrás de la tapa (adentro) miran hacia el otro lado.
+	n = FRONT_FACING ? n : -n;
+#endif
 	vec3 base = v_color.rgb;
 	int kind = int(floor(v_attr.x + 0.001));
 	float shine = fract(v_attr.x + 0.0001);
@@ -239,6 +248,9 @@ void fragment() {
 	v_albedo = base * (1.0 - hot);
 	v_base = clamp(mix(base * cc_world_light(v_world, n, ao, 0.0) + glow, CC_HOT_COLOR, hot), 0.0, 1.0);
 	ALBEDO = base;
+#ifdef KIT_GLASS
+	ALPHA = alpha;
+#endif
 	ROUGHNESS = 1.0 - shine;
 	EMISSION = cc_out(v_base);
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);

@@ -278,13 +278,14 @@ static func _shadow_splits(light: Light3D) -> int:
 
 
 ## [transparente, da sombra] de un sombreador, leyendo su código (con los
-## #include) como lo decide Godot: escribir ALPHA sin recorte, un modo de
-## mezcla distinto de "mix" o leer la pantalla o la profundidad lo mandan a
-## la pasada transparente; con depth_prepass_alpha igual da sombra.
+## #include y lo que dejan #ifdef y #ifndef) como lo decide Godot: escribir
+## ALPHA sin recorte, un modo de mezcla distinto de "mix" o leer la pantalla
+## o la profundidad lo mandan a la pasada transparente; con
+## depth_prepass_alpha igual da sombra.
 static func _shader_traits(shader: Shader) -> Array:
 	if _shader_cache.has(shader):
 		return _shader_cache[shader]
-	var code: String = _expanded(shader.code, shader.resource_path.get_base_dir(), 0)
+	var code: String = _preprocessed(_expanded(shader.code, shader.resource_path.get_base_dir(), 0))
 	var modes: String = ""
 	for mode_match: RegExMatch in RegEx.create_from_string("render_mode\\s+([^;]*);").search_all(code):
 		modes += mode_match.get_string(1) + ","
@@ -299,6 +300,36 @@ static func _shader_traits(shader: Shader) -> Array:
 	var traits: Array = [transparent, not transparent or (prepass and not blends)]
 	_shader_cache[shader] = traits
 	return traits
+
+
+## El código sin las partes que el preprocesador deja afuera: lo que está
+## dentro de un #ifdef de algo no definido (o un #ifndef de algo definido),
+## con sus #else. Solo hacen falta #define, #ifdef, #ifndef, #else y #endif.
+static func _preprocessed(code: String) -> String:
+	var defined: Dictionary[String, bool] = {}
+	var active: Array[bool] = []
+	var kept: PackedStringArray = PackedStringArray()
+	for line: String in code.split("\n"):
+		var words: PackedStringArray = line.strip_edges().split(" ", false)
+		var directive: String = words[0] if words.size() > 0 else ""
+		var on: bool = not active.has(false)
+		match directive:
+			"#define":
+				if on and words.size() > 1:
+					defined[words[1]] = true
+			"#ifdef", "#ifndef":
+				var is_defined: bool = words.size() > 1 and defined.has(words[1])
+				active.append(is_defined == (directive == "#ifdef"))
+			"#else":
+				if not active.is_empty():
+					active[active.size() - 1] = not active[active.size() - 1]
+			"#endif":
+				if not active.is_empty():
+					active.pop_back()
+			_:
+				if on:
+					kept.append(line)
+	return "\n".join(kept)
 
 
 ## El código con cada #include "ruta" reemplazado por el del archivo.

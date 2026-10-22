@@ -57,9 +57,6 @@ const SUN_SHADOW_OPACITY: float = 0.9
 ## más abajo que la base.
 const BASE_SHADOW_SCALE: float = 1.9
 const BASE_SHADOW_GAP: float = 0.06
-## Luz LED de la impresora del piso, si su modelo no tiene el marcador
-## "BedLight": cuánto más arriba de la cama.
-const PRINTER_LED_ABOVE_BED: float = 0.18
 
 var camera: CameraRig
 var character: CharacterController
@@ -84,6 +81,9 @@ var window_occluder: AABB = AABB()
 ## Lo que adorna el cuarto y no se toca (biblia §5.4): por ahora, la
 ## baldosa y el cable de la impresora del piso.
 var decor: Node3D
+## Los halos de noche de las impresoras, del color de su estado (biblia
+## §9.2): un MultiMesh para todos, que DayCycle muestra solo de noche.
+var halos: HaloField
 
 var _character_item: WorldInteractable
 var _highlight: HighlightFrame
@@ -106,6 +106,9 @@ func _ready() -> void:
 	_build_base_shadow()
 	grid = WalkGrid.new(Rect2(-RoomShell.SIZE / 2.0, -RoomShell.SIZE / 2.0, RoomShell.SIZE, RoomShell.SIZE))
 	decor = PropBuilder.group(self, "Decor")
+	halos = HaloField.new()
+	add_child(halos)
+	day_cycle.halos = halos
 	_highlight = HighlightFrame.build(self, "Highlight")
 	_build_destination()
 	_publish_window_occluders(null)
@@ -340,7 +343,10 @@ func _build_contents() -> void:
 	var floor_index: int = 0
 	var spot_index: Dictionary[int, int] = {}
 	for printer: OwnedPrinter in state.printers:
-		var node: Node3D = PrinterModel.build(self, "Printer%d" % printer.uid, printer.printer_id, spool_color)
+		# La del piso, con todo su detalle; las de los muebles, con menos (y
+		# solo su cuerpo da sombra).
+		var detail: float = PrinterParts.FLOOR_DETAIL if printer.is_on_floor() else PrinterParts.FURNITURE_DETAIL
+		var node: Node3D = PrinterModel.build(self, "Printer%d" % printer.uid, printer.printer_id, spool_color, detail)
 		if printer.is_on_floor():
 			node.transform = layout.floor_printer_spots[mini(floor_index, layout.floor_printer_spots.size() - 1)]
 			if floor_index == 0:
@@ -354,7 +360,9 @@ func _build_contents() -> void:
 			var spot: Node3D = furniture.get_node("PrinterSpot%d" % index)
 			node.transform = furniture.transform * spot.transform
 		_register(WorldInteractable.Kind.PRINTER, printer.uid, node, true)
-		_add_view(node, PrinterView.new(printer.uid, PrinterModel.frame_scale(printer.printer_id)))
+		var view: PrinterView = PrinterView.new(printer.uid, printer.printer_id)
+		view.halos = halos
+		_add_view(node, view)
 
 	# Las marcas de lugares libres laten suavemente para invitar a llenarlos.
 	_marker_material = WorldPalette.glow_transparent(WorldPalette.SLOT_MARK, MARKER_ALPHA, MARKER_ALPHA_LOW, MARKER_PULSE_PERIOD)
@@ -444,15 +452,10 @@ func _place_desk_lights(desk: Node3D) -> void:
 	day_cycle.place_light("monitor", (desk.get_node("ScreenGlow") as Node3D).global_position)
 
 
-## La luz LED que alumbra la cama de la impresora del piso (cc_pl3): en su
-## marcador "BedLight" o, en los modelos que no lo tienen, sobre la cama.
+## La luz LED que alumbra la cama de la impresora del piso (cc_pl3), en su
+## marcador "BedLight".
 func _place_printer_led(printer: Node3D) -> void:
-	var led: Node3D = printer.get_node_or_null("BedLight")
-	if led != null:
-		day_cycle.place_light("printer_led", led.global_position)
-	elif printer.has_node("Bed"):
-		var bed: Node3D = printer.get_node("Bed")
-		day_cycle.place_light("printer_led", bed.global_position + Vector3.UP * PRINTER_LED_ABOVE_BED)
+	day_cycle.place_light("printer_led", (printer.get_node("BedLight") as Node3D).global_position)
 
 
 func _first_spool_color(state: GameState) -> String:

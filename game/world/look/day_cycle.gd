@@ -54,9 +54,11 @@ const WINDOW_SHAFT_STRENGTH: float = 0.22
 const LIGHT_GLOBALS: Array[StringName] = [&"cc_pl0", &"cc_pl1", &"cc_pl2", &"cc_pl3"]
 const LIGHT_COLOR_GLOBALS: Array[StringName] = [&"cc_pl0_col", &"cc_pl1_col", &"cc_pl2_col", &"cc_pl3_col"]
 
-## El sol del cuarto y el material del fondo (los arma RoomView).
+## El sol del cuarto, el material del fondo y los halos de noche de las
+## impresoras (los arma RoomView).
 var sun: DirectionalLight3D
 var backdrop: ShaderMaterial
+var halos: HaloField
 
 ## Dónde está cada luz del sombreador (nombre de LIGHTS → posición). Las que
 ## no tienen lugar no alumbran.
@@ -113,6 +115,8 @@ func apply_hour(hour: float) -> void:
 	_publish(&"cc_fill_dir", FILL_DIRECTION.normalized())
 	_publish(&"cc_fill", Vector4(fill.x, fill.y, fill.z, values["fill_character"]))
 	_publish(&"cc_night", values["night"])
+	if halos != null:
+		halos.set_night(values["night"])
 	WorldPalette.glow("ffffff", WorldPalette.WINDOW_VIEW).set_shader_parameter("mood", values["view_mood"])
 	WorldPalette.window_shaft().set_shader_parameter("strength", values["window_shaft"])
 	var factors: Dictionary = values["lights"]
