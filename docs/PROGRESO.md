@@ -4,7 +4,7 @@
 
 - **Fase actual:** 1. Ciclo jugable, en curso (ruta aprobada por el dueño en `docs/RUTA.md`).
 - **Diseño:** GDD versión 2.3, guía de estilo en `docs/ESTILO.md` y ruta en `docs/RUTA.md`.
-- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 11 de 16: el personaje vivo (trota con rodillas y codos, respira, parpadea, mira, hace gestos sueltos, cambia de cara y reacciona a lo que pasa: cobrar, una falla, subir de nivel, un mensaje, una impresora que termina, tocarlo), con su ronda de arreglos (pulgar arriba de frente, celular con las dos manos, capturas) (2026-10-22). Antes: paso 10, el personaje nuevo.
+- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 11 de 16: el personaje vivo (trota con rodillas y codos, respira, parpadea, mira, hace gestos sueltos, cambia de cara y reacciona a lo que pasa: cobrar, una falla, subir de nivel, un mensaje, una impresora que termina, tocarlo), con dos rondas de arreglos (pulgar arriba de frente, celular con las dos manos, capturas; nada de memoria nueva en el primer gesto de la partida) (2026-10-22). Antes: paso 10, el personaje nuevo.
 - **Siguiente paso sugerido:** Arte 2.0, paso 12: la decoración del dormitorio que crece con el nivel. Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
 - **Diseño del ciclo:** aprobado por el dueño (GDD, versión 2.3 en la sección 16).
 
@@ -560,4 +560,29 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 **Problemas conocidos**
 - De cerca, con el brazo levantado de costado o más arriba (48, 49), el hombro hace un pliegue un poco anguloso donde la manga sale del buzo; se puede suavizar ensanchando la mezcla del hombro (paso 16).
 - De frente, la pantalla del celular no se ve (mira a sus ojos); se lee por la pose.
+- "Reducir movimiento" todavía no existe en Ajustes (RUTA Fase 2).
+
+
+### 2026-10-22 — Arte 2.0, paso 11, ronda de arreglos 2
+
+**Qué se hizo** (lo pidió la revisión)
+- **El primer gesto ya no traba un cuadro:** los datos de los 12 gestos (unos 25 KB, ~2 ms de cálculo) se arman cuando se arma el cuarto, no con la primera reacción de la partida. Antes, en un teléfono lento o en la web, la primera vez que el personaje reaccionaba (casi siempre al sacar el celular por el primer mensaje) podía perderse un cuadro. También se preparan al empezar los valores que el personaje manda a los sombreadores (pelo, cordones, cara y mirada).
+- **Frenar:** al soltar el joystick corriendo, el cuerpo se va un poquito hacia adelante y se asienta (antes casi nunca pasaba). Al chocar contra una pared ya no hay ese empujón: solo se endereza.
+- **Estirarse:** de frente los brazos suben en V por encima de la cabeza (antes las manos quedaban sobre el pelo y parecía agarrarse la cabeza).
+- **Celular:** los codos quedan más pegados al cuerpo.
+- **Captura nueva 23a:** el momento en que falla la pieza, con el personaje agarrándose la cabeza, el globo "¡Nooo! Un espagueti." y el retrato preocupado.
+
+**Verificado**
+- `check.sh` (212 archivos, 0 errores) y `run_tests.sh` (665 pruebas, antes 663: 2 nuevas, detalle en `docs/DECISIONES.md`) pasan.
+- `screenshots.sh` saca las 42 capturas. Revisé 23a, 23, 13, 19, 22, 24, 48 y 49, y aparte (laboratorio) los 12 gestos desde tres lados y el celular desde cuatro.
+
+**Qué revisar en el teléfono** (versión web)
+- Abre el juego y espera el primer mensaje quieto: al sacar el celular no debe notarse ningún tirón.
+- Corre y suelta el joystick: se va un poquito hacia adelante antes de enderezarse. Corre contra una pared: se detiene sin irse hacia adelante.
+- Haz que falle una impresión estando cerca: se agarra la cabeza mientras sale el globo.
+
+**Problemas conocidos**
+- De cerca, con el brazo levantado (48, 49), el hombro hace un pliegue un poco anguloso (paso 16). Con el celular, de espaldas, se nota el bulto del hombro por lo mismo.
+- El pulgar del mitón es chico: a zoom normal, de frente, el pulgar arriba puede leerse como "hola" (paso 16). El puño arriba es un mitón abierto, no un puño cerrado (paso 16).
+- En 23a el globo del personaje tapa el ícono de aviso de la impresora; y en 22 lo cobrado que vuela se cruza con el globo del cliente (interfaz, paso 16).
 - "Reducir movimiento" todavía no existe en Ajustes (RUTA Fase 2).

@@ -103,6 +103,11 @@ func idle_time() -> float:
 	return _idle_time
 
 
+## Si el joystick lo empuja (aunque esté contra una pared).
+func is_pushed() -> bool:
+	return stick.length_squared() > 0.0001
+
+
 ## Avanza `delta` segundos: lo mueve y después lo anima. Lo llama
 ## RoomView.step() en cada cuadro.
 func step(delta: float) -> void:
@@ -117,7 +122,7 @@ func step(delta: float) -> void:
 
 func _step_once(dt: float) -> void:
 	var desired: Vector2 = Vector2.ZERO
-	var pushing: bool = stick.length_squared() > 0.0001
+	var pushing: bool = is_pushed()
 	if pushing:
 		stop_path()
 		_face_goal = null

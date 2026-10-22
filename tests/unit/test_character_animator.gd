@@ -149,6 +149,18 @@ func test_pushing_against_a_wall_is_not_standing_idle() -> void:
 	assert_eq(_animator.current_gesture(), CharacterGestures.Gesture.NONE, "Sin gestos sueltos")
 
 
+## Biblia §7.7.1: al soltar el joystick corriendo se asienta (el cuerpo se va
+## un poco más hacia adelante y vuelve); al chocar contra una pared con el
+## joystick empujado no hay empujón: solo se endereza.
+func test_a_sudden_stop_settles_but_a_wall_does_not_tip_the_body_forward() -> void:
+	var released: PackedFloat32Array = _pitch_around_stop(Vector2(-2.5, 0.0), 1.2)
+	assert_gt(released[1], released[0], "Al soltar el joystick se va hacia adelante")
+	var blocked: PackedFloat32Array = _pitch_around_stop(Vector2(-2.0, 0.0), INF)
+	for i: int in range(1, blocked.size()):
+		assert_lte(blocked[i], blocked[i - 1] + 0.0001, "Contra la pared solo se endereza (cuadro %d)" % i)
+	assert_lt(blocked[blocked.size() - 1], 0.05, "Y en un momento ya no se inclina")
+
+
 func test_walking_cancels_a_gesture() -> void:
 	_animator.react(CharacterAnimator.Reaction.TAPPED)
 	_run(0.4)
@@ -298,6 +310,30 @@ func test_hold_freezes_a_gesture_at_its_peak_for_the_screenshots() -> void:
 	assert_eq(_animator.emotion(), FacePainter.Face.NEUTRAL)
 
 
+## Biblia §7.7: nada de memoria en _process. La tabla de gestos y los
+## instance uniforms de las mallas se preparan al crear el animador (mientras
+## se arma el cuarto), no con la primera reacción de la partida, que llega en
+## medio de un cuadro.
+func test_the_first_reaction_of_a_game_needs_no_new_memory() -> void:
+	for reaction: int in CharacterAnimator.Reaction.size():
+		# Otra prueba ya pudo haber armado la tabla: se suelta, como al abrir
+		# el juego.
+		CharacterGestures._first = PackedInt32Array()
+		var controller: CharacterController = _new_controller(Vector3(1.0, 0.0, 1.0))
+		var before: int = OS.get_static_memory_usage()
+		controller.animator.react(reaction as CharacterAnimator.Reaction, Vector3(2.0, 0.5, 2.0))
+		controller.step(FRAME)
+		var first_frame: int = OS.get_static_memory_usage() - before
+		var gesture: CharacterGestures.Gesture = controller.animator.current_gesture()
+		for i: int in ceili(4.0 / FRAME):
+			controller.step(FRAME)
+		var whole: int = OS.get_static_memory_usage() - before
+		var label: String = CharacterAnimator.Reaction.keys()[reaction]
+		assert_ne(gesture, CharacterGestures.Gesture.NONE, "%s: reacciona" % label)
+		assert_eq(first_frame, 0, "%s: sin memoria nueva en el primer cuadro" % label)
+		assert_eq(whole, 0, "%s: ni en todo el gesto, la cara y la mirada" % label)
+
+
 func test_the_arm_reaches_where_a_gesture_puts_the_hand() -> void:
 	var targets: Array[Vector3] = [Vector3(0.235, 1.16, 0.05), Vector3(0.18, 0.8, 0.24), Vector3(0.03, 1.06, 0.2), Vector3(0.215, 0.56, 0.0)]
 	for side: float in [-1.0, 1.0]:
@@ -368,6 +404,32 @@ func _node(path: String) -> Node3D:
 func _hand(side: float) -> Vector3:
 	var elbow: Node3D = _node("Body/ShoulderL/ElbowL" if side < 0.0 else "Body/ShoulderR/ElbowR")
 	return elbow.global_transform * (CharacterModel.HAND + Vector3(0.0, CharacterModel.ELBOW_DROP, 0.0))
+
+
+## Corre hacia +X desde `start` y suelta el joystick a los `release_at`
+## segundos (INF: nunca, hasta chocar con la pared). Devuelve la inclinación
+## de Body (rotation.x) en el cuadro de antes de frenar, en el que frena y en
+## los 8 que siguen. Sin respiración, para ver solo la inclinación.
+func _pitch_around_stop(start: Vector2, release_at: float) -> PackedFloat32Array:
+	var controller: CharacterController = _new_controller(Vector3(start.x, 0.0, start.y))
+	controller.animator.freeze_idle = true
+	controller.stick = Vector2(1.0, 0.0)
+	var body: Node3D = controller.model.get_node("Body")
+	var pitch: PackedFloat32Array = PackedFloat32Array()
+	var before: float = 0.0
+	var time: float = 0.0
+	while time < 5.0 and pitch.size() < 10:
+		if time >= release_at:
+			controller.stick = Vector2.ZERO
+		controller.step(FRAME)
+		time += FRAME
+		var stopped: bool = controller.velocity.length() / controller.tuning.walk_speed < CharacterAnimator.STOPPED
+		if pitch.is_empty() and stopped and time > 0.5:
+			pitch.append(before)
+		if not pitch.is_empty():
+			pitch.append(body.rotation.x)
+		before = body.rotation.x
+	return pitch
 
 
 ## Planta del pie de ese lado, en el mundo.

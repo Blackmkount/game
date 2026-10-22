@@ -27,7 +27,8 @@ extends RefCounted
 ## 6. Estirar y aplastar con la escala de Body (saltar, aterrizar, arrancar).
 ##
 ## Las reacciones (react) son siempre cosméticas: la simulación nunca las
-## espera. Todo usa arreglos reservados al armarse: sin memoria nueva por
+## espera. Todo usa arreglos reservados al armarse (también la tabla de
+## gestos y los instance uniforms de las mallas): sin memoria nueva por
 ## cuadro. El azar tiene su propia semilla (reseed) y freeze_idle deja quieto
 ## lo que es al azar o de adorno, para las capturas.
 
@@ -50,8 +51,12 @@ const SHOULDER_TWIST: float = 0.08
 const LEAN: float = 0.12
 ## Resorte de la inclinación (rigidez, amortiguación) y su empujón al frenar
 ## en seco (rad/s): el cuerpo se va un poco hacia adelante y se asienta.
+## Frenar en seco es soltar el joystick corriendo: de RUNNING a STOPPED en
+## menos de STOP_WINDOW segundos. Contra una pared no hay empujón (biblia:
+## al chocar no se inclina).
 const LEAN_SPRING: Vector2 = Vector2(260.0, 20.0)
 const STOP_PITCH: float = 1.4
+const STOP_WINDOW: float = 0.15
 ## Anticipo al arrancar: se aplasta un poco durante KICK_TIME.
 const KICK_TIME: float = 0.1
 const KICK_SQUASH: float = 0.04
@@ -62,10 +67,12 @@ const STOPPED: float = 0.05
 const RUNNING: float = 0.5
 const MOVING: float = 0.15
 ## Al girar en el lugar levanta los pies por turnos: cuánto dobla la rodilla,
-## cuánto gira por paso (rad) y la velocidad de giro (rad/s) del paso entero.
+## cuánto gira por paso (rad), la velocidad de giro (rad/s) del paso entero y
+## qué tan rápido empieza o deja los pasitos (1/s).
 const SHUFFLE_KNEE: float = 0.45
 const SHUFFLE_STEP: float = 0.6
 const SHUFFLE_FULL: float = 3.0
+const SHUFFLE_RATE: float = 6.0
 ## Quieto: respiración (veces por segundo, escala del pecho y cabeceo), y el
 ## cambio de peso (rad de Body hacia los lados, veces por segundo).
 const BREATH_RATE: float = 0.35
@@ -187,6 +194,8 @@ var _lift_speed: float = 0.0
 var _lean: float = 0.0
 var _lean_speed: float = 0.0
 var _kick: float = 0.0
+## Segundos desde que venía corriendo (para frenar en seco).
+var _running_ago: float = STOP_WINDOW
 var _shuffle: float = 0.0
 var _shuffle_phase: float = 0.0
 var _breath: float = 0.0
@@ -216,6 +225,9 @@ var _shown_strings: Vector3 = Vector3.ZERO
 
 
 func _init(controller: CharacterController) -> void:
+	# La tabla de gestos se arma acá, mientras se arma el cuarto, y no con el
+	# primer gesto (sería dentro de un cuadro).
+	CharacterGestures.prepare()
 	_controller = controller
 	var model: Node3D = controller.model
 	for bone: int in BONES:
@@ -233,6 +245,15 @@ func _init(controller: CharacterController) -> void:
 	for buffer: Array[Vector3] in [_vec, _gesture_vec, _out_vec, _from_vec]:
 		buffer.resize(CharacterGestures.VECTORS)
 		buffer.fill(Vector3.ZERO)
+	# Cada malla guarda sus instance uniforms en un mapa y el primero que se
+	# escribe crea su lugar (memoria): se escriben todos acá, con lo que se ve
+	# al empezar, y no con la primera reacción.
+	_head_mesh.set_instance_shader_parameter(&"swing", _shown_hair)
+	_head_outline.set_instance_shader_parameter(&"swing", _shown_hair)
+	_body_mesh.set_instance_shader_parameter(&"swing", _shown_strings)
+	_body_outline.set_instance_shader_parameter(&"swing", _shown_strings)
+	_head_mesh.set_instance_shader_parameter(&"expression", _shown_face)
+	_head_mesh.set_instance_shader_parameter(&"gaze", _shown_gaze)
 	_last_yaw = controller.yaw
 	reseed(0)
 
@@ -365,7 +386,8 @@ func _read_motion(delta: float, dt: float) -> void:
 	var speed: float = clampf(controller.velocity.length() / maxf(controller.tuning.walk_speed, 0.001), 0.0, 1.0)
 	if speed > STARTED and _speed < STOPPED:
 		_kick = 1.0
-	if speed < STOPPED and _speed > RUNNING:
+	_running_ago = 0.0 if speed > RUNNING else _running_ago + dt
+	if speed < STOPPED and _speed >= STOPPED and _running_ago < STOP_WINDOW and not controller.is_pushed():
 		_lean_speed += STOP_PITCH
 	_speed = speed
 	_phase = controller.distance_walked / maxf(controller.tuning.stride_length, 0.01) * TAU
@@ -378,7 +400,7 @@ func _read_motion(delta: float, dt: float) -> void:
 		_accel = accel.limit_length(MAX_ACCEL).rotated(Vector3.UP, -controller.yaw)
 	_last_velocity = velocity
 	var turning: float = clampf(absf(_turn_rate) / SHUFFLE_FULL, 0.0, 1.0) if speed < MOVING else 0.0
-	_shuffle = move_toward(_shuffle, turning, delta * 6.0)
+	_shuffle = move_toward(_shuffle, turning, dt * SHUFFLE_RATE)
 	if speed < MOVING:
 		_shuffle_phase = fmod(_shuffle_phase + absf(turn) / SHUFFLE_STEP * PI, TAU)
 	_kick = maxf(_kick - dt / KICK_TIME, 0.0)

@@ -87,7 +87,7 @@ const GAME_SHOTS: Array[String] = [
 	"10_globo_personaje", "11_tienda_muebles", "12_ajustes", "13_pedidos_mensaje_nuevo",
 	"14_pedidos_oferta", "16_computador_modelando", "17_plan_impresion", "18_imprimiendo",
 	"20_rincon_embalar", "21_listo_despachar", "22_cobro", "15_pedidos_en_curso",
-	"24_zoom_lejos_taller", "23_fallo", "19_pieza_lista",
+	"24_zoom_lejos_taller", "23a_fallo_reaccion", "23_fallo", "19_pieza_lista",
 ]
 const CHARACTER_SHOTS: Array[String] = [
 	"32a_personaje_frente", "32b_personaje_perfil", "32c_personaje_espalda", "33_personaje_retrato",
@@ -381,9 +381,10 @@ func _orders_in_progress() -> void:
 	await _capture("24_zoom_lejos_taller")
 
 
-## 23 y 19: un pedido de varias piezas (la perilla, en PETG de la
-## ferretería). La segunda pieza falla a propósito; después se reintenta y
-## termina, con la primera pieza en la bandeja.
+## 23a, 23 y 19: un pedido de varias piezas (la perilla, en PETG de la
+## ferretería). La segunda pieza falla a propósito (23a: en ese momento, el
+## personaje se agarra la cabeza); después se reintenta y termina, con la
+## primera pieza en la bandeja.
 func _failed_piece() -> void:
 	await _new_game(_start_spot())
 	_check(Game.buy_local_material("petg"))
@@ -406,6 +407,12 @@ func _failed_piece() -> void:
 	DebugTools.force_fail(Game.sim, PRINTER_UID, FailureRules.SPAGHETTI)
 	var printer: OwnedPrinter = Game.state.find_printer(PRINTER_UID)
 	_advance_until(func() -> bool: return printer.job.status == PrintJob.Status.FAILED)
+	# Lo que se ve al fallar: las manos a la cabeza en su punto alto, el globo
+	# y el retrato del HUD preocupado (con la cámara ya en el zoom de 23).
+	_advance_character(CharacterGestures.Gesture.HANDS_ON_HEAD)
+	_room.camera.snap_to_goal()
+	await _seconds(0.35)
+	await _capture("23a_fallo_reaccion")
 	# El jugador lee "¡Nooo! Un espagueti." y después toca la impresora: así
 	# el globo no tapa la pieza fallida.
 	await _wait_quiet()

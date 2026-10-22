@@ -22,8 +22,9 @@ extends RefCounted
 ## suelta (brazos colgando, piernas derechas). Lo que no mueve nunca lo
 ## deja como está (el animador sigue con su respiración o su caminata).
 ##
-## Los datos se arman una vez en arreglos planos (cuaterniones por hueso y
-## vectores por canal); sample() no crea memoria.
+## Los datos se arman una vez, al crear el animador (prepare), en arreglos
+## planos (cuaterniones por hueso y vectores por canal); sample() no crea
+## memoria.
 
 enum Gesture {
 	NONE, CHEER, HANDS_ON_HEAD, JUMP, PHONE, THUMBS_UP, WAVE, SHRUG, PACK, SCRATCH_HEAD, STRETCH, YAWN, WATCH,
@@ -173,18 +174,18 @@ const DATA: Dictionary = {
 			[0.0, {}],
 			[0.2, {"hand_r": [Vector3(0.17, 0.8, 0.17), Vector3(1.0, -1.0, -0.2)], "phone_at": Vector3(0.0, 1.12, 0.16), "shape": Vector3(0.0, 1.0, 0.0)}],
 			[0.45, {
-				"hand_r": [Vector3(0.05, 0.9, 0.25), Vector3(1.0, -1.0, -0.3)], "phone_at": Vector3(0.01, 1.16, 0.17),
-				"hand_l": [Vector3(-0.06, 0.88, 0.24), Vector3(-1.0, -1.0, -0.3)],
+				"hand_r": [Vector3(0.05, 0.9, 0.25), Vector3(0.35, -1.0, -0.25)], "phone_at": Vector3(0.01, 1.16, 0.17),
+				"hand_l": [Vector3(-0.06, 0.88, 0.24), Vector3(-0.35, -1.0, -0.25)],
 				"head": Vector3(0.28, 0.04, 0.0), "shape": Vector3(0.0, 1.0, 0.0), "eyes": Vector3(-0.004, -0.03, 0.0),
 			}],
 			[0.8, {
-				"hand_r": [Vector3(0.05, 0.91, 0.25), Vector3(1.0, -1.0, -0.3)], "phone_at": Vector3(0.01, 1.16, 0.17),
-				"hand_l": [Vector3(-0.06, 0.89, 0.24), Vector3(-1.0, -1.0, -0.3)],
+				"hand_r": [Vector3(0.05, 0.91, 0.25), Vector3(0.35, -1.0, -0.25)], "phone_at": Vector3(0.01, 1.16, 0.17),
+				"hand_l": [Vector3(-0.06, 0.89, 0.24), Vector3(-0.35, -1.0, -0.25)],
 				"head": Vector3(0.3, 0.05, 0.03), "shape": Vector3(0.0, 1.0, 0.0), "eyes": Vector3(-0.004, -0.03, 0.0),
 			}],
 			[1.2, {
-				"hand_r": [Vector3(0.05, 0.9, 0.25), Vector3(1.0, -1.0, -0.3)], "phone_at": Vector3(0.01, 1.16, 0.17),
-				"hand_l": [Vector3(-0.06, 0.88, 0.24), Vector3(-1.0, -1.0, -0.3)],
+				"hand_r": [Vector3(0.05, 0.9, 0.25), Vector3(0.35, -1.0, -0.25)], "phone_at": Vector3(0.01, 1.16, 0.17),
+				"hand_l": [Vector3(-0.06, 0.88, 0.24), Vector3(-0.35, -1.0, -0.25)],
 				"head": Vector3(0.28, 0.02, -0.02), "shape": Vector3(0.0, 1.0, 0.0), "eyes": Vector3(0.006, -0.03, 0.0),
 			}],
 			[1.4, {"hand_r": [Vector3(0.17, 0.8, 0.17), Vector3(1.0, -1.0, -0.2)], "phone_at": Vector3(0.0, 1.12, 0.16), "shape": Vector3(0.0, 1.0, 0.0)}],
@@ -290,14 +291,14 @@ const DATA: Dictionary = {
 				"body": Vector3(-0.04, 0.0, 0.0), "shape": Vector3(0.02, 0.0, 0.0),
 			}],
 			[0.9, {
-				"hand_l": [Vector3(-0.2, 1.42, -0.02), Vector3(-1.0, 0.0, 0.0)],
-				"hand_r": [Vector3(0.2, 1.42, -0.02), Vector3(1.0, 0.0, 0.0)],
+				"hand_l": [Vector3(-0.4, 1.42, -0.03), Vector3(-1.0, 0.0, 0.0)],
+				"hand_r": [Vector3(0.4, 1.42, -0.03), Vector3(1.0, 0.0, 0.0)],
 				"body": Vector3(-0.12, 0.0, 0.0), "head": Vector3(-0.2, 0.0, 0.0),
 				"move": Vector3(0.0, 0.01, 0.0), "shape": Vector3(0.05, 0.0, 0.0),
 			}],
 			[1.3, {
-				"hand_l": [Vector3(-0.22, 1.4, 0.0), Vector3(-1.0, 0.0, 0.0)],
-				"hand_r": [Vector3(0.22, 1.4, 0.0), Vector3(1.0, 0.0, 0.0)],
+				"hand_l": [Vector3(-0.42, 1.38, 0.0), Vector3(-1.0, 0.0, 0.0)],
+				"hand_r": [Vector3(0.42, 1.38, 0.0), Vector3(1.0, 0.0, 0.0)],
 				"body": Vector3(-0.1, 0.0, 0.05), "head": Vector3(-0.16, 0.0, 0.05), "shape": Vector3(0.04, 0.0, 0.0),
 			}],
 			[1.7, {
@@ -371,25 +372,21 @@ static var _vectors: PackedVector3Array
 
 
 static func length_of(gesture: Gesture) -> float:
-	_ensure()
 	return _length[gesture]
 
 
 ## El momento más expresivo del gesto (segundos desde que empieza).
 static func peak_of(gesture: Gesture) -> float:
-	_ensure()
 	return _peak[gesture]
 
 
 ## Si el gesto mueve ese canal (un hueso, o BONES + MOVE/SHAPE/EYES).
 static func drives(gesture: Gesture, channel: int) -> bool:
-	_ensure()
 	return _mask[gesture] & (1 << channel) != 0
 
 
 ## La cara del gesto a los `t` segundos (FacePainter.Face), o -1.
 static func face_at(gesture: Gesture, t: float) -> int:
-	_ensure()
 	var window: Vector2 = _face_window[gesture]
 	return _face[gesture] if t >= window.x and t <= window.y else -1
 
@@ -399,7 +396,6 @@ static func face_at(gesture: Gesture, t: float) -> int:
 ## HEAD) y los tres vectores en `vectors`. Devuelve su peso de mezcla (0 a
 ## 1, BLEND al entrar y al salir). Sin memoria nueva.
 static func sample(gesture: Gesture, t: float, rotations: Array[Quaternion], vectors: Array[Vector3]) -> float:
-	_ensure()
 	var first: int = _first[gesture]
 	var count: int = _count[gesture]
 	var length: float = _length[gesture]
@@ -468,12 +464,27 @@ static func _elbow_frame(side: float, shoulder_rotation: Quaternion, elbow_rotat
 	return body * Transform3D(Basis(shoulder_rotation), shoulder.origin) * Transform3D(Basis(elbow_rotation), Vector3(0.0, -CharacterModel.ELBOW_DROP, 0.0))
 
 
-static func _ensure() -> void:
+## Arma la tabla de gestos de DATA, una sola vez (si ya está, no hace nada).
+## CharacterAnimator lo llama al armarse, mientras se arma el cuarto: así el
+## primer gesto de la partida no la arma dentro de un cuadro (son unos 26 KB
+## y ~2 ms, con la IK de todas las poses). Lo demás de esta clase que lee la
+## tabla supone que ya está armada.
+static func prepare() -> void:
 	if _first.is_empty():
 		_build()
 
 
 static func _build() -> void:
+	_first = PackedInt32Array()
+	_count = PackedInt32Array()
+	_length = PackedFloat32Array()
+	_peak = PackedFloat32Array()
+	_mask = PackedInt32Array()
+	_face = PackedInt32Array()
+	_face_window = PackedVector2Array()
+	_times = PackedFloat32Array()
+	_rotations = []
+	_vectors = PackedVector3Array()
 	var rest: Array[Quaternion] = []
 	var rest_euler: PackedVector3Array = PackedVector3Array()
 	for bone: int in BONES:

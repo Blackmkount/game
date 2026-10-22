@@ -814,3 +814,28 @@ Personaje: **7.831 triángulos** (cuerpo 4.288, cabeza 3.543; antes 6.775; tope 
 ### Pruebas nuevas
 - `test_character_animator.gd`: `test_pushing_against_a_wall_is_not_standing_idle` (11 s empujando la pared: sigue mirando hacia donde empuja, `idle_time()` en 0 y sin gestos sueltos; antes fallaba con ~2,7° y 10,9 s) y `test_the_reactions_last_what_the_art_bible_says` (largo de los 7 gestos de reacción según la biblia §7.8; antes fallaba con el encogerse y el embalar).
 - `test_character_reactions.gd`: `test_the_thumbs_up_turns_to_the_player` (de espaldas a la cámara, la impresora termina y queda de frente) y `test_with_a_panel_open_the_thumbs_up_keeps_facing_the_printer`.
+
+
+## 2026-10-22 — Arte 2.0, paso 11, ronda de arreglos 2: nada de memoria en el primer gesto
+
+### La tabla de gestos se arma al crear el animador (arregla un defecto que bloqueaba)
+**Decisión:** `CharacterGestures.prepare()` (público, no hace nada si ya está) arma la tabla de gestos de `DATA` y lo llama `CharacterAnimator._init`, que corre mientras se arma el cuarto. Las funciones que leen la tabla (`length_of`, `peak_of`, `drives`, `face_at`, `sample`) ya no la arman solas: suponen que está. `_build()` empieza desde arreglos vacíos (así armarla de nuevo da lo mismo). Además, el animador escribe al armarse los tres instance uniforms del personaje (`swing` en las cuatro mallas, `expression` y `gaze` en la cabeza) con lo que se ve al empezar: cada malla los guarda en un mapa y el primero que se escribe crea su lugar (728 bytes la primera vez).
+**Motivo:** la biblia §7.7 ("nada de memoria en _process"), CLAUDE.md y la regla A.5 del plan. Antes la tabla se armaba con el primer gesto de la partida (casi siempre el celular cuando llega el primer mensaje, o la primera reacción), dentro de un cuadro: unos 26 KB y 1,5–2,3 ms de golpe en escritorio (la IK de todas las poses), probablemente un cuadro perdido en un teléfono de gama baja o en la web. Medido después del arreglo (sin pantalla, escritorio): armar la tabla tarda ~1,5–2 ms y ~25 KB una sola vez, al armar el cuarto, y la primera reacción de cada tipo suma 0 bytes en su primer cuadro y en sus 4 s siguientes.
+
+### El empujón al frenar, solo al soltar el joystick
+**Decisión:** el empujón hacia adelante al frenar en seco (`STOP_PITCH`) se da si pasa de correr (`RUNNING`) a parado (`STOPPED`) en menos de `STOP_WINDOW` (0,15 s) y el joystick **no** está empujado (`CharacterController.is_pushed()`, que también usa el controlador). Contra una pared no hay empujón: el cuerpo solo se endereza.
+**Motivo:** nota de la revisión: chocando contra una pared a toda velocidad, el empujón sumaba inclinación (pico ~0,107 rad) y la biblia pide no inclinarse al chocar. Al medirlo apareció lo contrario también: con la condición de antes (de correr a parado en un solo cuadro) soltar el joystick nunca daba el empujón, porque frenar tarda ~5 cuadros (`deceleration_time` 0,08 s); solo podía darse al chocar. Ahora se asienta al soltar (lo que decía ESTILO y la biblia §7.7.1) y no al chocar. Al chocar sigue la inclinación que traía (0,12 a toda velocidad) y baja de 0,05 en ~4 cuadros, sin subir.
+
+### Pasitos al girar con el tiempo del personaje
+**Decisión:** los pasitos al girar en el lugar se mezclan con `dt` (el tiempo del personaje, que se detiene en pausa o con `hold()`) y la constante `SHUFFLE_RATE` (6 por segundo), como el resto del archivo.
+
+### Estirarse en V y codos del celular más cerca del cuerpo
+**Decisión:** en el punto alto de estirarse las manos van arriba y afuera (x ±0,40 y ±0,42, por encima de los hombros): de frente los brazos forman una V estirada en vez de apoyar las manos sobre el pelo (se leía "manos a la cabeza"). Al mirar el celular los codos apuntan más hacia abajo (polo (±0,35; −1; −0,25), antes (±1; −1; −0,3)): de frente y de espaldas quedan más pegados al cuerpo. La pantalla sigue mirando los ojos (prueba de siempre sin tocar).
+
+### Captura nueva: 23a, la reacción a la falla
+**Decisión:** `tools/screenshot_runner.gd` saca **23a_fallo_reaccion** justo cuando falla la pieza (antes de 23): las manos a la cabeza en su punto alto, el globo "¡Nooo! Un espagueti." y el retrato del HUD preocupado, con la cámara ya en el zoom de 23 (`snap_to_goal`). 23 queda como estaba (el panel de la falla, con el personaje ya tranquilo).
+**Motivo:** nota de la revisión: desde la ronda 1, 23 ya no mostraba la reacción (con razón: en el juego termina mientras uno lee) y la reacción solo se veía aislada en 49; faltaba verla en contexto.
+
+### Pruebas nuevas
+- `tests/unit/test_character_animator.gd`, `test_the_first_reaction_of_a_game_needs_no_new_memory`: suelta la tabla de gestos (como al abrir el juego; otra prueba pudo haberla armado), arma un personaje y, para cada una de las 9 reacciones, la primera `react()` + `step()` suma 0 bytes de memoria estática, y también los 4 s que siguen (gesto, cara y mirada). Con la tabla armada en el primer gesto falla (25.600 bytes); sin escribir los instance uniforms al armarse, también (728).
+- `test_character_animator.gd`, `test_a_sudden_stop_settles_but_a_wall_does_not_tip_the_body_forward`: soltar el joystick corriendo inclina un poco más hacia adelante en el cuadro en que para; contra la pared, la inclinación solo baja cuadro a cuadro y termina por debajo de 0,05. Falla con la condición de antes (al soltar no se asienta) y sin mirar el joystick (en la pared sube).

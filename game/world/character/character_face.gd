@@ -56,8 +56,8 @@ var _blink_left: float = 0.0
 var _talk_clock: float = 0.0
 
 
-func _init(seed_value: int = 0) -> void:
-	reseed(seed_value)
+func _init() -> void:
+	reseed(0)
 
 
 ## Empieza los parpadeos de nuevo con esa semilla.
