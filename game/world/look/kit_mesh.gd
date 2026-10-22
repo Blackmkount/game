@@ -64,6 +64,11 @@ var layer: float = 0.0
 var emit: float = 0.0
 ## Peso del balanceo (plantas, cortina, cobija colgando).
 var sway: float = 0.0
+## Lo que cuelga (una cortina, una hoja): con `sway_top` el balanceo es 0 a
+## esa altura y crece hasta `sway` `sway_length` metros más abajo. Sin él
+## (INF), todo se balancea igual.
+var sway_top: float = INF
+var sway_length: float = 1.0
 ## Altura del contacto (el piso, la mesa) para la oclusión horneada.
 var ao_base: float = 0.0
 ## Sin oclusión de contacto (lo que cuelga de la pared). Las caras que miran
@@ -108,6 +113,17 @@ func paint(hex: String, p_surface: WorldPalette.Surface = WorldPalette.Surface.S
 	layer = 0.0
 	emit = 0.0
 	sway = 0.0
+	sway_top = INF
+	return self
+
+
+## Lo que sigue cuelga desde `top` (y del mundo de la malla): se balancea
+## con peso 0 arriba y `weight` desde `length` metros más abajo. Va después
+## de paint().
+func hanging(weight: float, top: float, length: float) -> KitMesh:
+	sway = weight
+	sway_top = top
+	sway_length = length
 	return self
 
 
@@ -478,7 +494,10 @@ func _vertex(p: Vector3, n: Vector3) -> int:
 	_positions.append(at)
 	_normals.append(normal)
 	_colors.append(Color(color.r, color.g, color.b, ao))
-	_uvs.append(Vector2(float(surface) + gloss, sway))
+	var swing: float = sway
+	if sway_top < INF:
+		swing *= clampf((sway_top - at.y) / maxf(sway_length, 0.001), 0.0, 1.0)
+	_uvs.append(Vector2(float(surface) + gloss, swing))
 	_uv2s.append(Vector2(layer, emit))
 	return _positions.size() - 1
 

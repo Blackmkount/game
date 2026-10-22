@@ -1,8 +1,8 @@
 class_name DayCycle
 extends Node
 ## La luz del cuarto según la hora (biblia de arte §6): el sol del motor (el
-## único DirectionalLight3D), el ambiente, el relleno, la luz de la ventana,
-## las luces del sombreador y el fondo. Lo que no es el sol lo calcula el
+## único DirectionalLight3D), el ambiente, el relleno, la luz de la ventana
+## (con el haz y lo que se ve por ella), las luces del sombreador y el fondo. Lo que no es el sol lo calcula el
 ## sombreador del mundo con globales que pone este nodo (hijo de Room):
 ## cero luces extra y cero llamadas de dibujo extra.
 ##
@@ -20,10 +20,10 @@ const MOMENTS: Dictionary[String, Dictionary] = {
 	"morning": {
 		"sun_direction": Vector3(0.707, -0.566, -0.424), "sun_color": "fff0dc", "sun_energy": 0.48,
 		"sky": "bfcdf0", "sky_energy": 0.62, "ground": "e6bb92", "ground_energy": 0.5,
-		"window_direction": Vector3(0.707, -0.566, -0.424), "window_color": "ffe2b0", "window_energy": 0.85,
+		"window_direction": Vector3(0.774, -0.559, -0.297), "window_color": "ffe2b0", "window_energy": 0.85,
 		"fill_color": "fff4ea", "fill_energy": 0.22, "fill_character": 0.25,
 		"background_center": "26335c", "background_edge": "141b2d", "background_glow": "3a4a7a",
-		"night": 0.0,
+		"night": 0.0, "view_mood": Vector3(1.0, 0.0, 0.0),
 		"lights": {
 			"desk_lamp": 0.0, "monitor": 0.12, "bed_lamp": 0.0, "led_strip": 0.0,
 			"printer_led": 1.0, "string_lights": 0.0, "window_shaft": 1.0,
@@ -48,6 +48,8 @@ const LED_STRIP_TO: Vector3 = Vector3(2.6, 2.72, -2.96)
 const FILL_DIRECTION: Vector3 = Vector3(0.61, 0.5, 0.61)
 ## Fuerza del resplandor detrás del diorama (§4.1).
 const BACKGROUND_GLOW_STRENGTH: float = 0.55
+## Fuerza del haz de luz de la ventana con factor 1 (window_shaft.gdshader).
+const WINDOW_SHAFT_STRENGTH: float = 0.22
 ## Los globales de cada luz del sombreador.
 const LIGHT_GLOBALS: Array[StringName] = [&"cc_pl0", &"cc_pl1", &"cc_pl2", &"cc_pl3"]
 const LIGHT_COLOR_GLOBALS: Array[StringName] = [&"cc_pl0_col", &"cc_pl1_col", &"cc_pl2_col", &"cc_pl3_col"]
@@ -80,6 +82,8 @@ static func sample(_hour: float) -> Dictionary:
 		"background_edge": Color(moment["background_edge"] as String),
 		"background_glow": Color(moment["background_glow"] as String) * BACKGROUND_GLOW_STRENGTH,
 		"night": moment["night"],
+		"view_mood": moment["view_mood"],
+		"window_shaft": WINDOW_SHAFT_STRENGTH * float(lights["window_shaft"]),
 		"lights": lights.duplicate(),
 	}
 
@@ -109,6 +113,8 @@ func apply_hour(hour: float) -> void:
 	_publish(&"cc_fill_dir", FILL_DIRECTION.normalized())
 	_publish(&"cc_fill", Vector4(fill.x, fill.y, fill.z, values["fill_character"]))
 	_publish(&"cc_night", values["night"])
+	WorldPalette.glow("ffffff", WorldPalette.WINDOW_VIEW).set_shader_parameter("mood", values["view_mood"])
+	WorldPalette.window_shaft().set_shader_parameter("strength", values["window_shaft"])
 	var factors: Dictionary = values["lights"]
 	for light_name: String in LIGHTS:
 		var light: Dictionary = LIGHTS[light_name]

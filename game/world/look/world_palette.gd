@@ -45,6 +45,7 @@ const SCREEN_SHADER: Shader = preload("res://game/world/look/screen.gdshader")
 const WINDOW_VIEW_SHADER: Shader = preload("res://game/world/look/window_view.gdshader")
 const MARKER_SHADER: Shader = preload("res://game/world/look/marker.gdshader")
 const HALO_SHADER: Shader = preload("res://game/world/look/halo.gdshader")
+const WINDOW_SHAFT_SHADER: Shader = preload("res://game/world/look/window_shaft.gdshader")
 
 ## Lo que muestra cada pantalla (screen.gdshader, uniform `mode`).
 const SCREEN_MODES: Dictionary[String, int] = {
@@ -58,9 +59,8 @@ const SCREEN_MODES: Dictionary[String, int] = {
 ## La vista del barrio por la ventana (window_view.gdshader).
 const WINDOW_VIEW: String = "window_view"
 ## Color y superficie de cada nombre de textured(): [hex, Surface, brillo].
+## (El piso y las paredes ya son del kit: RoomShell.)
 const TEXTURES: Dictionary[String, Array] = {
-	"floor_planks": [LookPalette.FLOOR_TILE, Surface.TILE, 0.32],
-	"brick_wall": [LookPalette.WALL_BACK, Surface.PAINT, 0.0],
 	"cardboard": [LookPalette.CARDBOARD, Surface.CARDBOARD, 0.0],
 }
 ## Brillo satinado del plástico impreso.
@@ -110,8 +110,7 @@ static func paint(hex: String, surface: Surface = Surface.SMOOTH, gloss: float =
 	return _cache[key]
 
 
-## Superficie con nombre (TEXTURES): el piso de baldosa, la pintura de las
-## paredes y el cartón.
+## Superficie con nombre (TEXTURES): el cartón de los modelos de cajas.
 static func textured(texture_name: String) -> ShaderMaterial:
 	var key: String = "textured:" + texture_name
 	if not _cache.has(key):
@@ -156,6 +155,16 @@ static func glow_transparent(hex: String, alpha: float, alpha_low: float = -1.0,
 		material.set_shader_parameter("period", period)
 		_cache[key] = material
 	return _cache[key]
+
+
+## Haz de luz de la ventana (uno para todo el juego; DayCycle le pone la
+## fuerza según la hora).
+static func window_shaft() -> ShaderMaterial:
+	if not _cache.has("window_shaft"):
+		var material: ShaderMaterial = ShaderMaterial.new()
+		material.shader = WINDOW_SHAFT_SHADER
+		_cache["window_shaft"] = material
+	return _cache["window_shaft"]
 
 
 ## Halo de luz que suma (lámpara, pantalla, tira LED con `aspect` > 1).

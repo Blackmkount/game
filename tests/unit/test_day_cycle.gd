@@ -3,8 +3,14 @@ extends GutTest
 ## sample() coinciden con la tabla de la biblia y el sol del cuarto los toma.
 ## La mañana va de las 07:00 a las 10:30 y es la hora del inicio del juego.
 
-## La tabla de la biblia, fila "Mañana".
+## La tabla de la biblia, fila "Mañana". La luz de la ventana tiene la misma
+## altura que el sol y gira 10° hacia la pared de la ventana (Arte 2.0, paso
+## 5, docs/DECISIONES.md): así el parche de sol cruza la impresora del piso.
 const SUN_DIRECTION: Vector3 = Vector3(0.707, -0.566, -0.424)
+const WINDOW_DIRECTION: Vector3 = Vector3(0.774, -0.559, -0.297)
+## Lo más que se separan las rayas del parche de las sombras del sol, en el
+## piso (grados).
+const MAX_STRIPE_TURN: float = 10.5
 const SUN_COLOR: String = "fff0dc"
 const SUN_ENERGY: float = 0.48
 const SKY: String = "bfcdf0"
@@ -33,7 +39,12 @@ func test_the_morning_matches_the_art_bible() -> void:
 		assert_almost_eq(float(light["sun_energy"]), SUN_ENERGY, 0.0001, label)
 		_assert_vec(light["ambient_sky"], _scaled(SKY, SKY_ENERGY), "Ambiente de arriba " + label)
 		_assert_vec(light["ambient_ground"], _scaled(GROUND, GROUND_ENERGY), "Rebote de abajo " + label)
-		_assert_vec(light["window_direction"], SUN_DIRECTION.normalized(), "La ventana va como el sol " + label)
+		_assert_vec(light["window_direction"], WINDOW_DIRECTION.normalized(), "Ventana: dirección " + label)
+		var sun: Vector3 = light["sun_direction"]
+		var window: Vector3 = light["window_direction"]
+		assert_almost_eq(window.y, sun.y, 0.01, "La ventana tiene la altura del sol " + label)
+		var turn: float = rad_to_deg(absf(Vector2(sun.x, sun.z).angle_to(Vector2(window.x, window.z))))
+		assert_lte(turn, MAX_STRIPE_TURN, "Las rayas casi paralelas a las sombras " + label)
 		_assert_vec(light["window_color"], _scaled(WINDOW_COLOR, WINDOW_ENERGY), "Ventana " + label)
 		_assert_vec(light["fill"], _scaled(FILL_COLOR, FILL_ENERGY), "Relleno " + label)
 		assert_almost_eq(float(light["fill_character"]), FILL_CHARACTER, 0.0001, label)

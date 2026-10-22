@@ -207,6 +207,23 @@ func test_each_vertex_carries_what_is_painted() -> void:
 	assert_eq(repainted[2], Vector2.ZERO, "paint quita las capas y la luz propia")
 
 
+func test_what_hangs_sways_more_the_lower_it_is() -> void:
+	var kit: KitMesh = KitMesh.new()
+	kit.paint("e2a93b", WorldPalette.Surface.FABRIC)
+	kit.hanging(0.4, 2.2, 1.0)
+	kit.box(Vector3(0.1, 1.6, 0.1), Vector3(0.0, 1.4, 0.0), 0.0)
+	var arrays: Array = kit.commit().surface_get_arrays(0)
+	var positions: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var uvs: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV]
+	for i: int in positions.size():
+		var expected: float = 0.4 * clampf((2.2 - positions[i].y) / 1.0, 0.0, 1.0)
+		assert_almost_eq(uvs[i].y, expected, 0.0001, "Balanceo a y = %.2f" % positions[i].y)
+	assert_almost_eq(uvs[_index_at_height(positions, 2.2)].y, 0.0, 0.0001, "Arriba, donde cuelga, no se mueve")
+	assert_almost_eq(uvs[_index_at_height(positions, 0.6)].y, 0.4, 0.0001, "Abajo, todo el balanceo")
+	kit.paint("e2a93b")
+	assert_eq(kit.sway_top, INF, "paint quita lo que cuelga")
+
+
 func test_the_cache_builds_once_and_returns_the_same_mesh() -> void:
 	var calls: Array[int] = [0]
 	var build: Callable = func() -> ArrayMesh:
@@ -332,3 +349,11 @@ func _first_vertex(paint: Callable) -> Array:
 	kit.quad(Vector2.ONE * 0.1, Vector3(0.0, 0.5, 0.0))
 	var arrays: Array = kit.commit().surface_get_arrays(0)
 	return [(arrays[Mesh.ARRAY_COLOR] as PackedColorArray)[0], (arrays[Mesh.ARRAY_TEX_UV] as PackedVector2Array)[0], (arrays[Mesh.ARRAY_TEX_UV2] as PackedVector2Array)[0]]
+
+
+## Índice del primer vértice a esa altura.
+func _index_at_height(positions: PackedVector3Array, y: float) -> int:
+	for i: int in positions.size():
+		if absf(positions[i].y - y) < 0.0001:
+			return i
+	return -1

@@ -33,22 +33,30 @@ const CHARACTER_FOCUS_HEIGHT: float = 0.7
 const NO_GAME_HOUR: float = 8.0
 ## Radio de la mancha de sombra suave bajo el personaje (biblia de arte §3.5).
 const CHARACTER_SHADOW_RADIUS: float = 0.36
-## Las marcas de lugares libres laten entre estos dos alfas, en este periodo
-## (segundos).
-const MARKER_ALPHA: float = 0.6
-const MARKER_ALPHA_LOW: float = 0.2
+## Las marcas de lugares libres (biblia §8.7) laten suave entre estos dos
+## alfas, en este periodo (segundos), y se encienden (LIT) cuando el
+## personaje está a MARKER_NEAR metros o menos, o con la tienda abierta.
+const MARKER_ALPHA: float = 0.35
+const MARKER_ALPHA_LOW: float = 0.22
+const MARKER_LIT_ALPHA: float = 0.85
+const MARKER_LIT_ALPHA_LOW: float = 0.55
 const MARKER_PULSE_PERIOD: float = 2.4
-## Marca de destino: alfa al aparecer y lo que tarda en irse (segundos).
-const DESTINATION_ALPHA: float = 0.8
+const MARKER_NEAR: float = 1.2
+## Marca de destino: un aro que crece y se desvanece. Alfa al aparecer, lo
+## que tarda en irse (segundos) y sus radios (m).
+const DESTINATION_ALPHA: float = 0.6
 const DESTINATION_FADE_TIME: float = 0.45
+const DESTINATION_RADIUS: float = 0.18
+const DESTINATION_LINE: float = 0.035
+const DESTINATION_HEIGHT: float = 0.01
 ## Sombra del sol (biblia §2.6).
 const SUN_SHADOW_BIAS: float = 0.04
 const SUN_SHADOW_NORMAL_BIAS: float = 1.2
 const SUN_SHADOW_OPACITY: float = 0.9
 ## Sombra suave bajo la base del diorama: tamaño respecto del cuarto y cuánto
-## más abajo que el piso.
+## más abajo que la base.
 const BASE_SHADOW_SCALE: float = 1.9
-const BASE_SHADOW_DROP: float = 0.22
+const BASE_SHADOW_GAP: float = 0.06
 ## Luz LED sobre la cama de la impresora del piso y brillo del monitor: cuánto
 ## más arriba de la cama y cuánto delante de la pantalla.
 const PRINTER_LED_ABOVE_BED: float = 0.18
@@ -68,12 +76,24 @@ var dispatch_item: WorldInteractable
 ## Mapa de oclusión del piso que leen los sombreadores (FloorAO): manchas
 ## bajo los obstáculos de `grid`.
 var floor_ao: ImageTexture
+## Con la tienda abierta todas las marcas de lugares libres se encienden (lo
+## avisa WorldControls).
+var markers_emphasis: bool = false
+## La caja que tapa el parche de sol de la ventana (cc_occ_a): el tablero del
+## escritorio, que está bajo la ventana. Vacía si no hay mueble.
+var window_occluder: AABB = AABB()
 
 var _character_item: WorldInteractable
 var _highlight: HighlightFrame
 var _destination: MeshInstance3D
 var _destination_material: ShaderMaterial
 var _destination_tween: Tween
+## Las marcas de lugares libres, el rectángulo del piso de cada una y sus dos
+## materiales (late suave, encendida).
+var _markers: Array[MeshInstance3D] = []
+var _marker_areas: Array[Rect2] = []
+var _marker_material: ShaderMaterial
+var _marker_lit_material: ShaderMaterial
 
 
 func _ready() -> void:
@@ -85,6 +105,7 @@ func _ready() -> void:
 	grid = WalkGrid.new(Rect2(-RoomShell.SIZE / 2.0, -RoomShell.SIZE / 2.0, RoomShell.SIZE, RoomShell.SIZE))
 	_highlight = HighlightFrame.build(self, "Highlight")
 	_build_destination()
+	_publish_window_occluders(null)
 	if Game.state != null:
 		_build_contents()
 		# La cámara empieza ya encuadrando al personaje.
@@ -95,6 +116,7 @@ func _ready() -> void:
 	day_cycle.apply_hour(Game.state.game_minutes / 60.0 if Game.state != null else NO_GAME_HOUR)
 	camera.snap_to_goal()
 	_publish_character()
+	_update_markers()
 
 
 ## Avanza un cuadro: mueve al personaje y después la cámara, y avisa a los
@@ -108,6 +130,7 @@ func step(delta: float) -> void:
 	anim_time += delta
 	RenderingServer.global_shader_parameter_set(&"cc_anim_time", anim_time)
 	_publish_character()
+	_update_markers()
 
 
 ## Objeto del mundo de ese tipo con ese `ref` (uid de la impresora o del
@@ -187,7 +210,7 @@ func set_highlight(item: WorldInteractable) -> void:
 
 ## Marca por un momento el punto del piso adonde va a caminar el personaje.
 func show_destination(point: Vector2) -> void:
-	_destination.position = Vector3(point.x, 0.01, point.y)
+	_destination.position = Vector3(point.x, DESTINATION_HEIGHT, point.y)
 	_destination.visible = true
 	_destination.scale = Vector3.ONE * 0.6
 	_destination_material.set_shader_parameter("alpha", DESTINATION_ALPHA)
@@ -237,6 +260,7 @@ func _build_environment() -> void:
 	add_child(day_cycle)
 	var half: float = RoomShell.SIZE / 2.0
 	RenderingServer.global_shader_parameter_set(&"cc_room", Vector4(-half, -half, RoomShell.SIZE, RoomShell.WALL_HEIGHT))
+	WindowSpec.publish()
 
 
 func _build_camera() -> void:
@@ -279,7 +303,7 @@ func _build_base_shadow() -> void:
 	shadow.mesh = quad
 	shadow.material_override = material
 	shadow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	shadow.position = Vector3(0.0, -BASE_SHADOW_DROP, 0.0)
+	shadow.position = Vector3(0.0, RoomShell.BASE_BOTTOM - BASE_SHADOW_GAP, 0.0)
 	shadow.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
 	add_child(shadow)
 
@@ -303,6 +327,8 @@ func _build_contents() -> void:
 		furniture_nodes[item.uid] = node
 		used_slots.append(item.slot)
 		_register(WorldInteractable.Kind.FURNITURE, item.uid, node, true)
+		if item.slot == 0:
+			_publish_window_occluders(node, item.furniture_id)
 		if item.furniture_id == DeskSheet.FURNITURE_ID:
 			_add_view(node, DeskView.new())
 			var screen: Node3D = node.get_node("Monitor/Screen")
@@ -329,15 +355,19 @@ func _build_contents() -> void:
 		_add_view(node, PrinterView.new(printer.uid, PrinterModel.frame_scale(printer.printer_id)))
 
 	# Las marcas de lugares libres laten suavemente para invitar a llenarlos.
-	var marker_material: ShaderMaterial = WorldPalette.glow_transparent(WorldPalette.SLOT_MARK, MARKER_ALPHA, MARKER_ALPHA_LOW, MARKER_PULSE_PERIOD)
+	_marker_material = WorldPalette.glow_transparent(WorldPalette.SLOT_MARK, MARKER_ALPHA, MARKER_ALPHA_LOW, MARKER_PULSE_PERIOD)
+	_marker_lit_material = WorldPalette.glow_transparent(WorldPalette.SLOT_MARK, MARKER_LIT_ALPHA, MARKER_LIT_ALPHA_LOW, MARKER_PULSE_PERIOD)
 	for slot: int in layout.slots.size():
 		if slot not in used_slots:
-			var marker: Node3D = SlotMarker.build(self, "FreeSlot%d" % slot, marker_material)
+			var marker: Node3D = SlotMarker.build(self, "FreeSlot%d" % slot, _marker_material)
 			marker.transform = layout.slots[slot]
 			# Se toca la marca que se ve, con un poco de alto para el rayo.
 			var touch_area: AABB = PropBounds.local_aabb(marker)
 			touch_area.size.y = SLOT_TOUCH_HEIGHT
-			interactables.append(WorldInteractable.new(WorldInteractable.Kind.SLOT, slot, touch_area, marker.global_transform))
+			var item: WorldInteractable = WorldInteractable.new(WorldInteractable.Kind.SLOT, slot, touch_area, marker.global_transform)
+			interactables.append(item)
+			_markers.append(marker.get_node("Mark"))
+			_marker_areas.append(item.footprint())
 
 	var door: Node3D = get_node("RoomShell/Door")
 	_register(WorldInteractable.Kind.DOOR, 0, door, false)
@@ -391,9 +421,16 @@ func _ray_pick(origin: Vector3, direction: Vector3, margin: float) -> WorldInter
 	return best
 
 
+## Aro plano que marca adónde va a caminar el personaje.
 func _build_destination() -> void:
 	_destination_material = WorldPalette.glow_transparent(WorldPalette.SLOT_MARK, DESTINATION_ALPHA).duplicate() as ShaderMaterial
-	_destination = PropBuilder.cylinder(self, "Destination", 0.18, 0.01, Vector3.ZERO, _destination_material)
+	var ring: ArrayMesh = KitMesh.cached("destination_ring", func() -> ArrayMesh:
+		var kit: KitMesh = KitMesh.new()
+		kit.ao_enabled = false
+		kit.lathe(PackedVector2Array([Vector2(DESTINATION_RADIUS, 0.0), Vector2(DESTINATION_RADIUS - DESTINATION_LINE, 0.0)]), Vector3.ZERO, Vector3.ZERO, 32)
+		return kit.commit())
+	_destination = PropBuilder.kit(self, "Destination", ring, _destination_material)
+	_destination.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_destination.visible = false
 
 
@@ -403,6 +440,34 @@ func _first_spool_color(state: GameState) -> String:
 	var color: Dictionary = DataLookup.config_entry(Game.catalog, "filament_colors", state.spools[0].color_id)
 	return color.get("hex", WorldPalette.PLASTIC_BEIGE)
 
+
+
+## Las marcas de lugares libres se encienden con el personaje cerca o con la
+## tienda abierta. Solo cambia el material cuando hace falta.
+func _update_markers() -> void:
+	var feet: Vector2 = character.floor_position if character != null else Vector2.INF
+	for i: int in _markers.size():
+		var lit: bool = markers_emphasis or WalkGrid.distance_to_rect(feet, _marker_areas[i]) <= MARKER_NEAR
+		var material: ShaderMaterial = _marker_lit_material if lit else _marker_material
+		if _markers[i].material_override != material:
+			_markers[i].material_override = material
+
+
+## Cajas que tapan el parche de sol de la ventana (biblia §6.3, cc_occ_a y
+## cc_occ_b): el mueble del lugar 0, que está bajo la ventana (del escritorio,
+## su tablero), y la cama (llega con la decoración; por ahora no hay). Sin
+## mueble, ninguna caja.
+func _publish_window_occluders(under_window: Node3D, furniture_id: String = "") -> void:
+	window_occluder = AABB()
+	if under_window != null:
+		var local: AABB = ComputerDeskModel.table_box() if furniture_id == DeskSheet.FURNITURE_ID else PropBounds.local_aabb(under_window)
+		window_occluder = under_window.transform * local
+	var center: Vector3 = window_occluder.get_center()
+	var half: Vector3 = window_occluder.size / 2.0
+	RenderingServer.global_shader_parameter_set(&"cc_occ_a_c", Vector4(center.x, center.y, center.z, 0.0))
+	RenderingServer.global_shader_parameter_set(&"cc_occ_a_h", Vector4(half.x, half.y, half.z, 0.0))
+	RenderingServer.global_shader_parameter_set(&"cc_occ_b_c", Vector4.ZERO)
+	RenderingServer.global_shader_parameter_set(&"cc_occ_b_h", Vector4.ZERO)
 
 
 ## Dónde está el personaje para los sombreadores: su mancha en el piso y la

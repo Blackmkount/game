@@ -415,3 +415,51 @@ Ninguna.
 - `tests/integration/test_scene_budget.gd`: `test_the_main_scene_builds_fast_with_cached_meshes`.
 - `tests/unit/test_prop_bounds.gd`: `test_bounds_cover_a_kit_mesh_placed_with_prop_builder` (`PropBounds` mide una `ArrayMesh` del kit puesta con `PropBuilder.kit`, girada y movida, también sin pantalla).
 - La captura `00_calibracion` arma ahora sus tarjetas "por vértice" con `KitMesh`: comprueba con los píxeles que el kit pinta el color exacto.
+
+## 2026-10-22 — Arte 2.0, paso 5: el cuarto (cáscara, ventana con vista y parche de sol, base impresa, marcas)
+
+### El cuarto es una maqueta impresa, en una malla
+**Decisión:** `RoomShell` se arma con `KitMesh`: la base impresa (losa de 0,30 m de plástico `#56689a` con capas de 2,4 cm y un borde de primera capa de 4 cm), la losa de baldosa del piso (la grilla de baldosas empieza en el rincón: 15 enteras por lado), la pared de la ventana verde salvia con un **hueco de verdad**, la pared del fondo crema, los cortes de arriba y de las puntas impresos (capas de 1,2 cm), zócalos, la ventana corrediza de aluminio (dos hojas que se cruzan en el parante del medio), el alféizar de baldosa, las rejas de hierro por fuera con el travesaño y el adorno de sol (dos aros), la barra y la cortina mostaza recogida a los lados (se balancea más abajo que arriba: `KitMesh.hanging()`), el interruptor con su canaleta hasta el borde y el enchufe de la impresora. Todo eso es **una** malla y una llamada de dibujo. Aparte van la vista del barrio (otro sombreador), el haz de luz (suma luz) y la puerta (se toca). El cuarto entero cuesta 5 llamadas y 2.160 triángulos (biblia §5.2: ≤ 5 y ≤ 2.500), y nada de él da sombra.
+**Puerta:** `RoomShell/Door` con una malla del kit (dos tableros, marco crema, manija de palanca de latón) cuya caja es exactamente la de antes (x −3,0…−2,855; z 1,6…2,6; y 0…2,0).
+**Motivo:** biblia §8.1–8.6 y §12.3 ("mundo impreso"); presupuesto §5.2.
+
+### `WindowSpec`: una sola medida para la ventana y su parche
+**Decisión:** `game/world/look/window_spec.gd` guarda el hueco, las rejas (cada 0,20 m a media separación de los bordes, 9 mm de medio grosor), el travesaño, el parante central y el adorno de sol. La geometría de `RoomShell` y los globales del parche (`cc_window_rect`, `cc_window_x`, `cc_window_bars` y el nuevo `cc_window_sun`, con los dos aros) salen de ahí; `RoomView` los publica. El parche del sombreador ahora también dibuja la sombra de los aros del adorno.
+**Motivo:** biblia §6.3: las rayas del piso tienen que salir de las mismas rejas que se ven.
+
+### La vista del barrio, recortada al hueco
+**Decisión:** `window_view.gdshader` se pinta en un cuadro de frente a la cámara, detrás del hueco; cada fragmento se proyecta hacia atrás por la mirada (fija) de la cámara hasta la pared y se descarta si no cae en el hueco (nada se asoma por encima de la pared). Lo lejano (cielo, cordillera, cerro con casitas y torre) va con el horizonte derecho en la pantalla; lo cercano (azotea, tanque de agua negro sin marca, varillas "para el segundo piso", ropa tendida, buganvilla, poste y cables enredados) va paralelo a la pared, como los objetos del cuarto. Las figuras tienen borde suavizado (sin escalones).
+**Motivo:** biblia §8.5 (idea del recorte: prototipo "Diorama"; cables: "Juguete").
+
+### Haz de luz de la ventana
+**Decisión:** `window_shaft.gdshader`: dos hojas que salen de los bordes de arriba y de abajo del hueco y que el sombreador estira hasta el piso en la dirección de la luz de la ventana; suman un brillo tenue con las rayas de las rejas. Una llamada, sin sombra. La fuerza la pone `DayCycle` (0,22 × el factor "window_shaft" de la hora; en la mañana 1). Se anima con `cc_anim_time` (capturas iguales en cada corrida).
+
+### La luz de la ventana de la mañana gira 10° hacia la pared de la ventana
+**Decisión:** en la mañana el sol sigue exactamente como dice la biblia (0,707; −0,566; −0,424), pero la luz de la ventana (la del parche y el haz) va hacia (0,774; −0,559; −0,297): la misma altura (34°) y 10° menos de giro.
+**Motivo:** la biblia (§6.2) describe el parche "en el piso delante del escritorio, cruzando la impresora del piso y subiendo por la pared del fondo cerca del rincón", pero con sus números el parche cae 0,3 m detrás de la impresora (lo medí en el piso: no toca la impresora en ningún punto). Con el hueco y la impresora del piso fijos, "cruzar la impresora" y "subir por la pared del fondo" no pueden pasar juntos con ninguna dirección (para cruzar la impresora la luz tiene que ir casi derecho desde la pared; para subir por la pared del fondo, bien de costado). Elegí cruzar la impresora: es la estrella del juego y queda en el centro de la imagen. Girar también el sol lo probé y no sirve: la pared del fondo, la superficie más grande del cuarto, queda a contraluz y se ve marrón. Con 10° de diferencia las rayas y las sombras se ven casi paralelas. Probé también subir la fuerza de la ventana (1,05) y bajar el sol y el ambiente (0,40 y 0,55): el parche apenas gana y el cuarto se apaga; quedan los valores de la biblia.
+
+### El escritorio tapa el parche
+**Decisión:** la caja que tapa el parche (`cc_occ_a`) es el tablero del mueble del lugar 0 (el escritorio, que está bajo la ventana): `ComputerDeskModel.TABLE_SIZE` puesto donde está el mueble (`RoomView.window_occluder`). No toda su huella (con la caja de cartón que hace de silla y el monitor), porque esa caja apagaba casi todo el parche aunque la luz pasa por encima de la caja de cartón. La de la cama (`cc_occ_b`) queda en cero hasta el paso 12.
+**Motivo:** biblia §6.3 (lo pidieron los jueces): el sol no atraviesa los muebles.
+
+### Marcas del piso en esquinas, con dos intensidades
+**Decisión:** las marcas de lugar libre son cuatro esquinas en L (brazos de 0,18 m, 3 cm de ancho) y un "+" de 0,14 m, planas, en **una malla compartida** (antes 6 cajas por marca); ningún rectángulo se encima con otro, así el alfa queda parejo. Su zona de toque sigue midiendo 1,24 × 0,60. Laten suave (alfa 0,22 ↔ 0,35) y se encienden (0,55 ↔ 0,85) cuando el personaje está a 1,2 m o menos de la marca o la tienda está abierta: `RoomView` cambia el material (dos materiales de la caché) solo cuando hace falta, sin memoria nueva por cuadro, y `WorldControls` le avisa `markers_emphasis` al abrir la tienda. El marco de cercanía también es de esquinas (una malla por tamaño de huella, guardada) y el destino al tocar el piso es un aro.
+**Motivo:** biblia §8.7; además bajan las llamadas (de 177 a 136 en el cuarto inicial) y las superficies transparentes (de 35 a 8).
+
+### `KitMesh.hanging()`
+**Decisión:** lo que cuelga (cortina; después hojas y la cobija) se balancea con peso 0 donde cuelga y crece hacia abajo. `paint()` lo apaga.
+
+### Limpieza
+`WorldPalette.textured("floor_planks")` y `textured("brick_wall")` se borraron: el piso y las paredes ya son del kit (queda `"cardboard"`, que usan los modelos de cajas).
+
+### Prueba de presupuesto
+Medido: cuarto inicial 136 llamadas, 32 materiales, 62 mallas con sombra y 8 transparentes; cuarto lleno 519 llamadas y 39 materiales. Topes (medido + 10 %, nunca por encima del anterior): inicio 149 llamadas, 35 materiales, 68 mallas con sombra y 9 transparentes; lleno 570 llamadas y 42 materiales. Armar la escena principal con caché: ~11,5 ms (antes ~20).
+
+### Pruebas adaptadas (misma intención, no más débiles)
+- `tests/unit/test_day_cycle.gd`, `test_the_morning_matches_the_art_bible`: "la ventana va como el sol" pasa a "la ventana va hacia `WINDOW_DIRECTION`" (la tabla de la mañana, con el cambio de arriba) y además exige que tenga la misma altura que el sol (±0,01) y que gire como mucho 10,5° respecto del sol en el piso (las rayas casi paralelas a las sombras). Sigue comparando todos los demás valores con la tabla.
+- `tests/unit/test_world_palette.gd`: el ejemplo suelto de `textured()` usa `"cardboard"` (cartón) en vez de `"floor_planks"`, que ya no existe; el recorrido de todas las texturas con nombre sigue igual.
+- `tests/integration/test_look_shaders.gd`: la vista de la ventana tiene además el parámetro `view_dir`; se agregan el sombreador y el material del haz (más cobertura).
+
+### Pruebas nuevas
+- `tests/integration/test_room_shell.gd` (9): la zona de toque de la puerta exacta; el hueco de la malla coincide con `WindowSpec` (por adentro no hay pared, 2 cm afuera sí) y los globales del parche salen de `WindowSpec`, con cada reja en la malla; al menos 6 rayas, a media separación de los bordes y sin tapar el parante; nada del cuarto da sombra y el cuarto cabe en 5 llamadas y 2.500 triángulos; la sombra de la base va debajo de la base; las 5 marcas comparten la malla y su zona de toque mide 1,24 × 0,60; las marcas se encienden con el personaje cerca y con la tienda abierta; la caja que tapa el parche es el tablero del escritorio; el marco de cercanía rodea la huella + 0,12 m y reusa su malla.
+- `tests/unit/test_kit_mesh.gd`: `test_what_hangs_sways_more_the_lower_it_is`.

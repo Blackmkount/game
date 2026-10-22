@@ -4,8 +4,8 @@
 
 - **Fase actual:** 1. Ciclo jugable, en curso (ruta aprobada por el dueño en `docs/RUTA.md`).
 - **Diseño:** GDD versión 2.3, guía de estilo en `docs/ESTILO.md` y ruta en `docs/RUTA.md`.
-- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 4 de 16: kit de formas (`KitMesh`), caché y mapa de oclusión del piso (2026-10-22). Antes: paso 3, kit de materiales y modelo de color.
-- **Siguiente paso sugerido:** Arte 2.0, paso 5: el cuarto (paredes con hueco real, ventana con vista y parche de sol, base impresa, marcas en esquinas), ya armado con `KitMesh`. Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
+- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 5 de 16: el cuarto (base impresa, paredes con el hueco de la ventana, ventana corrediza con rejas, cortina y vista del barrio, parche de sol que cruza la impresora del piso, puerta y marcas en esquinas) (2026-10-22). Antes: paso 4, kit de formas.
+- **Siguiente paso sugerido:** Arte 2.0, paso 6: la impresora estrella (Cubo Uno), la pieza que crece, el espagueti de los fallos y el carrete. Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
 - **Diseño del ciclo:** aprobado por el dueño (GDD, versión 2.3 en la sección 16).
 
 | Fase | Estado |
@@ -338,3 +338,29 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 
 **Problemas conocidos**
 - Los modelos todavía son las cajas de antes: el kit se empieza a usar en el paso 5 (el cuarto) y los siguientes.
+
+### 2026-10-22 — Arte 2.0, paso 5: el cuarto
+
+**Qué se hizo**
+- **El cuarto es una maqueta impresa:** se apoya en una base de plástico azul con sus capas a la vista y un borde fino de "primera capa" alrededor; los cortes de arriba de las paredes y de sus puntas también muestran capas. Piso de baldosa cálida (ahora con baldosas enteras contra las paredes), la pared de la ventana verde salvia y la del fondo crema, con zócalos.
+- **La ventana:** un hueco de verdad en la pared, con una ventana corrediza de aluminio de dos hojas, alféizar de baldosa, rejas de hierro por fuera con un travesaño y un adorno de sol (dos aros), y una cortina mostaza recogida a los lados que se mueve apenas. Por ella se ve el barrio: cielo con nubes, cordillera, un cerro verde con casitas de colores y una torre de iglesia, edificios bajos y, cerca, la azotea del vecino con su tanque de agua negro, varillas "para el segundo piso", ropa tendida, una buganvilla y un poste con cables enredados. Un haz de luz suave baja desde la ventana.
+- **El parche de sol:** la luz de la mañana entra por la ventana y dibuja en el piso las rayas de las rejas (y los aros del adorno); cruza la impresora del piso (su cama dorada brilla) y el escritorio y el personaje lo tapan. Para que cruce la impresora, la luz de la ventana gira 10° respecto del sol (detalle y motivo en `docs/DECISIONES.md`).
+- **La puerta:** de madera con dos tableros, marco crema y manija de latón; se toca igual que antes.
+- **Interruptor** con su canaleta blanca que sube hasta el borde de la pared y **enchufe** de la impresora en la pared del fondo.
+- **Marcas del piso:** los lugares libres se marcan con cuatro esquinas y un "+" (antes un rectángulo entero); laten suave y se encienden cuando el personaje está cerca o la tienda está abierta. El marco de lo que está cerca también es de esquinas, y al tocar el piso aparece un aro.
+- Más liviano: el cuarto inicial bajó de 177 a 136 llamadas de dibujo, y la escena se arma en unos 11 ms (antes 20).
+
+**Verificado**
+- `check.sh` y `run_tests.sh` pasan: 575 pruebas (antes 565); 10 nuevas (cuarto, ventana, marcas, puerta, cortina) y 3 adaptadas con la misma intención (detalle en `docs/DECISIONES.md`).
+- `screenshots.sh` saca las 37 capturas. Revisé 01, 02, 03, 05, 08, 09, 11, 30, 31, 34 y 37, y 01 al lado de la imagen del prototipo "Diorama". Medido en las capturas: dentro del parche ≥ 230 de 255 (picos en 255), el piso visible en promedio 191 de 255, la pared de la ventana (144, 153, 132), verde salvia.
+
+**Qué revisar en el teléfono** (versión web)
+- Al empezar (08:00): las rayas de luz de las rejas en el piso alrededor de la impresora del piso, con su cama dorada iluminada; la ventana con la cortina mostaza, las rejas negras con los dos aros arriba y el barrio detrás (el tanque negro, la ropa de colores, la buganvilla magenta, los cables).
+- La base azul con capas debajo del piso y las tapas azules arriba de las paredes.
+- Las marcas de los lugares libres (esquinas cian suaves): que se vean, que se enciendan al acercar el personaje y al abrir la Tienda, y que se puedan tocar como antes. Si cuestan verlas en el teléfono, se pueden subir (es un número).
+- La puerta: que se toque y abra su panel como antes.
+
+**Problemas conocidos**
+- El parche no sube por la pared del fondo (la biblia lo pedía, pero no puede cruzar la impresora y subir por esa pared a la vez): elegí cruzar la impresora.
+- Sobre el piso claro de baldosa el parche se nota menos que en el prototipo "Diorama" (que tenía piso de madera oscura y el sol solo por la ventana). El cuarto todavía está vacío: la decoración llega en el paso 12.
+- La mañana es el único momento del día (el resto llega en el paso 13). El escritorio, la impresora, el despacho y el personaje siguen con los modelos de cajas (pasos 6 a 10).

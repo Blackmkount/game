@@ -22,26 +22,28 @@ const SceneBudget: GDScript = preload("res://tests/helpers/scene_budget.gd")
 const FullRoom: GDScript = preload("res://tests/helpers/full_room.gd")
 const SEED: int = 1234
 
-## Cuarto inicial. Medido el 2026-10-22 en el paso 3 de Arte 2.0 (sin el
-## contorno del mundo y sin sombra de la cáscara): 177 llamadas, 37
-## materiales, 62 mallas con sombra y 35 superficies transparentes (5 marcas
-## de lugar libre de 6 cajas cada una, el marco de resalte y la sombra bajo la
-## base). Antes (paso 1): 334 llamadas, 35 materiales, 75 mallas con sombra.
-const START_MAX_DRAW_CALLS: int = 194
+## Cuarto inicial. Medido el 2026-10-22 en el paso 5 de Arte 2.0 (el cuarto
+## del kit en una malla, las marcas de lugar libre de una malla cada una):
+## 136 llamadas, 32 materiales, 62 mallas con sombra y 8 superficies
+## transparentes (5 marcas, el marco de resalte, el haz de la ventana y la
+## sombra bajo la base). Antes: 177 llamadas, 37 materiales y 35
+## transparentes (paso 3); 334 llamadas (paso 1).
+const START_MAX_DRAW_CALLS: int = 149
 const START_MAX_VISIBLE_TRIANGLES: int = 45000
 const START_MAX_TOTAL_TRIANGLES: int = 80000
-const START_MAX_MATERIALS: int = 38
+const START_MAX_MATERIALS: int = 35
 const START_MAX_SHADOW_MESHES: int = 68
-const START_MAX_TRANSPARENT: int = 37
+const START_MAX_TRANSPARENT: int = 9
 
-## Cuarto lleno. Medido el 2026-10-22 en el paso 3: 535 llamadas, 44
-## materiales, 256 mallas con sombra y 5 superficies transparentes (sin
+## Cuarto lleno. Medido el 2026-10-22 en el paso 5: 519 llamadas, 39
+## materiales, 256 mallas con sombra y 3 superficies transparentes (sin
 ## lugares libres no hay marcas: el tope de transparentes es el final del
-## cuarto inicial). Antes (paso 1): 1.042 llamadas, 41 materiales.
-const FULL_MAX_DRAW_CALLS: int = 588
+## cuarto inicial). Antes: 535 llamadas y 44 materiales (paso 3); 1.042
+## llamadas (paso 1).
+const FULL_MAX_DRAW_CALLS: int = 570
 const FULL_MAX_VISIBLE_TRIANGLES: int = 60000
 const FULL_MAX_TOTAL_TRIANGLES: int = 99999
-const FULL_MAX_MATERIALS: int = 45
+const FULL_MAX_MATERIALS: int = 42
 const FULL_MAX_SHADOW_MESHES: int = 281
 const FULL_MAX_TRANSPARENT: int = 12
 

@@ -50,7 +50,7 @@ func test_paint_and_textures_carry_their_color_and_surface() -> void:
 		assert_eq(material.shader, WorldPalette.TINTED_SHADER)
 		assert_eq(material.get_shader_parameter("albedo"), Color(look[0] as String), texture_name)
 		assert_eq(material.get_shader_parameter("surface"), look[1], texture_name)
-	assert_eq(WorldPalette.textured("floor_planks").get_shader_parameter("surface"), WorldPalette.Surface.TILE)
+	assert_eq(WorldPalette.textured("cardboard").get_shader_parameter("surface"), WorldPalette.Surface.CARDBOARD)
 
 
 func test_a_plain_glow_is_a_lit_kit_color_with_its_own_light() -> void:

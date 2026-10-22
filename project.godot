@@ -79,7 +79,7 @@ cc_fill={
 }
 cc_window_dir={
 "type": "vec3",
-"value": Vector3(0.707, -0.566, -0.424)
+"value": Vector3(0.774, -0.559, -0.297)
 }
 cc_window_color={
 "type": "vec3",
@@ -96,6 +96,10 @@ cc_window_x={
 cc_window_bars={
 "type": "vec4",
 "value": Vector4(0.2, 0.009, 1.6, 0.025)
+}
+cc_window_sun={
+"type": "vec4",
+"value": Vector4(-1.2, 1.83, 0.1, 0.05)
 }
 cc_occ_a_c={
 "type": "vec4",

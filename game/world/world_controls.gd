@@ -356,6 +356,9 @@ func _on_sheet_closed() -> void:
 
 
 func _on_screen_changed(screen_id: String) -> void:
+	# En la tienda, las marcas de lugares libres se encienden: ahí va lo que
+	# se compre.
+	room.markers_emphasis = screen_id == "shop"
 	if screen_id != "home":
 		_cancel_gestures()
 		if room.character != null:

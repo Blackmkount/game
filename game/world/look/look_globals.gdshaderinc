@@ -33,13 +33,15 @@ global uniform vec3 cc_amb_ground;
 global uniform vec3 cc_fill_dir;
 global uniform vec4 cc_fill;
 // Luz de la ventana: hacia dónde viaja, color × fuerza, hueco (z0, z1, y0,
-// y1), plano de la pared y rejas (separación, medio grosor, alto del
-// travesaño, medio ancho del parante central).
+// y1), plano de la pared, rejas (separación, medio grosor, alto del
+// travesaño, medio ancho del parante central) y el adorno de sol de la reja
+// (centro z, y; radio de los dos aros). Las medidas salen de WindowSpec.
 global uniform vec3 cc_window_dir;
 global uniform vec3 cc_window_color;
 global uniform vec4 cc_window_rect;
 global uniform float cc_window_x;
 global uniform vec4 cc_window_bars;
+global uniform vec4 cc_window_sun;
 // Dos cajas que tapan el parche de la ventana (centro y medias medidas).
 global uniform vec4 cc_occ_a_c;
 global uniform vec4 cc_occ_a_h;

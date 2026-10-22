@@ -11,7 +11,8 @@ const SHADERS: Dictionary[String, Array] = {
 	"res://game/world/look/kit_tinted.gdshader": ["albedo", "surface", "gloss", "layer", "emit"],
 	"res://game/world/look/kit_printing.gdshader": ["albedo", "surface", "gloss", "layer", "emit"],
 	"res://game/world/look/screen.gdshader": ["mode", "tint"],
-	"res://game/world/look/window_view.gdshader": ["mood"],
+	"res://game/world/look/window_view.gdshader": ["mood", "view_dir"],
+	"res://game/world/look/window_shaft.gdshader": ["strength"],
 	"res://game/world/look/halo.gdshader": ["color", "falloff", "aspect"],
 	"res://game/world/look/backdrop.gdshader": ["center_color", "edge_color", "glow_color"],
 	"res://game/world/look/base_shadow.gdshader": ["color"],
@@ -39,7 +40,7 @@ func test_every_palette_material_can_be_drawn_on_a_mesh() -> void:
 		WorldPalette.paint(WorldPalette.WOOD_MID, WorldPalette.Surface.WOOD, 0.15),
 		WorldPalette.glow("7fe0a0"), WorldPalette.glow("ffffff", "crt_modeling"),
 		WorldPalette.glow("ffffff", WorldPalette.WINDOW_VIEW), WorldPalette.glow_transparent(WorldPalette.SLOT_MARK, 0.6),
-		WorldPalette.halo(LookPalette.LAMP_HALO, 3.0),
+		WorldPalette.halo(LookPalette.LAMP_HALO, 3.0), WorldPalette.window_shaft(),
 	]
 	for surface: int in WorldPalette.Surface.size():
 		materials.append(WorldPalette.paint("cccccc", surface as WorldPalette.Surface))

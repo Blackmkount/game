@@ -125,11 +125,15 @@ float cc_window_patch(vec3 p, vec3 n) {
 	float light = inside;
 	if (bars.x > 0.0) {
 		// Rejas verticales (a media separación de los bordes del hueco), el
-		// travesaño y el parante central de la ventana corrediza.
+		// travesaño, el parante central de la ventana corrediza y los dos aros
+		// del adorno de sol.
 		float bar_z = abs(fract((hit.z - r.x) / bars.x) - 0.5) * bars.x;
 		light *= smoothstep(bars.y, bars.y + soft, bar_z);
 		light *= smoothstep(bars.y, bars.y + soft, abs(hit.y - bars.z));
 		light *= smoothstep(bars.w, bars.w + soft, abs(hit.z - (r.x + r.y) * 0.5));
+		float ring = length(hit.zy - cc_window_sun.xy);
+		light *= smoothstep(bars.y, bars.y + soft, abs(ring - cc_window_sun.z));
+		light *= smoothstep(bars.y, bars.y + soft, abs(ring - cc_window_sun.w));
 	}
 	if (light <= 0.0) {
 		return 0.0;

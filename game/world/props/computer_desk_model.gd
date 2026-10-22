@@ -4,13 +4,23 @@ extends RefCounted
 ## beige, teclado y ratón) y una caja de cartón que hace de silla.
 ## El frente mira hacia +Z.
 
+## El tablero: ancho, alto de arriba y fondo. Con él RoomView arma la caja que
+## tapa el parche de sol de la ventana (el escritorio está bajo la ventana).
+const TABLE_SIZE: Vector3 = Vector3(1.3, 0.75, 0.62)
+const TABLE_THICKNESS: float = 0.06
+
+
+## La caja del tablero (con lo que hay debajo), en el espacio del mueble.
+static func table_box() -> AABB:
+	return AABB(Vector3(-TABLE_SIZE.x / 2.0, 0.0, -TABLE_SIZE.z / 2.0), TABLE_SIZE)
+
 
 static func build(parent: Node3D, node_name: String) -> Node3D:
 	var desk: Node3D = PropBuilder.group(parent, node_name)
 	var wood: Material = WorldPalette.paint(WorldPalette.WOOD_MID, WorldPalette.Surface.WOOD, 0.15)
 	var beige: Material = WorldPalette.paint(WorldPalette.PLASTIC_BEIGE, WorldPalette.Surface.SMOOTH, 0.2)
 	var beige_dark: Material = WorldPalette.paint(WorldPalette.PLASTIC_BEIGE_DARK, WorldPalette.Surface.SMOOTH, 0.2)
-	PropBuilder.box(desk, "Top", Vector3(1.3, 0.06, 0.62), Vector3(0.0, 0.72, 0.0), wood)
+	PropBuilder.box(desk, "Top", Vector3(TABLE_SIZE.x, TABLE_THICKNESS, TABLE_SIZE.z), Vector3(0.0, TABLE_SIZE.y - TABLE_THICKNESS / 2.0, 0.0), wood)
 	for i: int in 4:
 		var x: float = 0.6 if i % 2 == 0 else -0.6
 		var z: float = 0.26 if i < 2 else -0.26

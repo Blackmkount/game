@@ -101,7 +101,9 @@ vec3 cc_tile(vec3 base, inout vec3 n, inout float shine) {
 	if (n.y < 0.5) {
 		return base;
 	}
-	vec2 g = v_world.xz / CC_TILE_SIZE;
+	// La grilla empieza en el rincón del cuarto: baldosas enteras contra las
+	// paredes.
+	vec2 g = (v_world.xz - cc_room.xy) / CC_TILE_SIZE;
 	vec2 id = floor(g);
 	vec2 f = fract(g);
 	vec2 to_edge = min(f, 1.0 - f) * CC_TILE_SIZE;

@@ -6,7 +6,7 @@ Esta guía mantiene el juego **coherente y consistente** de principio a fin. Tod
 
 ## 1. Idea general
 
-> **En transición a Arte 2.0 ("Mundo Impreso").** El dueño aprobó dejar el pixel art (2026-10-22, ver `docs/DECISIONES.md`). Desde el paso 2 el mundo ya se dibuja a resolución alta y con bordes suavizados (sección "Render"); desde el paso 3 usa el kit de materiales nuevo, sin contorno ni texturas pixel art (secciones "Luz", "Materiales" y "Paleta"); desde el paso 4 tiene el kit de formas (`KitMesh`) y las manchas de oclusión del piso (secciones "Luz" y "Modelos"). El resto de esta guía se reescribe con la biblia de arte al terminar los 16 pasos. Mientras tanto, lo que aquí dice "pixel art" describe los modelos de cajas que todavía no se cambiaron.
+> **En transición a Arte 2.0 ("Mundo Impreso").** El dueño aprobó dejar el pixel art (2026-10-22, ver `docs/DECISIONES.md`). Desde el paso 2 el mundo ya se dibuja a resolución alta y con bordes suavizados (sección "Render"); desde el paso 3 usa el kit de materiales nuevo, sin contorno ni texturas pixel art (secciones "Luz", "Materiales" y "Paleta"); desde el paso 4 tiene el kit de formas (`KitMesh`) y las manchas de oclusión del piso (secciones "Luz" y "Modelos"); desde el paso 5 el cuarto es una maqueta impresa con la ventana de verdad y las marcas en esquinas (secciones "Luz", "Paleta" e "Interacción"). El resto de esta guía se reescribe con la biblia de arte al terminar los 16 pasos. Mientras tanto, lo que aquí dice "pixel art" describe los modelos de cajas que todavía no se cambiaron.
 
 **Pixel art isométrico cálido, con interfaz oscura de bordes cian.**
 
@@ -28,7 +28,7 @@ Esta guía mantiene el juego **coherente y consistente** de principio a fin. Tod
 - **Una sola luz direccional del motor** (el sol, con sombra), orientada por `DayCycle` según la hora (por ahora solo la mañana: `#fff0dc` × 0,48, entrando por la ventana). Ambiente, relleno desde el lado de la cámara, lámpara, monitor, LED de la impresora, tira LED y el parche de sol de la ventana (con las rejas) los calcula el sombreador del mundo con globales (`[shader_globals]` de `project.godot`): cero luces extra, cero llamadas extra. Tonemap lineal; ambiente, reflejos, glow y SSAO del motor apagados.
 - Sombras **suaves**: filtro de calidad 2 y mapa de 2.048 en `project.godot`, también en móvil.
 - Sombra **ortogonal** de una sola pieza (`SHADOW_ORTHOGONAL`; con la cámara ortográfica cubre de `near` a `far` de la cámara): con la cámara en movimiento no tiembla y cuesta menos que el modo por defecto.
-- El cuarto (piso, paredes, ventana, puerta) no proyecta sombra: la luz general "pasa" por arriba y la ventana se lee por el parche de sol.
+- El cuarto (piso, paredes, ventana, puerta) no proyecta sombra: la luz general "pasa" por arriba y la ventana se lee por el parche de sol y un haz de luz suave. Las medidas del hueco, las rejas, el travesaño, el parante y el adorno de sol están en `WindowSpec`: de ahí salen la geometría y las rayas del parche. En la mañana la luz de la ventana tiene la altura del sol y gira 10° hacia la pared de la ventana, así el parche cruza la impresora del piso; el tablero del escritorio y el personaje lo tapan.
 - Pantallas y marcas brillan con su propio color. Las luces de las cosas (un LED, un interior iluminado) son luz propia del material.
 - **Oclusión** (siempre teñida hacia índigo, nunca gris): manchas suaves en el piso bajo cada obstáculo (muebles, impresoras, el rincón; `FloorAO`, una textura de 96 × 96 pintada una vez por distribución), uniones piso-pared y rincón en el sombreador, y en las mallas del kit una sombra de contacto horneada (−35 % donde tocan, −25 % en las caras de abajo).
 
@@ -41,7 +41,7 @@ Siempre se usan los de `WorldPalette` (`game/world/look/world_palette.gd`), sobr
 | `solid(hex)` | Plástico impreso: la pieza, la bandeja, el filamento (capas de 1 cm) |
 | `printing(hex)` | La pieza mientras se imprime, con la capa caliente naranja arriba |
 | `paint(hex, superficie, brillo)` | Lo que no fue impreso: pintura, madera, metal, tela, PEI... |
-| `textured(nombre)` | El piso de baldosa, la pintura de las paredes y el cartón |
+| `textured(nombre)` | El cartón de los modelos de cajas (el piso y las paredes ya son del kit) |
 | `glow(hex, estado)` | Pantallas dibujadas en el sombreador (`crt_screen`, `crt_modeling`, `printer_display*`) y la vista de la ventana; sin estado, un color con luz propia |
 | `glow_transparent(hex, alfa)` | Marcas del piso (lugares libres, cercanía, destino); laten en el sombreador |
 | `halo(hex)` | Halos de luz que suman (lámparas, pantallas) |
@@ -59,7 +59,10 @@ La paleta completa es la de la biblia de arte §4, en `LookPalette` (`game/world
 |---|---|
 | Fondo exterior | degradado `#26335c` → `#141b2d` (mañana) |
 | Piso de baldosa | `#e8c49c` / `#e2bb91`, junta clara `#f2e2cb` |
-| Paredes | crema `#f2dcbc` (la de la ventana será verde salvia `#bfd8c2` en el paso 5) |
+| Paredes | fondo crema `#f2dcbc`, ventana verde salvia `#bfd8c2`; zócalos, marco de la puerta y canaleta `#f4ede2` |
+| Base impresa y cortes de pared | `#56689a` (capas de 2,4 cm y 1,2 cm), borde de primera capa `#4a6f9e` |
+| Ventana | aluminio `#dfe4ea`, rejas `#2a2e3a`, alféizar `#efe7da`, cortina `#e2a93b` / `#c98f2c` |
+| Puerta | madera `#a8693a`, tableros `#b77a47`, manija `#e0b44a` |
 | Madera de muebles | clara `#d9a066`, media `#b97a48`, oscura `#7a4b2e` |
 | Metal | oscuro `#2b2f3a`, medio `#5a6274` |
 | Computador viejo | beige `#e6dcc4` / `#c9bb9a` |
@@ -83,9 +86,9 @@ La paleta completa es la de la biblia de arte §4, en `LookPalette` (`game/world
 - Cada impresora se ve distinta según su familia (`PrinterModel`): abiertas de cama móvil, cerradas tipo caja, multicolor con caja de colores encima y de resina con tapa ámbar.
 - Los muebles marcan con nodos `PrinterSpot0`, `PrinterSpot1`... dónde va cada impresora (`FurnitureModel`).
 - **Personaje** (`CharacterModel`): chibi de 1,25 m con cabeza grande, pelo café en puntas, buzo negro con capucha y cordones blancos, jeans azules y zapatillas blancas. Respira y mira de vez en cuando su impresora.
-- **Lugares libres:** un marco cian semitransparente con un "+" en el piso, que late suavemente. Invita a comprar muebles (pilar 1).
-- **Objeto cercano** (`HighlightFrame`): un marco cian más brillante en el piso alrededor del objeto que el personaje tiene al lado. Mismo estilo que los lugares libres, para que se lea como "esto se puede usar".
-- **Destino al tocar el piso:** un círculo cian que se agranda y se desvanece en medio segundo.
+- **Lugares libres:** cuatro esquinas cian en L y un "+" en el piso (una malla compartida), que laten suavemente (alfa 0,22 ↔ 0,35) y se encienden (0,55 ↔ 0,85) con el personaje a 1,2 m o menos o con la tienda abierta. Invitan a comprar muebles (pilar 1).
+- **Objeto cercano** (`HighlightFrame`): cuatro esquinas cian más brillantes (0,8 ↔ 0,45) alrededor de la huella del objeto que el personaje tiene al lado, más 0,12 m. Mismo estilo que los lugares libres, para que se lea como "esto se puede usar".
+- **Destino al tocar el piso:** un aro cian que se agranda y se desvanece en medio segundo.
 - **Pieza impresa** (`PieceModel`): un bloque del color del carrete, más grande que la pieza real para que se vea (tamaño S de 0,12 m, M de 0,18 m y L de 0,24 m). Crece sobre la cama de a una capa de 1 cm (`PieceModel.LAYER_STEP`) y nunca baja. Al terminar da un saltito; si falla, queda detenida en gris oscuro (el warping además se inclina). En pedidos de varias piezas, las terminadas esperan en una bandeja al frente de la impresora.
 - **Rincón de despacho** (`DispatchCornerModel`): una mesita de madera para embalar, con cartones planos y un rollo de cinta, y un cajón de salida casi tan alto como la mesa. Va fijo junto a la puerta, sin ocupar un lugar de muebles. Encima de la mesa aparecen las cajas abiertas con la pieza; sobre el cajón, los paquetes con cinta (`PackageModel`). Al despachar, el paquete se desliza hacia la puerta y desaparece.
 - El personaje tiene articulaciones en caderas y hombros (`HipL`, `HipR`, `Body/ShoulderL`, `Body/ShoulderR`) para la animación de caminar, que se hace por código.
