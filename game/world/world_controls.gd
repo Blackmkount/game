@@ -7,7 +7,8 @@ extends Control
 ##
 ## Las partes que se pueden separar viven aparte: TouchTracker (gestos),
 ## StickMapping (dirección en el piso), KeyBindings (teclado), HintFlow
-## (pistas) y ReachTracker (cercanía).
+## (pistas), ReachTracker (cercanía) y OrderLoopController (las acciones del
+## ciclo de pedidos, que es hijo de este nodo).
 ##
 ## Está entre la vista del mundo y el HUD. El HUD, que va encima, se queda con
 ## los toques sobre sus botones; el resto llega aquí. Una vez que un dedo
@@ -31,6 +32,8 @@ var reach: ReachTracker
 var room: RoomView
 var hud: Hud
 var world_view: SubViewportContainer
+## Lleva las acciones del ciclo de pedidos (tarjetas de Pedidos) a Game.
+var loop: OrderLoopController
 ## Objeto resaltado por cercanía (o null).
 var highlighted: WorldInteractable = null
 ## Objeto con el panel abierto (o null).
@@ -74,6 +77,9 @@ func _setup() -> void:
 	world_view.offset_transform_visual_only = true
 	_hints = HintFlow.new(UserSettings.load_settings())
 	hud.move_hint.set_mode(_hints.mode())
+	loop = OrderLoopController.new(self)
+	loop.name = "OrderLoop"
+	add_child(loop)
 	_ready_done = true
 
 

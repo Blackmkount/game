@@ -73,9 +73,15 @@ func clear_content() -> void:
 
 
 func add_section(title_key: String) -> void:
-	var label: Label = UiKit.label(tr(title_key), "BoldLabel")
+	add_heading(tr(title_key))
+
+
+## Título de sección con un texto ya armado (por ejemplo, con un número).
+func add_heading(text: String) -> Label:
+	var label: Label = UiKit.label(text, "BoldLabel")
 	label.add_theme_color_override("font_color", UiPalette.ACCENT)
 	content.add_child(label)
+	return label
 
 
 ## Aviso destacado (por ejemplo, funciones que llegan pronto).

@@ -143,7 +143,6 @@ PROFILE_PRINTERS,Impresoras,Printers
 PROFILE_ORDERS,Pedidos entregados,Orders delivered
 PROFILE_OBJECTIVES,Objetivos cumplidos,Objectives done
 PROFILE_MATERIAL,Material,Material
-ORDERS_COMING_SOON,"Muy pronto tus amigos te escribirán con pedidos. Por ahora, mira lo que podrás imprimir a tu nivel.","Soon your friends will message you with orders. For now, here's what you'll be able to print at your level."
 ORDERS_PIECE,%d pieza,%d piece
 ORDERS_PIECES,%d piezas,%d pieces
 ORDERS_LOCKED_MORE,Hay %d pedidos más que se desbloquean al subir de nivel.,%d more orders unlock as you level up.

@@ -63,6 +63,15 @@ func step(delta: float) -> void:
 		_snap_to_pixels(character.model)
 
 
+## Objeto del mundo de ese tipo con ese `ref` (uid de la impresora o del
+## mueble, índice del lugar libre), o null si no está.
+func item_for(kind: WorldInteractable.Kind, ref: int) -> WorldInteractable:
+	for item: WorldInteractable in interactables:
+		if item.kind == kind and item.ref == ref:
+			return item
+	return null
+
+
 ## Objeto que está bajo un punto de la pantalla (píxeles del dibujo), o null.
 ## Primero busca lo que el rayo toca más cerca. Si no toca nada, acepta
 ## objetos que se ven pequeños si el dedo cae cerca: se los agranda hasta
