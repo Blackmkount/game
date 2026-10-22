@@ -255,10 +255,10 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 - **Prueba de presupuesto de dibujo:** mide cuánto le cuesta al teléfono dibujar el cuarto inicial y el cuarto más lleno de hoy (16 impresoras): llamadas de dibujo, triángulos, materiales, sombras y luces. Falla si un cambio de arte lo encarece, si aparece una luz extra del motor o si hay algo que no sabe medir. Hoy: 334 llamadas el cuarto inicial y 1.042 el lleno; la meta del arte nuevo es 70 y 200.
 - **Capturas de arte nuevas, sin interfaz:** el cuarto entero (30), con zoom normal (31), el personaje de frente, de perfil y de espaldas (32a, 32b, 32c) y su cara de muy cerca (33), la impresora y el escritorio de cerca (34), la pieza que crece vista desde lejos (45), la tienda de impresoras (46), una impresora de cada familia (26) y el cuarto lleno de estanterías, entero y de cerca (37, 38). Son la foto del "antes".
 - **`tools/screenshots.sh` más estricto:** ahora falla si algo sale mal a mitad de camino (antes terminaba "bien" con menos capturas), deja la lista de capturas (`manifest.txt`) y lo que costó dibujar cada una (`budget.csv`). Opciones nuevas: `--only=art` (solo las de arte, unos 25 segundos), `--only=char` (solo el personaje) y `--resolution=1080x2400` (otro tamaño de pantalla).
-- **Arreglo en las capturas 04 a 06:** el personaje caminaba de más y terminaba contra la pared; ahora queda junto a la impresora, porque el mundo avanza con un paso fijo en cada cuadro.
+- **Arreglo en las capturas 04 a 06:** el personaje caminaba de más y terminaba contra la pared; ahora queda junto a la impresora, porque el mundo avanza con un paso fijo en cada cuadro. Camina más de un metro con el joystick, así 05 muestra la pista "Toca un objeto para verlo" y las capturas siguientes salen sin pistas, como antes.
 
 **Verificado**
-- `check.sh` y `run_tests.sh` pasan: 517 pruebas (antes 505; las de antes no cambiaron).
+- `check.sh` y `run_tests.sh` pasan: 520 pruebas (antes 505; las de antes no cambiaron).
 - `screenshots.sh` saca las 36 capturas del manifiesto. Se comprobó que falla si se mete un error a propósito en un escenario (y se deshizo). Lo que cuenta OpenGL coincide con la medida de la prueba (334 y 1.042 llamadas con todo el cuarto a la vista).
 - Revisé las 36 capturas.
 

@@ -37,10 +37,23 @@ const ZOOM_NEAR: int = 2
 ## vista de la impresora y otro en medio del cuarto.
 const NEAR_PRINTER_SPOT: Vector2 = Vector2(-0.3, -0.25)
 const ROOM_MIDDLE_SPOT: Vector2 = Vector2(0.3, 0.2)
+## Caminata con el joystick de 04 y 05: en línea recta desde el primer punto
+## hasta el segundo, junto a la impresora del piso (a su izquierda en la
+## pantalla, como el punto de partida). Son 1,27 m, más que
+## HintFlow.WALK_DISTANCE: así se aprende la primera pista y 05 muestra la
+## segunda, "Toca un objeto para verlo".
+const JOYSTICK_WALK_FROM: Vector2 = Vector2(-1.1, 0.35)
+const JOYSTICK_WALK_TO: Vector2 = Vector2(-1.1, -0.92)
+## Cuadros de arrastre antes de la captura 04, y a qué distancia del final
+## (metros) se suelta el joystick.
+const JOYSTICK_FRAMES_BEFORE_04: int = 6
+const JOYSTICK_ARRIVE_DISTANCE: float = 0.05
 ## Lo más que se avanza la partida esperando que pase algo (segundos reales).
 const MAX_WAIT_SECONDS: int = 600
 ## Lo más que se espera a que se vayan el globo de diálogo y los avisos.
 const MAX_QUIET_FRAMES: int = 600
+## Lo más que se deja caminar al personaje con el joystick (cuadros).
+const MAX_WALK_FRAMES: int = 300
 
 ## Grupos de capturas (--only=...): todas, solo las de arte (con las del
 ## personaje) o solo las del personaje.
@@ -73,9 +86,10 @@ const ART_SHOTS: Array[String] = [
 const BUDGET_HEADER: String = "shot,window,world_view,camera_size,quality,gl_draw_calls,estimated_draw_calls,gl_primitives,gl_shadow_primitives,gl_objects,frame_draw_calls,frame_primitives"
 
 ## Encuadres de las capturas de arte. Ancho de la vista (metros) con el zoom
-## cerca: el personaje de cuerpo entero y su cara.
+## cerca: el personaje de cuerpo entero y su cara con el pelo (unos 0,58 m de
+## ancho, como los retratos de los prototipos).
 const BODY_FRAME: float = 2.0
-const PORTRAIT_FRAME: float = 0.9
+const PORTRAIT_FRAME: float = 1.15
 ## Giro del personaje (grados; 0 mira hacia +Z y la cámara mira desde +X +Z):
 ## de frente, de perfil y de espaldas a la cámara.
 const CHARACTER_TURNS: Array[float] = [45.0, 135.0, 225.0]
@@ -94,6 +108,9 @@ const FAMILIES_POINT: Vector3 = Vector3(0.4, 0.6, -2.3)
 const FAMILIES_FRAME: float = 5.0
 ## Las estanterías del fondo del cuarto lleno, de cerca (zoom cerca).
 const RACKS_POINT: Vector3 = Vector3(1.0, 0.9, -2.3)
+## Donde está el personaje en el cuarto lleno: a la vista en 37 (al lado de
+## la estantería del frente, no detrás) y fuera del encuadre de 38.
+const FULL_ROOM_SPOT: Vector2 = Vector2(-0.6, 1.6)
 
 var _out: String = ""
 var _only: String = ONLY_ALL
@@ -195,18 +212,22 @@ func _controls_and_screens() -> void:
 	_zoom(CameraRig.DEFAULT_ZOOM_INDEX)
 	await _frames(30)
 
-	# Joystick a mitad de un arrastre, caminando hacia la impresora. Unos
-	# pasos más y se suelta, ya junto a ella.
+	# Joystick a mitad de un arrastre, caminando hacia la impresora. Se
+	# suelta al llegar junto a ella.
+	_place_character(JOYSTICK_WALK_FROM)
+	await _frames(30)
 	var printer: WorldInteractable = _first(WorldInteractable.Kind.PRINTER)
 	var start: Vector2 = Vector2(360.0, 900.0)
-	var direction: Vector2 = (_controls.world_to_ui(printer.top_center()) - _controls.world_to_ui(_room.character_focus_point())).normalized()
+	var knob: Vector2 = start + _ui_direction(JOYSTICK_WALK_FROM, JOYSTICK_WALK_TO) * 50.0
 	_controls.tracker.press(0, start)
-	_controls.tracker.drag(0, start + direction * 50.0)
-	await _frames(6)
+	_controls.tracker.drag(0, knob)
+	await _frames(JOYSTICK_FRAMES_BEFORE_04)
 	await _capture("04_joystick")
-	await _frames(12)
-	_controls.tracker.release(0, start + direction * 50.0)
+	await _walk_until_near(JOYSTICK_WALK_TO)
+	_controls.tracker.release(0, knob)
 	await _frames(20)
+	if _hud.move_hint.mode != MoveHint.Mode.TAP:
+		push_error("Capturas: en 05 tiene que verse la pista de tocar un objeto")
 	await _capture("05_cerca_de_la_impresora")
 
 	_controls.open_sheet(printer)
@@ -457,7 +478,7 @@ func _full_room() -> void:
 	FullRoom.fill(state, Game.rules)
 	await _rebuild_main(state)
 	_hud.visible = false
-	_place_character(ROOM_MIDDLE_SPOT)
+	_place_character(FULL_ROOM_SPOT)
 	_zoom(ZOOM_FAR)
 	_camera_point = ROOM_CENTER
 	await _frames(40)
@@ -548,6 +569,24 @@ func _turn_character(degrees: float) -> void:
 	var character: CharacterController = _room.character
 	var angle: float = deg_to_rad(degrees)
 	character.face(character.floor_position + Vector2(sin(angle), cos(angle)))
+
+
+## Dirección en la pantalla de un punto del piso hacia otro (con el joystick
+## alineado a la pantalla, el personaje camina justo por esa línea).
+func _ui_direction(from: Vector2, to: Vector2) -> Vector2:
+	var from_ui: Vector2 = _controls.world_to_ui(Vector3(from.x, 0.0, from.y))
+	var to_ui: Vector2 = _controls.world_to_ui(Vector3(to.x, 0.0, to.y))
+	return (to_ui - from_ui).normalized()
+
+
+## Deja correr cuadros, con el joystick empujado, hasta que el personaje
+## llega cerca de `spot`.
+func _walk_until_near(spot: Vector2) -> void:
+	for i: int in MAX_WALK_FRAMES:
+		if _room.character.floor_position.distance_to(spot) <= JOYSTICK_ARRIVE_DISTANCE:
+			return
+		await _frames(1)
+	push_error("Capturas: el personaje no llegó caminando a %s" % spot)
 
 
 ## Centro de la cabeza (de sus mallas, o del pivote si no tiene).

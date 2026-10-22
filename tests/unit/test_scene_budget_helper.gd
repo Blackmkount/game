@@ -8,6 +8,10 @@ const SceneBudget: GDScript = preload("res://tests/helpers/scene_budget.gd")
 ## Una caja de BoxMesh sin subdivisiones: 6 caras de 2 triángulos.
 const BOX_TRIANGLES: int = 12
 const INCLUDE_PATH: String = "user://scene_budget_test.gdshaderinc"
+## Un sombreador y su include, en la misma carpeta (el #include relativo se
+## busca ahí). Otro archivo que el de arriba: Godot guarda lo cargado.
+const SHADER_PATH: String = "user://scene_budget_test.gdshader"
+const MODES_INCLUDE_PATH: String = "user://scene_budget_modes_test.gdshaderinc"
 
 
 func test_each_pass_draws_once_in_color_and_once_in_the_shadow_map() -> void:
@@ -110,6 +114,48 @@ func test_shader_materials_are_classified_like_godot_does() -> void:
 	assert_true(SceneBudget.casts_shadow(prepass), "Con la pasada previa de profundidad da sombra")
 
 
+func test_base_materials_are_classified_like_godot_does() -> void:
+	var prepass: StandardMaterial3D = StandardMaterial3D.new()
+	prepass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS
+	assert_true(SceneBudget.is_transparent(prepass))
+	assert_true(SceneBudget.casts_shadow(prepass), "Con la pasada previa de profundidad da sombra")
+	for clip: BaseMaterial3D.Transparency in [BaseMaterial3D.TRANSPARENCY_ALPHA_SCISSOR, BaseMaterial3D.TRANSPARENCY_ALPHA_HASH]:
+		var clipped: StandardMaterial3D = StandardMaterial3D.new()
+		clipped.transparency = clip
+		assert_false(SceneBudget.is_transparent(clipped), "Recorte y hash siguen siendo opacos")
+		assert_true(SceneBudget.casts_shadow(clipped))
+	var added: StandardMaterial3D = StandardMaterial3D.new()
+	added.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	assert_true(SceneBudget.is_transparent(added))
+	assert_false(SceneBudget.casts_shadow(added))
+	var refraction: StandardMaterial3D = StandardMaterial3D.new()
+	refraction.refraction_enabled = true
+	var proximity: StandardMaterial3D = StandardMaterial3D.new()
+	proximity.proximity_fade_enabled = true
+	var fade: StandardMaterial3D = StandardMaterial3D.new()
+	fade.distance_fade_mode = BaseMaterial3D.DISTANCE_FADE_PIXEL_ALPHA
+	for screen_or_alpha: StandardMaterial3D in [refraction, proximity, fade]:
+		assert_true(SceneBudget.is_transparent(screen_or_alpha), "Leer la pantalla o la profundidad, o escribir ALPHA")
+		assert_false(SceneBudget.casts_shadow(screen_or_alpha))
+	var dither: StandardMaterial3D = StandardMaterial3D.new()
+	dither.distance_fade_mode = BaseMaterial3D.DISTANCE_FADE_PIXEL_DITHER
+	assert_false(SceneBudget.is_transparent(dither), "El tramado es opaco")
+
+
+func test_every_render_mode_counts_also_from_an_include() -> void:
+	var file: FileAccess = FileAccess.open(MODES_INCLUDE_PATH, FileAccess.WRITE)
+	file.store_string("render_mode blend_add;\n")
+	file.close()
+	var shader: Shader = Shader.new()
+	shader.resource_path = SHADER_PATH
+	shader.code = "shader_type spatial;\nrender_mode unshaded;\n#include \"scene_budget_modes_test.gdshaderinc\"\nvoid fragment() { ALBEDO = vec3(1.0); }\n"
+	var material: ShaderMaterial = ShaderMaterial.new()
+	material.shader = shader
+	assert_true(SceneBudget.is_transparent(material), "El blend_add del include, aunque haya otro render_mode antes")
+	assert_false(SceneBudget.casts_shadow(material))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(MODES_INCLUDE_PATH))
+
+
 func test_shader_includes_are_read_too() -> void:
 	var file: FileAccess = FileAccess.open(INCLUDE_PATH, FileAccess.WRITE)
 	file.store_string("void set_alpha(inout float alpha) { alpha = 0.5; }\n#define FADE ALPHA = 0.5\n")
@@ -127,6 +173,26 @@ func test_drawables_it_cannot_measure_are_reported() -> void:
 	var budget: RefCounted = SceneBudget.measure(root)
 	assert_eq((budget.get("unmeasured") as Array).size(), 1)
 	assert_string_contains(String(budget.call("report")), "Sign (Label3D)")
+	root.free()
+
+
+func test_overlays_see_through_meshes_and_nested_viewports_are_reported() -> void:
+	var root: Node3D = Node3D.new()
+	var overlaid: MeshInstance3D = _box(root, "Overlaid", StandardMaterial3D.new())
+	overlaid.material_overlay = StandardMaterial3D.new()
+	var faded: MeshInstance3D = _box(root, "Faded", StandardMaterial3D.new())
+	faded.transparency = 0.5
+	var nested: SubViewport = SubViewport.new()
+	nested.name = "Mirror"
+	root.add_child(nested)
+	_box(nested, "Inside", StandardMaterial3D.new())
+	var budget: RefCounted = SceneBudget.measure(root)
+	var report: String = String(budget.call("report"))
+	assert_eq((budget.get("unmeasured") as Array).size(), 3)
+	assert_string_contains(report, "Overlaid (MeshInstance3D: material_overlay)")
+	assert_string_contains(report, "Faded (MeshInstance3D: transparency)")
+	assert_string_contains(report, "Mirror (SubViewport: viewport anidado)")
+	assert_eq(budget.get("mesh_instances"), 2, "Lo de adentro del viewport anidado no se suma")
 	root.free()
 
 
@@ -156,7 +222,7 @@ func _root_with_sun(mode: DirectionalLight3D.ShadowMode) -> Node3D:
 	return root
 
 
-func _box(parent: Node3D, node_name: String, material: Material) -> MeshInstance3D:
+func _box(parent: Node, node_name: String, material: Material) -> MeshInstance3D:
 	var instance: MeshInstance3D = MeshInstance3D.new()
 	instance.name = node_name
 	instance.mesh = BoxMesh.new()

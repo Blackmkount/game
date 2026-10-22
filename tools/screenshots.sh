@@ -32,8 +32,12 @@ while [[ $# -gt 0 ]]; do
 	case "$1" in
 		--resolution=*) resolution="${1#--resolution=}" ;;
 		--resolution)
+			if [[ $# -lt 2 ]]; then
+				echo "--resolution necesita un tamaño, por ejemplo 1080x2400." >&2
+				exit 1
+			fi
 			shift
-			resolution="${1:-}"
+			resolution="$1"
 			;;
 		--only=* | --quality=* | --locale=*) runner_args+=("$1") ;;
 		*)

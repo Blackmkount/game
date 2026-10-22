@@ -1,7 +1,8 @@
 extends GutTest
 ## Presupuesto de dibujo del mundo (CLAUDE.md, "Rendimiento móvil"; biblia de
 ## arte §13), medido sin pantalla con tests/helpers/scene_budget.gd sobre
-## Main/WorldView/SubViewport/Room.
+## Main/WorldView/SubViewport/Room (y las luces y lo que no se sabe medir,
+## sobre todo el SubViewport).
 ##
 ## Dos cuartos: el de la partida nueva y el más cargado de hoy
 ## (tests/helpers/full_room.gd: escritorio, impresora del piso y 5
@@ -84,14 +85,20 @@ func test_a_full_room_fits_the_mobile_budget() -> void:
 
 ## Biblia §13: un solo sol con sombra y ninguna luz extra del motor (las
 ## lámparas se calculan en el sombreador). Y nada que dibuje sin contarse.
+## Se mira todo el SubViewport, no solo Room: una luz o una malla puesta al
+## lado de Room también cuenta, y lo dibujado tiene que ser lo mismo que lo
+## medido en Room (si no, los topes de arriba no lo ven).
 func _assert_one_sun_and_everything_measured(budget: RefCounted) -> void:
-	var lights: Dictionary = budget.get("lights")
+	var world: RefCounted = SceneBudget.measure(_main.get_node("WorldView/SubViewport"))
+	var lights: Dictionary = world.get("lights")
 	assert_eq(lights.get("DirectionalLight3D", 0), 1, "Una sola luz direccional")
 	assert_eq(lights.get("OmniLight3D", 0), 0, "Sin OmniLight3D")
 	assert_eq(lights.get("SpotLight3D", 0), 0, "Sin SpotLight3D")
 	assert_eq(lights.size(), 1, "Ninguna otra luz: %s" % lights)
-	assert_eq(budget.get("shadowed_lights"), 1, "Solo el sol da sombra")
-	assert_eq(budget.get("unmeasured"), [] as Array[String], "Todo lo que se dibuja se mide")
+	assert_eq(world.get("shadowed_lights"), 1, "Solo el sol da sombra")
+	assert_eq(world.get("unmeasured"), [] as Array[String], "Todo lo que se dibuja se mide")
+	assert_eq(world.get("draw_calls"), budget.get("draw_calls"), "Todo lo que dibuja el mundo está dentro de Room")
+	assert_eq(world.call("total_triangles"), budget.call("total_triangles"), "Todos los triángulos están dentro de Room")
 
 
 func _measure() -> RefCounted:

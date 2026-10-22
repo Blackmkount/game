@@ -13,6 +13,10 @@ extends RefCounted
 ##   SHADOW_ORTHOGONAL tiene un solo corte). Las transparentes no dan sombra.
 ## - Un MultiMesh es una sola llamada por pasada para todas sus copias.
 ## - Lo que está escondido (un Node3D con visible = false) no cuenta.
+## - Lo que no sabe contar queda en `unmeasured` (y la prueba falla): otros
+##   nodos que dibujan (Label3D, Sprite3D, partículas, CSG), material_overlay,
+##   transparency > 0 en una malla y un SubViewport dentro del árbol (dibuja
+##   otro mundo aparte).
 ##
 ## Calibrado contra los contadores reales de OpenGL (Viewport.get_render_info
 ## con xvfb + llvmpipe): tools/screenshots.sh deja los dos números en
@@ -61,8 +65,9 @@ var lights: Dictionary[String, int] = {}
 var shadowed_lights: int = 0
 ## Veces que se dibuja el mapa de sombras (suma de cortes de las luces).
 var shadow_passes: int = 0
-## Nodos visibles que dibujan algo pero que esta medida no sabe contar
-## (Label3D, Sprite3D, partículas...). Si aparece uno, hay que enseñarle.
+## Nodos visibles que dibujan algo que esta medida no sabe contar (Label3D,
+## Sprite3D, partículas, material_overlay, transparency, un SubViewport...).
+## Si aparece uno, hay que enseñarle.
 var unmeasured: Array[String] = []
 ## Lo medido por hijo directo de la raíz (nombre → Share).
 var by_child: Dictionary[String, Share] = {}
@@ -117,9 +122,7 @@ func report() -> String:
 ## defecto, opaco).
 static func is_transparent(material: Material) -> bool:
 	if material is BaseMaterial3D:
-		var base: BaseMaterial3D = material
-		return base.blend_mode != BaseMaterial3D.BLEND_MODE_MIX \
-			or base.transparency in [BaseMaterial3D.TRANSPARENCY_ALPHA, BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS]
+		return _base_is_transparent(material)
 	if material is ShaderMaterial and (material as ShaderMaterial).shader != null:
 		return bool(_shader_traits((material as ShaderMaterial).shader)[0])
 	return false
@@ -130,16 +133,37 @@ static func is_transparent(material: Material) -> bool:
 static func casts_shadow(material: Material) -> bool:
 	if material is BaseMaterial3D:
 		var base: BaseMaterial3D = material
-		return base.blend_mode == BaseMaterial3D.BLEND_MODE_MIX \
-			and base.transparency != BaseMaterial3D.TRANSPARENCY_ALPHA
+		return not _base_is_transparent(base) or (base.blend_mode == BaseMaterial3D.BLEND_MODE_MIX \
+			and base.transparency == BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS)
 	if material is ShaderMaterial and (material as ShaderMaterial).shader != null:
 		return bool(_shader_traits((material as ShaderMaterial).shader)[1])
 	return true
 
 
+## Lo que hace que Godot dibuje un BaseMaterial3D en la pasada transparente:
+## mezcla distinta de "mix", ALPHA (con o sin pasada previa de profundidad),
+## refracción (lee la pantalla), desvanecer cerca de otra superficie (lee la
+## profundidad) o desvanecer con la distancia por píxel. Recorte (scissor),
+## hash y el desvanecer con tramado siguen siendo opacos.
+static func _base_is_transparent(base: BaseMaterial3D) -> bool:
+	return base.blend_mode != BaseMaterial3D.BLEND_MODE_MIX \
+		or base.transparency in [BaseMaterial3D.TRANSPARENCY_ALPHA, BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS] \
+		or base.refraction_enabled or base.proximity_fade_enabled \
+		or base.distance_fade_mode == BaseMaterial3D.DISTANCE_FADE_PIXEL_ALPHA
+
+
 func _walk(root: Node, node: Node) -> void:
 	if node is Node3D and not (node as Node3D).visible:
 		return
+	if node is Viewport and node != root:
+		_report_unmeasured(root, node, "viewport anidado")
+		return
+	if node is GeometryInstance3D:
+		var geometry: GeometryInstance3D = node
+		if geometry.material_overlay != null:
+			_report_unmeasured(root, node, "material_overlay")
+		if geometry.transparency > 0.0:
+			_report_unmeasured(root, node, "transparency")
 	if node is Light3D:
 		_add_light(node)
 	elif node is MeshInstance3D:
@@ -164,6 +188,10 @@ func _walk(root: Node, node: Node) -> void:
 		unmeasured.append("%s (%s)" % [root.get_path_to(node), node.get_class()])
 	for child: Node in node.get_children():
 		_walk(root, child)
+
+
+func _report_unmeasured(root: Node, node: Node, what: String) -> void:
+	unmeasured.append("%s (%s: %s)" % [root.get_path_to(node), node.get_class(), what])
 
 
 func _add_light(light: Light3D) -> void:
@@ -258,9 +286,8 @@ static func _shader_traits(shader: Shader) -> Array:
 		return _shader_cache[shader]
 	var code: String = _expanded(shader.code, shader.resource_path.get_base_dir(), 0)
 	var modes: String = ""
-	var mode_match: RegExMatch = RegEx.create_from_string("render_mode\\s+([^;]*);").search(code)
-	if mode_match != null:
-		modes = mode_match.get_string(1)
+	for mode_match: RegExMatch in RegEx.create_from_string("render_mode\\s+([^;]*);").search_all(code):
+		modes += mode_match.get_string(1) + ","
 	var blends: bool = false
 	for blend: String in BLEND_MODES:
 		blends = blends or modes.contains(blend)
