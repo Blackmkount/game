@@ -3,7 +3,8 @@ extends CanvasLayer
 ## el hex es lo que se ve". Lo usa tools/screenshot_runner.gd.
 ##
 ## Dibuja tarjetas gris, blanca y de la paleta con los materiales del mundo
-## (arriba por uniform, WorldPalette.paint; abajo por vértice, WorldPalette.kit)
+## (arriba por uniform, WorldPalette.paint; abajo por vértice, una malla de
+## KitMesh con WorldPalette.kit)
 ## cuatro veces: solo ambiente 0,25, solo sol 0,5 (con sombra), los dos, y los
 ## dos con el sol sin sombra (como en el nivel de calidad Bajo). Las imágenes
 ## se muestran una debajo de la otra, con lo que midió ColorProbe al
@@ -113,7 +114,7 @@ func _build_world() -> void:
 	for i: int in CARDS.size():
 		var x: float = (i - (CARDS.size() - 1) / 2.0) * CARD_STEP
 		_card(WorldPalette.paint(CARDS[i]), _quad_mesh(), Vector3(x, ROW_Y, 0.0))
-		_card(WorldPalette.kit(), _vertex_quad(Color(CARDS[i])), Vector3(x, -ROW_Y, 0.0))
+		_card(WorldPalette.kit(), _vertex_quad(CARDS[i]), Vector3(x, -ROW_Y, 0.0))
 
 
 func _card(material: Material, mesh: Mesh, offset: Vector3) -> void:
@@ -130,20 +131,13 @@ func _quad_mesh() -> QuadMesh:
 	return quad
 
 
-## Un cuadrado como los del kit: color en el vértice, sin oclusión, superficie
-## lisa, no impreso y sin luz propia.
-func _vertex_quad(color: Color) -> ArrayMesh:
-	var tool: SurfaceTool = SurfaceTool.new()
-	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var h: float = CARD / 2.0
-	var corners: Array[Vector3] = [Vector3(-h, -h, 0.0), Vector3(h, h, 0.0), Vector3(h, -h, 0.0), Vector3(-h, -h, 0.0), Vector3(-h, h, 0.0), Vector3(h, h, 0.0)]
-	for corner: Vector3 in corners:
-		tool.set_color(Color(color, 1.0))
-		tool.set_normal(Vector3.BACK)
-		tool.set_uv(Vector2.ZERO)
-		tool.set_uv2(Vector2.ZERO)
-		tool.add_vertex(corner)
-	return tool.commit()
+## Un cuadrado armado con el kit de formas (KitMesh): color en el vértice,
+## sin oclusión de contacto, superficie lisa, no impreso y sin luz propia.
+func _vertex_quad(hex: String) -> ArrayMesh:
+	var kit: KitMesh = KitMesh.new()
+	kit.ao_enabled = false
+	kit.paint(hex).quad(Vector2.ONE * CARD, Vector3.ZERO)
+	return kit.commit()
 
 
 ## Pone la luz de la condición `index` y dibuja una vez.

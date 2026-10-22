@@ -45,6 +45,13 @@ const FULL_MAX_MATERIALS: int = 45
 const FULL_MAX_SHADOW_MESHES: int = 281
 const FULL_MAX_TRANSPARENT: int = 12
 
+## Armar la escena principal con las mallas y los materiales ya en caché
+## (biblia §13): la mediana de BUILD_RUNS armados (sin pantalla). El tope es
+## duro, contra regresiones grandes; la meta se imprime en el registro.
+const BUILD_RUNS: int = 5
+const BUILD_MAX_MSEC: float = 120.0
+const BUILD_GOAL_MSEC: float = 40.0
+
 var _main: Control
 var _previous_processing: bool
 
@@ -86,6 +93,18 @@ func test_a_full_room_fits_the_mobile_budget() -> void:
 	_assert_one_sun_and_everything_measured(budget)
 
 
+func test_the_main_scene_builds_fast_with_cached_meshes() -> void:
+	# El primer armado llena las cachés (mallas del kit y materiales).
+	await _build_once()
+	var times: Array[float] = []
+	for i: int in BUILD_RUNS:
+		times.append(await _build_once())
+	times.sort()
+	var median: float = times[BUILD_RUNS / 2]
+	gut.p("Armar la escena principal con caché: mediana %.1f ms (meta ≤ %.0f ms, tope %.0f ms); %s" % [median, BUILD_GOAL_MSEC, BUILD_MAX_MSEC, times])
+	assert_lte(median, BUILD_MAX_MSEC, "Armar la escena principal con caché")
+
+
 ## Biblia §13: un solo sol con sombra y ninguna luz extra del motor (las
 ## lámparas se calculan en el sombreador). Y nada que dibuje sin contarse.
 ## Se mira todo el SubViewport, no solo Room: una luz o una malla puesta al
@@ -109,3 +128,16 @@ func _measure() -> RefCounted:
 	add_child_autofree(_main)
 	await wait_process_frames(2)
 	return SceneBudget.measure(_main.get_node("WorldView/SubViewport/Room"))
+
+
+## Arma la escena principal (instanciarla y ponerla en el árbol, con todos
+## sus _ready) y devuelve cuánto tardó, en milisegundos. Después la saca.
+func _build_once() -> float:
+	var start: int = Time.get_ticks_usec()
+	var main: Control = MAIN_SCENE.instantiate()
+	add_child(main)
+	var elapsed: float = (Time.get_ticks_usec() - start) / 1000.0
+	await wait_process_frames(1)
+	main.queue_free()
+	await wait_process_frames(1)
+	return elapsed

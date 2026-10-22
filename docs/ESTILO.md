@@ -6,7 +6,7 @@ Esta guía mantiene el juego **coherente y consistente** de principio a fin. Tod
 
 ## 1. Idea general
 
-> **En transición a Arte 2.0 ("Mundo Impreso").** El dueño aprobó dejar el pixel art (2026-10-22, ver `docs/DECISIONES.md`). Desde el paso 2 el mundo ya se dibuja a resolución alta y con bordes suavizados (sección "Render"); desde el paso 3 usa el kit de materiales nuevo, sin contorno ni texturas pixel art (secciones "Luz", "Materiales" y "Paleta"). El resto de esta guía se reescribe con la biblia de arte al terminar los 16 pasos. Mientras tanto, lo que aquí dice "pixel art" describe los modelos de cajas que todavía no se cambiaron.
+> **En transición a Arte 2.0 ("Mundo Impreso").** El dueño aprobó dejar el pixel art (2026-10-22, ver `docs/DECISIONES.md`). Desde el paso 2 el mundo ya se dibuja a resolución alta y con bordes suavizados (sección "Render"); desde el paso 3 usa el kit de materiales nuevo, sin contorno ni texturas pixel art (secciones "Luz", "Materiales" y "Paleta"); desde el paso 4 tiene el kit de formas (`KitMesh`) y las manchas de oclusión del piso (secciones "Luz" y "Modelos"). El resto de esta guía se reescribe con la biblia de arte al terminar los 16 pasos. Mientras tanto, lo que aquí dice "pixel art" describe los modelos de cajas que todavía no se cambiaron.
 
 **Pixel art isométrico cálido, con interfaz oscura de bordes cian.**
 
@@ -30,6 +30,7 @@ Esta guía mantiene el juego **coherente y consistente** de principio a fin. Tod
 - Sombra **ortogonal** de una sola pieza (`SHADOW_ORTHOGONAL`; con la cámara ortográfica cubre de `near` a `far` de la cámara): con la cámara en movimiento no tiembla y cuesta menos que el modo por defecto.
 - El cuarto (piso, paredes, ventana, puerta) no proyecta sombra: la luz general "pasa" por arriba y la ventana se lee por el parche de sol.
 - Pantallas y marcas brillan con su propio color. Las luces de las cosas (un LED, un interior iluminado) son luz propia del material.
+- **Oclusión** (siempre teñida hacia índigo, nunca gris): manchas suaves en el piso bajo cada obstáculo (muebles, impresoras, el rincón; `FloorAO`, una textura de 96 × 96 pintada una vez por distribución), uniones piso-pared y rincón en el sombreador, y en las mallas del kit una sombra de contacto horneada (−35 % donde tocan, −25 % en las caras de abajo).
 
 ### Materiales
 Siempre se usan los de `WorldPalette` (`game/world/look/world_palette.gd`), sobre los sombreadores del kit (`game/world/look/`). Así se reutilizan los materiales y el estilo no se rompe:
@@ -78,6 +79,7 @@ La paleta completa es la de la biblia de arte §4, en `LookPalette` (`game/world
 
 ### Modelos
 - Formas básicas a **escala real**: una impresora tipo Ender mide unos 0,45 m y una mesa 0,75 m de alto. El frente mira hacia **+Z** y la base queda en y = 0.
+- **Kit de formas** (`KitMesh`, `game/world/look/kit_mesh.gd`): los modelos nuevos son **una malla por objeto** con el material `WorldPalette.kit()` (color, superficie, capas y luz propia en los vértices), puesta con `PropBuilder.kit`. Formas: caja con bisel (las aristas atrapan la luz), cilindro con canto, torno, forma redonda, cápsula, tubo por una curva, aro, disco, rectángulo y triángulo. `detail` baja los lados de lo redondo en lo que se repite; cada malla se arma una vez (`KitMesh.cached`, con una clave que diga modelo, variante, detalle y color). Van aparte solo las piezas que se mueven o cambian de material.
 - Cada impresora se ve distinta según su familia (`PrinterModel`): abiertas de cama móvil, cerradas tipo caja, multicolor con caja de colores encima y de resina con tapa ámbar.
 - Los muebles marcan con nodos `PrinterSpot0`, `PrinterSpot1`... dónde va cada impresora (`FurnitureModel`).
 - **Personaje** (`CharacterModel`): chibi de 1,25 m con cabeza grande, pelo café en puntas, buzo negro con capucha y cordones blancos, jeans azules y zapatillas blancas. Respira y mira de vez en cuando su impresora.
@@ -167,7 +169,7 @@ Todo sale del tema común `UiTheme`; no se crean estilos sueltos.
 
 ## 6. Lista para agregar algo nuevo
 
-1. ¿Usa `PropBuilder` y los materiales de `WorldPalette`?
+1. ¿Usa `PropBuilder` (lo nuevo, una malla de `KitMesh` con `PropBuilder.kit`) y los materiales de `WorldPalette`?
 2. ¿Está a escala real, mira hacia +Z y se distingue de lo que ya existe?
 3. ¿Se ve bien con zoom lejos y cerca, sin contorno y sin detalles de menos de 1 cm? ¿Sus colores salen de `LookPalette`?
 4. ¿La interfaz usa `UiTheme`, `UiKit` e iconos de `assets/icons`?

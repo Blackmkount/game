@@ -69,7 +69,7 @@ func _ready() -> void:
 	else:
 		var bounds: AABB = _bounds(world)
 		target = bounds.get_center()
-		# Sin renderizado (pruebas en modo headless) las mallas no tienen tamaño.
+		# Un mínimo por si el modelo no tiene mallas.
 		camera.size = maxf(bounds.get_longest_axis_size() * 1.3, 0.5)
 	camera.position = target - camera.basis * Vector3.FORWARD * 10.0
 	world.add_child(camera)

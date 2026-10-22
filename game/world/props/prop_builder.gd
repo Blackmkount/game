@@ -1,7 +1,17 @@
 class_name PropBuilder
 extends RefCounted
-## Atajos para armar modelos con formas básicas. Cada forma queda centrada en
-## su origen (la capa caliente de la pieza que se imprime lo supone).
+## Atajos para poner mallas en un modelo. kit() pone una malla del kit
+## (KitMesh: varias formas en una malla, con el origen en la base del
+## objeto). Las formas básicas de antes (box, cylinder, sphere, quad) quedan
+## centradas en su origen (la capa caliente de la pieza que se imprime lo
+## supone) hasta que todos los modelos pasen al kit.
+
+
+## Una malla del kit (KitMesh) como hijo de `parent`. Sin `material` usa el
+## del kit (WorldPalette.kit()), que lee color, superficie y oclusión de los
+## vértices.
+static func kit(parent: Node3D, node_name: String, mesh: Mesh, material: Material = null, position: Vector3 = Vector3.ZERO) -> MeshInstance3D:
+	return _add(parent, node_name, mesh, position, material if material != null else WorldPalette.kit())
 
 
 static func box(parent: Node3D, node_name: String, size: Vector3, position: Vector3, material: Material) -> MeshInstance3D:

@@ -65,6 +65,9 @@ var grid: WalkGrid
 var interactables: Array[WorldInteractable] = []
 ## El rincón de despacho (para abrir su panel desde cualquier parte).
 var dispatch_item: WorldInteractable
+## Mapa de oclusión del piso que leen los sombreadores (FloorAO): manchas
+## bajo los obstáculos de `grid`.
+var floor_ao: ImageTexture
 
 var _character_item: WorldInteractable
 var _highlight: HighlightFrame
@@ -86,6 +89,9 @@ func _ready() -> void:
 		_build_contents()
 		# La cámara empieza ya encuadrando al personaje.
 		camera.follow_point = character_focus_point()
+	# Manchas de oclusión bajo los muebles, las impresoras y el rincón (sin
+	# partida, un piso limpio).
+	floor_ao = FloorAO.publish(grid.bounds, grid.obstacles())
 	day_cycle.apply_hour(Game.state.game_minutes / 60.0 if Game.state != null else NO_GAME_HOUR)
 	camera.snap_to_goal()
 	_publish_character()

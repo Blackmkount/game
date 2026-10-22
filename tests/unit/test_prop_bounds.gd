@@ -1,5 +1,6 @@
 extends GutTest
-## Cajas de los modelos y dirección del joystick en el piso.
+## Cajas de los modelos (de formas básicas y del kit) y dirección del
+## joystick en el piso.
 
 
 func test_bounds_of_a_model_cover_all_its_shapes() -> void:
@@ -23,6 +24,20 @@ func test_bounds_follow_rotated_shapes() -> void:
 	var bounds: AABB = PropBounds.local_aabb(root)
 	assert_almost_eq(bounds.size.x, 0.2, 0.001)
 	assert_almost_eq(bounds.size.z, 1.0, 0.001)
+
+
+func test_bounds_cover_a_kit_mesh_placed_with_prop_builder() -> void:
+	var root: Node3D = Node3D.new()
+	add_child_autofree(root)
+	var kit: KitMesh = KitMesh.new()
+	kit.box(Vector3(0.6, 0.05, 0.4), Vector3(0.0, 0.7, 0.0), 0.01)
+	kit.cylinder(0.02, 0.7, Vector3(0.25, 0.35, 0.15))
+	var body: MeshInstance3D = PropBuilder.kit(root, "Body", kit.commit(), null, Vector3(1.0, 0.0, 0.0))
+	body.rotation_degrees = Vector3(0.0, 90.0, 0.0)
+	assert_same(body.material_override, WorldPalette.kit(), "Sin material, el del kit")
+	var bounds: AABB = PropBounds.local_aabb(root)
+	assert_almost_eq(bounds.size, Vector3(0.4, 0.725, 0.6), Vector3.ONE * 0.0001, "Una ArrayMesh también tiene tamaño sin pantalla")
+	assert_almost_eq(bounds.position, Vector3(0.8, 0.0, -0.3), Vector3.ONE * 0.0001, "Con su lugar y su giro; apoyada en y = 0")
 
 
 func test_the_printer_model_has_real_size_bounds() -> void:

@@ -48,6 +48,24 @@ func test_the_dispatch_corner_stands_by_the_door_without_taking_a_slot() -> void
 	assert_eq(_room.find_children("FreeSlot*", "", false, false).size(), 5, "No usa ninguno de los 6 lugares")
 
 
+func test_the_floor_darkens_under_the_desk_the_printer_and_the_dispatch_corner() -> void:
+	var room: RoomView = _room
+	var image: Image = room.floor_ao.get_image()
+	var spots: Dictionary[String, WorldInteractable] = {
+		"escritorio": room.item_for(WorldInteractable.Kind.FURNITURE, Game.state.furniture[0].uid),
+		"impresora del piso": room.item_for(WorldInteractable.Kind.PRINTER, Game.state.printers[0].uid),
+		"rincón de despacho": room.dispatch_item,
+	}
+	for spot_name: String in spots:
+		var under: float = _floor_light(room, image, spots[spot_name].footprint().get_center())
+		assert_almost_eq(under, 1.0 - FloorAO.STRENGTH, 1.5 / 255.0, "Mancha de oclusión bajo el %s" % spot_name)
+	var feet: Vector3 = room.character.model.position
+	assert_eq(_floor_light(room, image, Vector2(feet.x, feet.z)), 1.0, "Donde empieza el personaje, el piso limpio")
+	for slot: Node in _room.find_children("FreeSlot*", "", false, false):
+		var marker: Node3D = slot
+		assert_eq(_floor_light(room, image, Vector2(marker.position.x, marker.position.z)), 1.0, "Un lugar libre no tiene mancha (%s)" % slot.name)
+
+
 func test_the_room_shows_a_loaded_print_halfway() -> void:
 	# Un llavero a mitad de impresión, guardado y cargado de nuevo.
 	Game.advance(3.0)
@@ -123,3 +141,9 @@ func _label_texts(root: Node) -> Array[String]:
 	for node: Node in root.find_children("*", "Label", true, false):
 		texts.append((node as Label).text)
 	return texts
+
+
+## Luz del mapa de oclusión del piso en un punto (x, z) del cuarto.
+func _floor_light(room: RoomView, image: Image, point: Vector2) -> float:
+	var texel: Vector2i = Vector2i(((point - room.grid.bounds.position) / room.grid.bounds.size * FloorAO.TEXELS).floor())
+	return image.get_pixelv(texel).r

@@ -378,3 +378,40 @@ Topes nuevos (medido + 10 %, nunca por encima del anterior): inicio 194 llamadas
 - `tests/unit/test_color_probe.gd` (6): `ColorProbe.decide` con las lecturas de llvmpipe (64/255; 0,68 y 0,251; 0,737 → base 0, sol 1), las dos convertidas (137/255; 0,735 → 1, 1), ninguna, fuera de rango (valores de llvmpipe), la tolerancia de ±0,06 y que sin pantalla no se arma nada.
 - `tests/unit/test_day_cycle.gd` (4): la mañana coincide con la tabla de la biblia §6.2 de 07:00 a 10:30, `sample()` es puro, el sol del cuarto la toma y cada luz del sombreador tiene su global.
 - `tests/integration/test_look_shaders.gd` (3): cada sombreador de `look/` se arma sin errores y expone sus parámetros; cada material de `WorldPalette` (y cada superficie) se dibuja sobre una malla; la pieza que se imprime lleva la capa caliente arriba y, terminada, vuelve a `solid`.
+
+## 2026-10-22 — Arte 2.0, paso 4: kit de formas, caché y mapa de oclusión del piso
+
+### `KitMesh`: una malla por objeto, armada por código
+**Decisión:** los modelos nuevos se arman con `KitMesh` (`game/world/look/kit_mesh.gd`): cajas con bisel, cilindros con canto, tornos (perfil girado), superelipsoides con estrechamiento, cápsulas, tubos por una curva, toroides con arco, discos, rectángulos y triángulos, todo junto en **una** `ArrayMesh` con el material `WorldPalette.kit()`. Cada vértice lleva lo que lee el sombreador del kit (biblia de arte §3.3): color en `COLOR.rgb`, oclusión horneada en `COLOR.a`, superficie + brillo en `UV.x`, balanceo en `UV.y`, alto de capa en `UV2.x` y luz propia en `UV2.y`. La interfaz es la del prototipo ganador (`paint`, `printed`, `glowing`, `night_glow`, `box`, `cylinder`, `blob`, `capsule`, `torus`, `quad`, `disc`, `triangle`, `origin`, `ao_base`, `ao_enabled`), así los pasos 5 a 14 copian sus modelos casi tal cual; las superficies salen de `WorldPalette.Surface` (una sola lista).
+**Cómo está hecho:**
+- Escribe directo en arreglos (`PackedVector3Array`...) con índices, sin `SurfaceTool` y sin un `Callable` por vértice. Las formas redondas calculan sus potencias y senos una vez por fila y por columna (la forma redonda pasó de 5,2 a 0,8 µs por triángulo; sin pantalla, cada forma arma entre 0,7 y 1,9 µs por triángulo).
+- El frente de cada triángulo se decide por sus normales (Godot dibuja el frente en sentido horario); los triángulos de menos de 1e−9 m² no se agregan (polos, puntos repetidos).
+- El cilindro es un torno con las esquinas repetidas: un punto repetido en el perfil deja un canto vivo (normales distintas a cada lado).
+- El tubo suaviza los puntos con Catmull-Rom y gira cada anillo por transporte paralelo (doble reflexión): no se retuerce en las curvas.
+- `detail` multiplica los lados de lo redondo (mínimo 6 alrededor y 4 en la otra dirección).
+- Oclusión horneada: −35 % en el contacto (`ao_base`, por defecto y = 0), que se aclara en 14 cm; las caras que miran hacia abajo, −25 %.
+- `KitMesh.cached(clave, constructor)`: diccionario estático. La clave dice todo lo que cambia la malla (modelo, variante, detalle, color). Lo comparten el cuarto, la tienda, los retratos y las pruebas.
+**Motivo:** biblia §5. Una malla y un material por objeto es lo que baja las llamadas de dibujo (meta 70 en el cuarto inicial). Las piezas que se mueven o cambian de material siguen aparte (son contratos).
+
+### Mapa de oclusión del piso (`FloorAO`)
+**Decisión:** `game/world/look/floor_ao.gd` pinta una textura de 96 × 96 (una por cuarto, 6,25 cm por texel) con una mancha bajo cada obstáculo del piso: −45 % adentro y un borde suave de 0,20 m centrado en el borde del obstáculo; donde dos manchas se tocan queda la más oscura (una impresora sobre un mueble no oscurece el doble). Cada obstáculo pinta solo los texeles que alcanza (nunca se recorren todos los obstáculos por cada texel). `RoomView` la pinta después de registrar los obstáculos con los de `WalkGrid.obstacles()` y la publica en el global `cc_floor_ao`; la guarda en `RoomView.floor_ao`.
+**Motivo:** las manchas de contacto bajo el escritorio, la impresora y el rincón asientan las cosas en el piso sin luces ni llamadas extra. Usar los mismos obstáculos por los que no se camina hace que la decoración del paso 12 tenga su mancha sola.
+**Detalle:** se crea una textura nueva cada vez (9 KB, una vez por distribución) en vez de actualizar la anterior: sin pantalla, el motor no actualiza el contenido de una textura ya creada y la prueba no podría leer lo pintado.
+
+### Tiempo de armado de la escena principal
+**Decisión:** `tests/integration/test_scene_budget.gd` arma la escena principal 5 veces con las cachés llenas (instanciar y meterla en el árbol, con todos sus `_ready`) y exige la mediana ≤ 120 ms (tope duro contra regresiones grandes); imprime la meta de la biblia (≤ 40 ms). Hoy: ~19–21 ms sin pantalla.
+**Motivo:** biblia §13; con los modelos del kit el armado crece, y esta prueba avisa antes de que el arranque en el teléfono se ponga lento (D4: si pasa de 1 s, armar durante la pantalla de carga).
+
+### Prueba de presupuesto
+Sin cambios: este paso no cambia lo que se dibuja (177 llamadas el cuarto inicial y 535 el lleno; los topes siguen en 194 y 588).
+
+### Pruebas adaptadas
+Ninguna.
+
+### Pruebas nuevas
+- `tests/unit/test_kit_mesh.gd` (12): la caja con bisel mide exactamente su tamaño (un bisel enorme se limita); el giro y el grupo (`origin`) ubican las formas; en 10 formas convexas las normales y el frente de cada triángulo miran hacia afuera; en todas las formas el frente coincide con las normales; ningún triángulo degenerado (área > 1e−10) ni valores no finitos; `detail` cambia la cantidad de vértices (y no la de una caja); oclusión de contacto en y = 0, sobre una mesa, apagada, y caras de abajo; color, superficie, brillo, capas, luz propia y balanceo en cada vértice; la caché arma una sola vez; el tubo pasa por sus puntos, sus anillos son redondos y de frente a la curva y no se retuerce; un punto repetido del torno deja un canto vivo; un kit vacío da una malla vacía.
+- `tests/unit/test_floor_ao.gd` (6): 96 × 96 en un canal y blanco sin obstáculos; más oscuro bajo un obstáculo que en el piso libre; borde suave centrado y sin saltos; dos obstáculos encimados no suman; lo que cae fuera del cuarto se recorta; la textura publicada lleva lo último pintado.
+- `tests/integration/test_main_scene.gd`: `test_the_floor_darkens_under_the_desk_the_printer_and_the_dispatch_corner` (y no donde empieza el personaje ni en los lugares libres).
+- `tests/integration/test_scene_budget.gd`: `test_the_main_scene_builds_fast_with_cached_meshes`.
+- `tests/unit/test_prop_bounds.gd`: `test_bounds_cover_a_kit_mesh_placed_with_prop_builder` (`PropBounds` mide una `ArrayMesh` del kit puesta con `PropBuilder.kit`, girada y movida, también sin pantalla).
+- La captura `00_calibracion` arma ahora sus tarjetas "por vértice" con `KitMesh`: comprueba con los píxeles que el kit pinta el color exacto.
