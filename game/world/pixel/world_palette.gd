@@ -29,6 +29,13 @@ const JEANS: String = "2f3a57"
 const SHOES: String = "ecebe6"
 const EYES: String = "1a1320"
 const SLOT_MARK: String = "38d6ff"
+## Cama de las impresoras abiertas (aluminio): un gris medio, para que se vean
+## las piezas oscuras y claras.
+const PRINT_BED: String = "737b8c"
+## Cinta de embalar (rollo y paquetes del rincón de despacho).
+const TAPE: String = "c9b48a"
+## Pieza que falló: plástico quemado y opaco.
+const FAILED_PIECE: String = "3b3b45"
 
 const OUTLINE_SHADER: Shader = preload("res://game/world/pixel/outline.gdshader")
 

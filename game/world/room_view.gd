@@ -2,7 +2,12 @@ class_name RoomView
 extends Node3D
 ## Escena 3D del espacio actual, armada a partir del estado de la partida:
 ## muebles en sus lugares, impresoras (en muebles o en el suelo), marcas de
-## lugares libres y el personaje.
+## lugares libres, el rincón de despacho junto a la puerta y el personaje.
+##
+## Lo que cambia con el ciclo de pedidos (la pieza que crece, la pantalla del
+## computador, las cajas del rincón) lo muestran las vistas PrinterView,
+## DeskView y DispatchView, hijas "View" de cada modelo, con las señales de
+## Events.
 ##
 ## También sabe qué se puede tocar (interactables), por dónde se puede
 ## caminar (grid) y dónde está cada cosa en la pantalla. Los gestos del
@@ -27,6 +32,8 @@ var camera: CameraRig
 var character: CharacterController
 var grid: WalkGrid
 var interactables: Array[WorldInteractable] = []
+## El rincón de despacho (para abrir su panel desde cualquier parte).
+var dispatch_item: WorldInteractable
 
 var _character_item: WorldInteractable
 var _marker_material: StandardMaterial3D
@@ -70,6 +77,13 @@ func item_for(kind: WorldInteractable.Kind, ref: int) -> WorldInteractable:
 		if item.kind == kind and item.ref == ref:
 			return item
 	return null
+
+
+## Metros del mundo que mide en vertical un píxel del dibujo con el zoom de
+## ahora: la pieza que se imprime crece de a un píxel.
+func vertical_pixel_meters() -> float:
+	var width: float = maxf(get_viewport().get_visible_rect().size.x, 1.0)
+	return camera.size / width / cos(deg_to_rad(-CameraRig.PITCH))
 
 
 ## Objeto que está bajo un punto de la pantalla (píxeles del dibujo), o null.
@@ -226,6 +240,8 @@ func _build_contents() -> void:
 		furniture_nodes[item.uid] = node
 		used_slots.append(item.slot)
 		_register(WorldInteractable.Kind.FURNITURE, item.uid, node, true)
+		if item.furniture_id == "mesa_computador":
+			_add_view(node, DeskView.new())
 
 	var spool_color: String = _first_spool_color(state)
 	var floor_index: int = 0
@@ -242,6 +258,7 @@ func _build_contents() -> void:
 			var spot: Node3D = furniture.get_node("PrinterSpot%d" % index)
 			node.transform = furniture.transform * spot.transform
 		_register(WorldInteractable.Kind.PRINTER, printer.uid, node, true)
+		_add_view(node, PrinterView.new(self, printer.uid, PrinterModel.frame_scale(printer.printer_id)))
 
 	_marker_material = WorldPalette.glow_transparent(WorldPalette.SLOT_MARK, 0.6)
 	for slot: int in layout.slots.size():
@@ -257,6 +274,13 @@ func _build_contents() -> void:
 	var door: Node3D = get_node("RoomShell/Door")
 	_register(WorldInteractable.Kind.DOOR, 0, door, false)
 
+	var corner: Node3D = DispatchCornerModel.build(self, "DispatchCorner")
+	corner.transform = layout.dispatch_spot
+	# La vista arma las cajas y los paquetes (escondidos) antes de registrar el
+	# rincón: así la zona que se toca incluye los paquetes apilados.
+	_add_view(corner, DispatchView.new())
+	dispatch_item = _register(WorldInteractable.Kind.DISPATCH, 0, corner, true)
+
 	grid.build()
 	var model: Node3D = CharacterModel.build(self, "Character")
 	character = CharacterController.new()
@@ -269,11 +293,18 @@ func _build_contents() -> void:
 
 ## Agrega un objeto que se puede tocar y, si ocupa lugar, lo marca como
 ## obstáculo para caminar.
-func _register(kind: WorldInteractable.Kind, ref: int, node: Node3D, blocks: bool) -> void:
+func _register(kind: WorldInteractable.Kind, ref: int, node: Node3D, blocks: bool) -> WorldInteractable:
 	var item: WorldInteractable = WorldInteractable.new(kind, ref, PropBounds.local_aabb(node), node.global_transform)
 	interactables.append(item)
 	if blocks:
 		grid.add_obstacle(item.footprint().grow(OBSTACLE_MARGIN))
+	return item
+
+
+## Cuelga la vista de un modelo como su hijo "View".
+func _add_view(model: Node3D, view: Node) -> void:
+	view.name = "View"
+	model.add_child(view)
 
 
 ## El objeto más cercano que toca el rayo. Si dos están casi a la misma

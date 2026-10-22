@@ -207,6 +207,40 @@ func test_nearby_printer_is_highlighted_and_its_bubble_opens_the_panel() -> void
 	assert_eq(_controls.sheet_item, _printer())
 
 
+func test_the_dispatch_corner_and_the_door_each_take_a_tap_at_their_own_centre() -> void:
+	# Lejos se ven los dos enteros y lejos de los botones del costado.
+	_room.camera.set_zoom_index(0)
+	await wait_process_frames(30)
+	var corner: WorldInteractable = _room.dispatch_item
+	var door: WorldInteractable = _item(WorldInteractable.Kind.DOOR)
+	assert_eq(_pick_under(_screen_of(corner)), corner, "El centro del rincón de despacho elige el rincón")
+	assert_eq(_pick_under(_screen_of(door)), door, "El centro de la puerta sigue eligiendo la puerta")
+	_controls.tap(_screen_of(door))
+	assert_eq(_controls.sheet_item, door, "La puerta sigue abriendo su panel")
+
+
+func test_walking_up_to_the_dispatch_corner_shows_the_truck_bubble() -> void:
+	_room.character.floor_position = Vector2(-1.45, 2.1)
+	await wait_process_frames(3)
+	assert_eq(_controls.highlighted, _room.dispatch_item)
+	assert_true(_hud.bubble.visible)
+	assert_eq(_hud.bubble.icon, UiKit.icon_texture("truck"))
+
+
+func test_the_walkway_in_front_of_the_door_stays_free() -> void:
+	var footprint: Rect2 = _room.dispatch_item.footprint()
+	assert_almost_eq(footprint.position, Vector2(-1.88, 2.42), Vector2(0.01, 0.01), "Donde lo pone la guía")
+	assert_almost_eq(footprint.end, Vector2(-1.0, 2.82), Vector2(0.01, 0.01))
+	for x: float in [-2.75, -2.5, -2.2]:
+		for z: float in [1.65, 2.1, 2.55]:
+			assert_true(_room.grid.is_free(Vector2(x, z)), "Libre en (%.2f, %.2f)" % [x, z])
+	# T5: ahí llegan las cajas de la tienda.
+	var inbound: Vector2 = Vector2(-2.5, 2.1)
+	var path: PackedVector2Array = _room.grid.find_path(_room.character.floor_position, inbound)
+	assert_false(path.is_empty(), "El personaje llega desde su lugar")
+	assert_almost_eq(path[path.size() - 1], inbound, Vector2(0.001, 0.001))
+
+
 func test_pushing_into_the_desk_keeps_the_body_outside() -> void:
 	var desk: Rect2 = _desk().footprint()
 	_room.character.floor_position = Vector2(-1.2, -1.2)
@@ -323,6 +357,11 @@ func _screen_of(item: WorldInteractable) -> Vector2:
 	if item.kind == WorldInteractable.Kind.CHARACTER:
 		return _controls.world_to_ui(_room.character.model.position + Vector3(0.0, 0.7, 0.0))
 	return _controls.world_to_ui(item.bounds.get_center())
+
+
+## Lo que elegiría un toque en ese punto (el mismo cálculo que WorldControls.tap).
+func _pick_under(ui_position: Vector2) -> WorldInteractable:
+	return _room.pick(_controls.ui_to_view(ui_position), WorldControls.MIN_TOUCH_PX / float(_controls.world_view.stretch_shrink))
 
 
 func _screen_of_floor(point: Vector3) -> Vector2:

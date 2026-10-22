@@ -1,23 +1,26 @@
 class_name WorldInteractable
 extends RefCounted
 ## Algo del mundo que se puede tocar y, en algunos casos, resaltar cuando el
-## personaje está cerca: una impresora, un mueble, un lugar libre, la puerta o
-## el propio personaje.
+## personaje está cerca: una impresora, un mueble, un lugar libre, la puerta,
+## el rincón de despacho o el propio personaje.
 
-enum Kind { PRINTER, FURNITURE, SLOT, DOOR, CHARACTER }
+## DISPATCH va al final para no cambiar el número de los demás.
+enum Kind { PRINTER, FURNITURE, SLOT, DOOR, CHARACTER, DISPATCH }
 
 ## Prioridad al elegir entre varios objetos a la vez (al tocar o al estar
 ## cerca): una impresora gana sobre la mesa donde está.
 const PRIORITY: Dictionary[Kind, int] = {
 	Kind.PRINTER: 4,
 	Kind.FURNITURE: 3,
+	Kind.DISPATCH: 3,
 	Kind.DOOR: 2,
 	Kind.CHARACTER: 1,
 	Kind.SLOT: 0,
 }
 
 var kind: Kind
-## uid de la impresora o del mueble en el estado, o índice del lugar libre.
+## uid de la impresora o del mueble en el estado, o índice del lugar libre
+## (0 para la puerta, el rincón de despacho y el personaje).
 var ref: int
 ## Caja del modelo en sus propias coordenadas y dónde está el modelo. Para
 ## saber si un toque le da se usa esta caja, girada con el modelo.
@@ -35,7 +38,7 @@ func _init(p_kind: Kind, p_ref: int, p_local_bounds: AABB, p_transform: Transfor
 	kind = p_kind
 	ref = p_ref
 	place(p_local_bounds, p_transform)
-	reachable = p_kind in [Kind.PRINTER, Kind.FURNITURE, Kind.DOOR]
+	reachable = p_kind in [Kind.PRINTER, Kind.FURNITURE, Kind.DOOR, Kind.DISPATCH]
 
 
 func place(p_local_bounds: AABB, p_transform: Transform3D) -> void:

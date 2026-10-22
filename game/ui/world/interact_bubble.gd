@@ -53,4 +53,6 @@ static func icon_for(item: WorldInteractable) -> String:
 			return "map"
 		WorldInteractable.Kind.SLOT:
 			return "box"
+		WorldInteractable.Kind.DISPATCH:
+			return "truck"
 	return "wrench"
