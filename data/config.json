@@ -11,16 +11,28 @@
 		]
 	},
 	"time": {"game_seconds_per_real_second": 24, "offline_limit_real_hours": 8},
-	"order_board": {"slots": 3, "new_order_every_game_minutes": 120},
+	"order_board": {
+		"slots": 3,
+		"new_order_every_game_minutes": 60,
+		"max_active_orders": 3,
+		"starting_offers": ["llavero"],
+		"first_offer_after_game_minutes": 1,
+		"starting_offer_gap_game_minutes": 27
+	},
+	"design": {"focus_multiplier": 0.5},
+	"printing": {"prep_minutes_per_piece": 0},
 	"late_delivery": {"payment_multiplier": 0.5, "xp_multiplier": 0.0},
 	"storage": {"base_capacity_grams": 4000},
 	"floor_printing": {"max_printers": 1, "reliability_penalty": 0.05},
 	"shipping": {"express_days": 1, "express_fee": 12},
-	"local_store": {"materials": ["pla", "petg"], "price_multiplier": 1.5},
+	"local_store": {"materials": ["pla", "petg"], "price_multiplier": 1.5, "color": "blanco", "grams": 1000},
 	"rescue": {"material": "pla", "color": "blanco", "grams": 1000},
 	"failures": {
 		"random_type_weights": {"spaghetti": 0.5, "warping": 0.5},
-		"enclosed_warping_multiplier": 0.5
+		"enclosed_warping_multiplier": 0.5,
+		"max_chance": 0.9,
+		"grace_pieces": 3,
+		"stop_progress": {"spaghetti": [0.10, 0.60], "warping": [0.02, 0.25]}
 	},
 	"print_modes": [
 		{"id": "draft", "name_key": "MODE_DRAFT", "quality_delta": -1, "time_multiplier": 0.6, "failure_multiplier": 1.3},

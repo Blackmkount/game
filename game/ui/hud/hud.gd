@@ -211,7 +211,7 @@ func _create_screen(screen_id: String, option: String) -> ScreenBase:
 			return MapScreen.new()
 		"settings":
 			var settings: SettingsScreen = SettingsScreen.new()
-			settings.rebuild_requested.connect(func() -> void: open_screen.call_deferred("settings"))
+			settings.language_changed.connect(func() -> void: open_screen.call_deferred("settings"))
 			return settings
 	push_error("Pantalla desconocida: " + screen_id)
 	return ScreenBase.new("star", "")

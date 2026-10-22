@@ -162,12 +162,12 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
   - Se cierran con la X, deslizando hacia abajo, tocando el mundo, caminando o con "atrás" en Android.
 - **Cámara** que sigue al personaje, con tres niveles de zoom (normal, cerca y lejos) en un botón abajo a la izquierda, pellizcando o con la rueda del mouse. Se mueve de píxel en píxel sin temblor.
 - **Pistas para jugadores nuevos:** "Arrastra el dedo para caminar" y luego "Toca un objeto para verlo". Quien camina tocando el piso también aprende la primera. Se recuerdan en `user://settings.cfg`.
-- **Ajustes → Controles (pruebas):** deslizadores para cambiar en vivo la velocidad, el recorrido del joystick, la suavidad de la cámara, la distancia para resaltar y la corrección diagonal.
+- **Valores de los controles fijados por el dueño** después de probarlos en su teléfono con unos deslizadores temporales: caminar a 2,2 m/s, recorrido del joystick de 60 px, suavidad de la cámara de 0,10 s y distancia para resaltar de 0,60 m. Los deslizadores se quitaron de Ajustes.
 - **Para probar en el computador:** WASD o flechas, E o Enter, Z, Escape y arrastrar con el mouse.
 - **Herramientas:** `tools/screenshots.sh` saca 12 capturas en situaciones reales (zoom, joystick, paneles, globo, tienda y ajustes) para revisar la interfaz sin teléfono.
 
 **Verificado**
-- `check.sh` y `run_tests.sh` pasan: 134 pruebas. Las nuevas son de toques y joystick, choques y caminos, cercanía, personaje, cámara, cajas de los modelos, dirección del joystick, pistas e integración con toques simulados como en el teléfono (23 pruebas).
+- `check.sh` y `run_tests.sh` pasan: 135 pruebas. Las nuevas son de toques y joystick, choques y caminos, cercanía, personaje, cámara, cajas de los modelos, dirección del joystick, pistas e integración con toques simulados como en el teléfono (24 pruebas).
 - `run_tests.sh` ahora también falla si GUT no llega a imprimir el resumen final, para que una prueba que cierre el juego antes de tiempo no pase por buena.
 - Revisé las capturas de todas las situaciones.
 - La versión web exportada se probó en un Chromium que simula un Pixel 7, con toques reales del navegador:
@@ -180,7 +180,6 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 
 **Problemas conocidos**
 - El HUD actual (panel de objetivos y botones a la izquierda) todavía tapa parte del cuarto: se despeja en la tarea 3.
-- Los valores de los deslizadores de Ajustes no se guardan: al recargar vuelven los de fábrica, a propósito.
 - Las pistas se recuerdan, pero el idioma elegido en Ajustes todavía no (llega con el guardado, tarea 4).
 - Algunos botones de los paneles llevan a pantallas que todavía son de solo lectura (Pedidos, Tienda): lo dicen con un aviso.
 - Si el personaje queda en el borde de adelante del cuarto, con zoom "Cerca" queda bajo en la pantalla, cerca del pulgar.

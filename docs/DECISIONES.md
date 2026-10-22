@@ -146,7 +146,7 @@ Registro de decisiones técnicas importantes: fecha, decisión y motivo. Las má
 **Motivo:** al tocar la pantalla, el sistema también genera un clic de mouse. Sin el filtro, cada toque contaría dos veces. Una prueba de integración lo verifica con `Input.parse_input_event`, que sí genera esos clics (`Viewport.push_input` no los genera).
 
 ### Sin motor de física
-**Decisión:** el personaje es un círculo que se empuja fuera de los rectángulos de los muebles (`WalkGrid`). Los caminos se buscan con `AStarGrid2D` y se seleccionan objetos con un rayo contra cajas (`AABB.intersects_ray`).
+**Decisión:** el personaje es un círculo que se empuja fuera de los rectángulos de los muebles (`WalkGrid`). Los caminos se buscan con `AStarGrid2D` y se seleccionan objetos con un rayo contra cajas (`AABB.intersects_ray`, ver "Qué objeto se toca").
 **Motivo:**
 - En un cuarto de 6×6 m con pocos objetos es simple, rápido y se puede probar con GUT.
 - Empujar desde el punto más cercano hace que las esquinas se comporten como redondeadas, así que el personaje no se traba.
@@ -174,7 +174,7 @@ Registro de decisiones técnicas importantes: fecha, decisión y motivo. Las má
 **Motivo:** con la cámara en movimiento, el modo por defecto (4 divisiones) recalcula sus divisiones cada cuadro y los bordes de las sombras tiemblan. Además, dibuja las sombras cuatro veces.
 
 ### Valores de sensación en código, no en `data/`
-**Decisión:** velocidades, distancias del joystick y suavidad de la cámara viven en `ControlsTuning` (`game/world/input/`). Los principales se pueden mover en vivo desde Ajustes → Controles (pruebas), sin guardarse.
+**Decisión:** velocidades, distancias del joystick y suavidad de la cámara viven en `ControlsTuning` (`game/world/input/`). El dueño los probó en su teléfono con unos deslizadores temporales en Ajustes y fijó: caminar a 2,2 m/s, recorrido del joystick de 60 px, suavidad de la cámara de 0,10 s y distancia para resaltar de 0,60 m. Después los deslizadores se quitaron.
 **Motivo:** no son números de balance: no cambian la simulación ni la economía. Claude no puede jugar, así que el dueño los ajusta en el teléfono y avisa qué valores se sienten mejor. Esos valores pasan después al código.
 
 ### Panel inferior que crece hacia arriba
@@ -183,9 +183,14 @@ Registro de decisiones técnicas importantes: fecha, decisión y motivo. Las má
 - La entrada, la salida y el arrastre para cerrarlo solo mueven el dibujo (desplazamiento visual) y lo funden.
 **Motivo:** en Godot, el alto de un texto con salto de línea depende de su ancho, que vale 0 hasta que los contenedores se acomodan. Ese acomodo puede llegar después del primer cuadro; en los teléfonos de 90 o 120 Hz pasa a menudo. Medir el alto una sola vez dejaba a veces un panel de miles de píxeles.
 
-### Objetos chicos con zona de toque mínima
-**Decisión:** primero se busca el objeto con un rayo contra su caja. Si el rayo no toca nada, los objetos que en la pantalla miden menos de 88 px (de la interfaz) se agrandan hasta esa medida alrededor de su centro. Las marcas de lugares libres del piso y los objetos grandes no se agrandan.
+### Qué objeto se toca
+**Decisión:** se busca en tres pasos, y el primero que encuentra algo gana:
+1. Un rayo contra la caja de cada objeto, girada con el modelo (no la caja alineada con el mundo, que en un objeto girado es más grande).
+2. El mismo rayo con 8 cm de margen alrededor de cada caja.
+3. Los objetos que en la pantalla miden menos de 88 px (de la interfaz) se agrandan hasta esa medida alrededor de su centro. Las marcas de lugares libres del piso y los objetos grandes no se agrandan.
+
 **Motivo:**
+- En la partida nueva, la impresora del suelo está girada 25° delante del lugar libre 2. Con su caja alineada al mundo y el margen, tocar ese lugar abría casi siempre la impresora. Ahora gana lo que está justo bajo el dedo, y el margen solo ayuda cuando el dedo no cae sobre nada. Una prueba toca cientos de puntos de los lugares libres.
 - 88 px es más o menos la yema del pulgar en un teléfono; el personaje y la puerta, vistos de lejos, son más chicos que eso.
 - Las marcas del piso son planas y anchas: su rectángulo en la pantalla cubría mucho piso vacío, y tocar el piso para caminar abría el panel del lugar libre.
 

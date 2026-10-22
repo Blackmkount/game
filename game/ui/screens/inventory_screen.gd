@@ -16,7 +16,7 @@ func _build_content() -> void:
 		var color: Dictionary = DataLookup.config_entry(Game.catalog, "filament_colors", spool.color_id)
 		var title: String = "%s · %s" % [tr(materials[spool.material_id]["name_key"]), tr(color["name_key"])]
 		content.add_child(ItemCard.new(Previews.spool(Color(color["hex"])), title, UiFormat.grams(spool.grams)))
-	var capacity: int = WorkshopRules.storage_capacity_grams(state, Game.catalog)
+	var capacity: int = WorkshopRules.storage_capacity_grams(state, Game.rules)
 	content.add_child(StatBar.new(tr("INVENTORY_STORAGE"), UiFormat.tr_format("FORMAT_KG_OF", [UiFormat.kilograms(state.total_grams()), UiFormat.kilograms(capacity)]), state.total_grams(), capacity))
 
 	add_section("INVENTORY_PRINTERS")

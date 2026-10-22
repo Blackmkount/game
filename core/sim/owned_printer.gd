@@ -10,6 +10,8 @@ var printer_id: String
 var furniture_uid: int = ON_FLOOR
 ## Accesorios instalados después de comprarla (los de fábrica no se anotan aquí).
 var accessories: Array[String] = []
+## Trabajo actual; null = libre.
+var job: PrintJob = null
 
 
 func _init(p_uid: int = 0, p_printer_id: String = "", p_furniture_uid: int = ON_FLOOR) -> void:

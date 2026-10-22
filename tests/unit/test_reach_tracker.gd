@@ -30,9 +30,10 @@ func test_a_printer_wins_over_the_table_it_sits_on() -> void:
 
 
 func test_printer_takes_over_from_its_table_when_walking_up_to_it() -> void:
-	# La mesa entra primero en la distancia; al llegar junto a la impresora,
-	# la impresora toma el resalte.
-	assert_eq(_reach.update(Vector2(-0.65, 0.3), [_table, _printer] as Array[WorldInteractable]), _table)
+	# La mesa entra primero en la distancia (su borde está 8 cm antes que el de
+	# la impresora); al llegar junto a la impresora, la impresora toma el resalte.
+	var near_table: Vector2 = Vector2(-(_tuning.reach_enter - 0.04), 0.3)
+	assert_eq(_reach.update(near_table, [_table, _printer] as Array[WorldInteractable]), _table)
 	assert_eq(_reach.update(Vector2(-0.2, 0.3), [_table, _printer] as Array[WorldInteractable]), _printer)
 
 

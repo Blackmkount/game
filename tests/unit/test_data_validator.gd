@@ -33,7 +33,7 @@ func test_detects_unknown_material_in_order() -> void:
 
 
 func test_detects_duplicate_id() -> void:
-	(_files["clients"] as Array).append({"id": "amigos", "name_key": "CLIENT_AMIGOS"})
+	(_files["clients"] as Array).append(_find("clients", "amigos").duplicate(true))
 	_assert_error_mentions("'amigos' está repetido")
 
 
@@ -84,9 +84,134 @@ func test_detects_missing_description() -> void:
 	_assert_error_mentions("FURNITURE_MESA_AUXILIAR_DESC")
 
 
+## La calidad con el mejor modo es la misma que usa el juego (SimRules): si
+## todos los modos bajan la calidad, la miniatura (calidad 5) no se puede hacer.
+func test_best_mode_quality_can_be_below_the_printer_quality() -> void:
+	for mode: Dictionary in _files["config"]["print_modes"]:
+		mode["quality_delta"] = int(mode["quality_delta"]) - 2
+	_assert_error_mentions("orders.miniatura: ninguna impresora puede imprimirlo")
+
+
 func test_detects_missing_file() -> void:
 	_files.erase("orders")
 	_assert_error_mentions("orders: el archivo debe ser una lista")
+
+
+# --- Ciclo de pedidos: diseño, tablero y fallos ----------------------------
+
+func test_detects_design_minutes_out_of_range() -> void:
+	_find("orders", "llavero")["design_minutes"] = 0
+	_assert_error_mentions("orders.llavero.design_minutes: 0.0 está fuera del rango")
+
+
+func test_detects_unknown_design_kind() -> void:
+	_find("orders", "llavero")["design_kind"] = "magia"
+	_assert_error_mentions("tipo de diseño desconocido 'magia'")
+
+
+func test_detects_missing_ask_text() -> void:
+	_keys.erase("ORDER_LLAVERO_ASK")
+	_assert_error_mentions("ORDER_LLAVERO_ASK")
+
+
+func test_detects_missing_delivery_text() -> void:
+	_keys.erase("DELIVERY_PICKUP")
+	_assert_error_mentions("DELIVERY_PICKUP")
+
+
+func test_detects_client_without_thanks() -> void:
+	_find("clients", "amigos")["thanks_keys"] = []
+	_assert_error_mentions("clients.amigos: necesita al menos un agradecimiento")
+
+
+func test_detects_missing_thanks_text() -> void:
+	_keys.erase("THANKS_AMIGOS_2")
+	_assert_error_mentions("THANKS_AMIGOS_2")
+
+
+func test_detects_max_active_orders_out_of_range() -> void:
+	_files["config"]["order_board"]["max_active_orders"] = 0
+	_assert_error_mentions("config.order_board.max_active_orders: 0.0 está fuera del rango")
+
+
+func test_detects_first_offer_time_out_of_range() -> void:
+	_files["config"]["order_board"]["first_offer_after_game_minutes"] = 0
+	_assert_error_mentions("config.order_board.first_offer_after_game_minutes: 0.0 está fuera del rango")
+
+
+func test_detects_starting_offer_gap_out_of_range() -> void:
+	_files["config"]["order_board"]["starting_offer_gap_game_minutes"] = 0
+	_assert_error_mentions("config.order_board.starting_offer_gap_game_minutes: 0.0 está fuera del rango")
+
+
+func test_detects_unknown_starting_offer() -> void:
+	_files["config"]["order_board"]["starting_offers"] = ["no_existe"]
+	_assert_error_mentions("'no_existe' no existe en orders.json")
+
+
+func test_detects_bad_starting_offers_list() -> void:
+	_files["config"]["order_board"]["starting_offers"] = ["llavero", "llavero", "figura", "maceta"]
+	_assert_error_mentions("'llavero' está repetido")
+	_assert_error_mentions("hay más pedidos iniciales que lugares en el tablero")
+	_assert_error_mentions("'figura' es de nivel 2 y debe ser de nivel 1")
+
+
+func test_detects_starting_offer_not_makeable_at_start() -> void:
+	# La perilla solo acepta PETG y al empezar solo hay un carrete de PLA.
+	_files["config"]["order_board"]["starting_offers"] = ["perilla"]
+	_assert_error_mentions("'perilla' no se puede hacer con las impresoras y el material iniciales")
+
+
+func test_detects_starting_offer_without_enough_grams() -> void:
+	_files["config"]["starting_state"]["spools"][0]["grams"] = 5
+	_assert_error_mentions("'llavero' no se puede hacer con las impresoras y el material iniciales")
+
+
+func test_detects_focus_multiplier_out_of_range() -> void:
+	_files["config"]["design"]["focus_multiplier"] = 1.5
+	_assert_error_mentions("config.design.focus_multiplier: 1.5 está fuera del rango")
+
+
+func test_detects_prep_minutes_out_of_range() -> void:
+	_files["config"]["printing"]["prep_minutes_per_piece"] = -1
+	_assert_error_mentions("config.printing.prep_minutes_per_piece: -1.0 está fuera del rango")
+
+
+func test_detects_max_chance_out_of_range() -> void:
+	_files["config"]["failures"]["max_chance"] = 0
+	_assert_error_mentions("config.failures.max_chance: 0.0 está fuera del rango")
+
+
+func test_detects_grace_pieces_out_of_range() -> void:
+	_files["config"]["failures"]["grace_pieces"] = -1
+	_assert_error_mentions("config.failures.grace_pieces: -1.0 está fuera del rango")
+
+
+func test_detects_missing_failure_type_weight() -> void:
+	_files["config"]["failures"]["random_type_weights"] = {"spaghetti": 1}
+	_assert_error_mentions("random_type_weights: falta el tipo de fallo 'warping'")
+
+
+func test_detects_reversed_stop_progress_range() -> void:
+	_files["config"]["failures"]["stop_progress"]["warping"] = [0.5, 0.2]
+	_assert_error_mentions("'stop_progress' debe ser de tipo ranges")
+
+
+func test_detects_bad_stop_progress_types_and_limits() -> void:
+	_files["config"]["failures"]["stop_progress"] = {"spaghetti": [0.0, 0.6], "lluvia": [0.1, 0.2]}
+	_assert_error_mentions("stop_progress: falta el tipo de fallo 'warping'")
+	_assert_error_mentions("stop_progress: tipo de fallo desconocido 'lluvia'")
+	_assert_error_mentions("config.failures.stop_progress.spaghetti: 0.0 está fuera del rango")
+
+
+func test_detects_fractional_game_seconds_per_real_second() -> void:
+	_files["config"]["time"]["game_seconds_per_real_second"] = 24.5
+	_assert_error_mentions("'game_seconds_per_real_second' debe ser de tipo int")
+
+
+func test_detects_unknown_local_store_color() -> void:
+	_files["config"]["local_store"]["color"] = "violeta"
+	_assert_error_mentions("el color 'violeta' no existe")
 
 
 func _errors() -> Array[String]:

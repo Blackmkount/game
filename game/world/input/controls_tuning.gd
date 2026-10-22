@@ -2,14 +2,14 @@ class_name ControlsTuning
 extends RefCounted
 ## Valores que definen cómo se sienten los controles: joystick, caminar,
 ## cercanía con los objetos y cámara. Están todos aquí para ajustarlos en un
-## solo lugar; los que más se notan también se pueden cambiar en vivo desde
-## Ajustes → Controles (pruebas), para probarlos en el teléfono.
+## solo lugar. La velocidad, el recorrido del joystick, la suavidad de la
+## cámara y la distancia para resaltar los fijó el dueño probándolos en su
+## teléfono (2026-10-21).
 ##
 ## No son números de balance: no cambian la simulación, solo la sensación.
 ## Las distancias en pantalla están en píxeles de la interfaz (720 de ancho).
 
-## Instancia que usa el juego. Ajustes la modifica en vivo (no se guarda: al
-## volver a abrir el juego, vuelven los valores de fábrica).
+## Instancia que usa el juego.
 static var current: ControlsTuning = ControlsTuning.new()
 
 # --- Toques ---
@@ -39,7 +39,7 @@ var joystick_screen_aligned: bool = true
 
 # --- Caminar ---
 ## Metros por segundo a velocidad máxima.
-var walk_speed: float = 2.6
+var walk_speed: float = 2.2
 ## Segundos para llegar a la velocidad máxima y para detenerse.
 var acceleration_time: float = 0.06
 var deceleration_time: float = 0.08
@@ -51,30 +51,21 @@ var stride_length: float = 0.55
 # --- Cercanía con los objetos ---
 ## A esta distancia (del centro del personaje al borde del objeto) el objeto
 ## se resalta, y se deja de resaltar al alejarse más allá de reach_exit.
-var reach_enter: float = 0.7
-var reach_exit: float = 0.9
+var reach_enter: float = 0.6
+var reach_exit: float = 0.8
 ## Otro objeto toma el resalte solo si está al menos así de más cerca.
 var reach_switch_margin: float = 0.15
 
 # --- Cámara ---
 ## Tiempo (segundos) que tarda la cámara en alcanzar al personaje. Menos es
 ## más pegada; más es más suave.
-var camera_follow_time: float = 0.15
+var camera_follow_time: float = 0.1
 ## Metros que la cámara se adelanta hacia donde camina el personaje, con
 ## zoom de 2× o más.
 var camera_look_ahead: float = 0.35
 ## Segundos entre pasos de zoom con la rueda del mouse (los touchpads mandan
 ## muchos eventos seguidos).
 var wheel_cooldown: float = 0.15
-
-
-## Vuelve a los valores de fábrica. Cambia la misma instancia, porque los
-## controles guardan una referencia a ella.
-static func reset() -> void:
-	var defaults: ControlsTuning = ControlsTuning.new()
-	for property: Dictionary in defaults.get_property_list():
-		if int(property["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE:
-			current.set(property["name"], defaults.get(property["name"]))
 
 
 ## Convierte la distancia del dedo al centro del joystick en una fracción de

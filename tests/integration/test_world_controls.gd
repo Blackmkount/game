@@ -8,6 +8,8 @@ extends GutTest
 
 const MAIN_SCENE: PackedScene = preload("res://game/scenes/main.tscn")
 const SETTINGS_PATH: String = "user://test_world_controls_settings.cfg"
+## Cada prueba empieza con la misma partida nueva.
+const SEED: int = 1234
 ## Tamaño de ventana que da la pantalla real de 720×1280 de la interfaz.
 const WINDOW_SIZE: Vector2i = Vector2i(405, 720)
 
@@ -22,6 +24,7 @@ var _quit_calls: int = 0
 
 
 func before_each() -> void:
+	Game.reset_game(SEED)
 	_previous_locale = TranslationServer.get_locale()
 	TranslationServer.set_locale("es")
 	_previous_window_size = get_tree().root.size
@@ -29,7 +32,6 @@ func before_each() -> void:
 	_previous_settings_path = UserSettings.path
 	UserSettings.path = SETTINGS_PATH
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(SETTINGS_PATH))
-	ControlsTuning.reset()
 	_main = MAIN_SCENE.instantiate()
 	add_child_autofree(_main)
 	await wait_process_frames(3)
@@ -104,6 +106,32 @@ func test_tapping_another_object_swaps_the_panel_and_empty_floor_closes_it() -> 
 	_controls.tap(_screen_of_floor(Vector3(0.8, 0.0, 0.2)))
 	assert_false(_hud.has_sheet())
 	assert_false(_room.character.is_following_path(), "Ese toque solo cierra el panel")
+
+
+func test_a_free_spot_opens_wherever_no_other_object_stands_in_front() -> void:
+	# En la partida nueva, la impresora del suelo queda delante del lugar libre 2.
+	var blockers: Array[Node3D] = [_room.get_node("RoomShell/Door"), _room.get_node("Character")]
+	for child: Node in _room.get_children():
+		if child.name.begins_with("Printer") or child.name.begins_with("Furniture"):
+			blockers.append(child)
+	var checked: int = 0
+	var wrong: Array[String] = []
+	for slot: WorldInteractable in _room.interactables:
+		if slot.kind != WorldInteractable.Kind.SLOT:
+			continue
+		var area: Rect2 = slot.footprint().grow(-0.05)
+		for i: int in 9:
+			for j: int in 9:
+				var point: Vector3 = Vector3(area.position.x + area.size.x * (i + 0.5) / 9.0, 0.01, area.position.y + area.size.y * (j + 0.5) / 9.0)
+				var view: Vector2 = _room.camera.unproject_position(point)
+				if _is_behind_something(view, blockers):
+					continue
+				checked += 1
+				var picked: WorldInteractable = _room.pick(view, 0.0)
+				if picked != slot:
+					wrong.append("lugar %d en (%.2f, %.2f)" % [slot.ref, point.x, point.z])
+	assert_gt(checked, 300, "Se probaron puntos de todos los lugares libres")
+	assert_eq(wrong.size(), 0, "Abren otra cosa: %s" % ", ".join(wrong.slice(0, 6)))
 
 
 func test_tapping_the_floor_walks_there() -> void:
@@ -299,6 +327,17 @@ func _screen_of(item: WorldInteractable) -> Vector2:
 
 func _screen_of_floor(point: Vector3) -> Vector2:
 	return _controls.world_to_ui(point)
+
+
+## Si en ese punto de la vista hay un objeto (su caja, girada con él) delante.
+func _is_behind_something(view: Vector2, blockers: Array[Node3D]) -> bool:
+	var origin: Vector3 = _room.camera.project_ray_origin(view)
+	var direction: Vector3 = _room.camera.project_ray_normal(view)
+	for node: Node3D in blockers:
+		var inverse: Transform3D = node.global_transform.affine_inverse()
+		if PropBounds.local_aabb(node).intersects_ray(inverse * origin, inverse.basis * direction) != null:
+			return true
+	return false
 
 
 ## Un toque completo: bajar y subir el dedo en el mismo lugar.
