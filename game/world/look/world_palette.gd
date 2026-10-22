@@ -13,10 +13,7 @@ extends RefCounted
 
 ## Colores con nombre que usan los modelos (salen de LookPalette).
 const BACKGROUND: String = LookPalette.BACKGROUND
-const WOOD_LIGHT: String = LookPalette.WOOD_LIGHT
 const WOOD_MID: String = LookPalette.WOOD_MID
-const METAL_DARK: String = LookPalette.METAL_DARK
-const METAL_MID: String = LookPalette.METAL_MID
 const PLASTIC_BEIGE: String = LookPalette.COMPUTER_BEIGE
 const SKIN: String = LookPalette.SKIN
 const HAIR: String = LookPalette.HAIR

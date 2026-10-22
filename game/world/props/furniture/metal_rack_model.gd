@@ -30,8 +30,11 @@ const BRACE_WIDTH: float = 0.022
 ## Regleta en el poste de atrás a la derecha: centro y medidas.
 const POWER_STRIP_Y: float = 0.5
 const POWER_STRIP_SIZE: Vector3 = Vector3(0.03, 0.3, 0.05)
-## Carretes guardados arriba: radio.
+## Carretes guardados arriba, de canto: radio, centro (x, z) de cada uno y
+## sus colores.
 const TOP_SPOOL_RADIUS: float = 0.1
+const TOP_SPOOLS: Array[Vector2] = [Vector2(0.2, 0.05), Vector2(0.31, 0.0)]
+const TOP_SPOOL_COLORS: Array[String] = [LookPalette.FILAMENT_GREY, LookPalette.FILAMENT_WHITE]
 ## Amarras del atado de cables: altos.
 const TIES: Array[float] = [0.95, 1.25, 1.55]
 
@@ -137,7 +140,8 @@ static func _cables(kit: KitMesh) -> void:
 
 
 ## Lo que se guarda arriba (se ve desde la cámara): dos cajas de filamento
-## apiladas y dos carretes acostados.
+## apiladas y dos carretes de canto (desde arriba, una pila se leía como una
+## lata).
 static func _stored_on_top(kit: KitMesh) -> void:
 	var top: float = BOARDS[BOARDS.size() - 1] + BOARD_THICKNESS / 2.0
 	kit.ao_base = top
@@ -145,6 +149,7 @@ static func _stored_on_top(kit: KitMesh) -> void:
 	kit.ao_base = top + FurnitureParts.FILAMENT_BOX_SIZE.y
 	FurnitureParts.filament_box(kit, Vector3(-0.28, top + FurnitureParts.FILAMENT_BOX_SIZE.y, 0.0), -3.0)
 	kit.ao_base = top
-	var spools: Array[String] = [LookPalette.FILAMENT_GREY, LookPalette.FILAMENT_WHITE]
-	SpoolModel.add_stack(kit, Vector3(0.3, top, 0.05), TOP_SPOOL_RADIUS, spools)
+	for i: int in TOP_SPOOLS.size():
+		var at: Vector2 = TOP_SPOOLS[i]
+		SpoolModel.add_on_shelf(kit, Vector3(at.x, top + TOP_SPOOL_RADIUS, at.y), TOP_SPOOL_RADIUS, TOP_SPOOL_COLORS[i])
 	kit.ao_base = 0.0

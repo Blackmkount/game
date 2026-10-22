@@ -37,6 +37,8 @@ const CUBES_GRID: Vector2i = Vector2i(2, 4)
 ## adelante y un poco a la izquierda, para que el costado del mueble no lo
 ## tape con la cámara del juego (que mira desde adelante a la derecha).
 const CUBES_CONTENT_SHIFT: Vector2 = Vector2(-0.03, 0.04)
+## Tarros impresos del mueble de cubos: grosor de sus paredes.
+const CUBES_BIN_WALL: float = 0.006
 ## Pilas de carretes del mueble de cubos: radio, en qué hueco (columna,
 ## fila desde abajo) y sus colores de abajo hacia arriba.
 const CUBES_SPOOL_RADIUS: float = 0.1
@@ -120,7 +122,7 @@ static func cell_floor(cell_index: Vector2i) -> Vector3:
 
 
 ## Lo demás de los huecos libres: la caja de filamento, dos tarros impresos
-## (abiertos: se ve el fondo oscuro) y un florero impreso en espiral.
+## (abiertos) y un florero impreso en espiral.
 static func _cube_extras(kit: KitMesh) -> void:
 	var box_floor: Vector3 = cell_floor(Vector2i(1, 0))
 	kit.ao_base = box_floor.y
@@ -132,9 +134,7 @@ static func _cube_extras(kit: KitMesh) -> void:
 		var at: Vector3 = cell_floor(bins[i])
 		kit.ao_base = at.y
 		kit.printed(bin_colors[i], 0.004)
-		kit.box(bin_size, at + Vector3(0.0, bin_size.y / 2.0, 0.0), 0.01)
-		kit.paint(LookPalette.METAL_DARK, WorldPalette.Surface.SMOOTH, 0.1)
-		kit.quad(Vector2(bin_size.x - 0.03, bin_size.z - 0.03), at + Vector3(0.0, bin_size.y + 0.001, 0.0), Vector3(-90.0, 0.0, 0.0))
+		FurnitureParts.open_bin(kit, at, bin_size, CUBES_BIN_WALL)
 	var vase: Vector3 = cell_floor(Vector2i(1, 2))
 	kit.ao_base = vase.y
 	kit.printed(LookPalette.FILAMENT_PURPLE, 0.003)

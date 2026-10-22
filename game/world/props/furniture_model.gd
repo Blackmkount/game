@@ -11,7 +11,7 @@ extends RefCounted
 ## (RoomLayout; NO_WALL si no hay pared donde colgar nada). Lo que se cuelga
 ## (la repisa de filamento y el tablero de herramientas) queda pegado a esa
 ## pared; sin pared lleva su pie propio. El mueble de cubos se arrima a la
-## pared si la hay. Lo demás va centrado en su lugar.
+## pared si la hay (contra el zócalo). Lo demás va centrado en su lugar.
 
 ## Sin pared donde colgar (el lugar del medio del cuarto, bajo la ventana, o
 ## las vistas de la tienda).
@@ -29,9 +29,12 @@ static func build(parent: Node3D, node_name: String, furniture_id: String, wall_
 	var on_wall: bool = wall_gap >= 0.0
 	var body: MeshInstance3D = PropBuilder.kit(root, "Body", body_mesh(furniture_id, on_wall))
 	var bounds: AABB = body.mesh.get_aabb()
-	if on_wall and (furniture_id in HANGING or furniture_id in AGAINST_WALL):
+	if on_wall and furniture_id in HANGING:
 		# Su espalda contra la pared de atrás.
 		body.position.z = -wall_gap + FurnitureParts.WALL_CLEARANCE - bounds.position.z
+	elif on_wall and furniture_id in AGAINST_WALL:
+		# En el piso: su espalda contra el zócalo.
+		body.position.z = -wall_gap + FurnitureParts.FLOOR_WALL_GAP - bounds.position.z
 	elif furniture_id in AGAINST_WALL:
 		body.position.z = -bounds.get_center().z
 	var spots: Array[Vector3] = printer_spots(furniture_id)

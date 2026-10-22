@@ -25,6 +25,8 @@ const APRON_HEIGHT: float = 0.06
 const DRAWERS_X: float = 0.36
 const DRAWERS_SIZE: Vector3 = Vector3(0.4, 0.42, 0.5)
 const DRAWER_COUNT: int = 3
+## Grosor de las paredes de las cajas organizadoras.
+const BIN_WALL: float = 0.008
 ## Dónde van las impresoras (biblia §10: arriba del tablero).
 const SIDE_TABLE_SPOTS: Array[Vector3] = [Vector3(0.0, 0.5, 0.0)]
 const WORK_TABLE_SPOTS: Array[Vector3] = [Vector3(-0.3, 0.8, 0.0), Vector3(0.3, 0.8, 0.0)]
@@ -108,7 +110,7 @@ static func _drawers(kit: KitMesh, top: float) -> void:
 
 
 ## Cajas organizadoras sobre la repisa baja (a la izquierda), de los colores
-## del tapete: abiertas arriba (se ve el fondo oscuro) con su asa al frente.
+## del tapete: abiertas arriba, con su asa calada al frente.
 static func _bins(kit: KitMesh) -> void:
 	var shelf: float = WORK_TABLE_SHELF_Y + 0.012
 	kit.ao_base = shelf
@@ -117,8 +119,7 @@ static func _bins(kit: KitMesh) -> void:
 	for i: int in colors.size():
 		var x: float = -0.5 + i * 0.22
 		kit.paint(colors[i], WorldPalette.Surface.SMOOTH, 0.35)
-		kit.box(size, Vector3(x, shelf + size.y / 2.0, 0.0), 0.012)
+		FurnitureParts.open_bin(kit, Vector3(x, shelf, 0.0), size, BIN_WALL)
 		kit.paint(LookPalette.METAL_DARK, WorldPalette.Surface.SMOOTH, 0.1)
-		kit.quad(Vector2(size.x - 0.03, size.z - 0.03), Vector3(x, shelf + size.y + 0.001, 0.0), Vector3(-90.0, 0.0, 0.0))
 		kit.quad(Vector2(0.07, 0.02), Vector3(x, shelf + size.y - 0.03, size.z / 2.0 + 0.001))
 	kit.ao_base = 0.0

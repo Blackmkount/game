@@ -9,8 +9,8 @@ extends RefCounted
 ## WorldPalette.solid(color). Su malla se arma a lo largo de Y y el nodo se
 ## acuesta, así las capas del plástico impreso (que siguen el eje del objeto,
 ## ver kit_body.gdshaderinc) dibujan los surcos del enrollado alrededor del eje.
-## En las impresoras las tapas van dentro de la malla de la impresora
-## (`flanges = false` y add_flanges()).
+## Las tapas van dentro de la malla de la impresora (add_flanges()): el
+## carrete cuesta una sola malla más.
 
 ## Medidas respecto del radio de las tapas: ancho de todo el carrete, grosor
 ## de cada tapa, el bobinado (las tapas son un 10 % más grandes), el núcleo,
@@ -32,20 +32,13 @@ const HUB_SIDES: int = 10
 const SHELF_SIDES: int = 12
 
 
-## `detail` multiplica los lados del bobinado y de las tapas (biblia §5.1).
-static func build(parent: Node3D, node_name: String, position: Vector3, color_hex: String, radius: float = 0.1, flanges: bool = true, detail: float = 1.0) -> Node3D:
+## El nodo del carrete con su bobinado ("Filament"). `detail` multiplica los
+## lados del bobinado (biblia §5.1).
+static func build(parent: Node3D, node_name: String, position: Vector3, color_hex: String, radius: float = 0.1, detail: float = 1.0) -> Node3D:
 	var spool: Node3D = PropBuilder.group(parent, node_name, position)
 	var filament: MeshInstance3D = PropBuilder.kit(spool, "Filament", winding_mesh(radius, detail), WorldPalette.solid(color_hex))
 	# La malla va a lo largo de Y: acostada, el eje queda en X.
 	filament.rotation_degrees = Vector3(0.0, 0.0, 90.0)
-	if flanges:
-		var mesh: ArrayMesh = KitMesh.cached("spool_flanges:%.3f:%.2f" % [radius, detail], func() -> ArrayMesh:
-			var kit: KitMesh = KitMesh.new()
-			kit.ao_enabled = false
-			kit.detail = detail
-			add_flanges(kit, Vector3.ZERO, radius)
-			return kit.commit())
-		PropBuilder.kit(spool, "Flanges", mesh)
 	return spool
 
 
@@ -162,11 +155,6 @@ static func add_stack(kit: KitMesh, base: Vector3, radius: float, hexes: Array[S
 	kit.lathe(_open_flange_profile(radius * RING_INNER, radius, flange / 2.0, true), top, Vector3.ZERO, SHELF_SIDES)
 	for angle: float in [45.0, 135.0]:
 		kit.box(Vector3(radius * RING_INNER * 2.0 + flange, flange, radius * SPOKE_WIDTH), top, 0.0, Vector3(0.0, angle, 0.0))
-
-
-## Alto de una pila de `count` carretes de radio `radius` (add_stack).
-static func stack_height(radius: float, count: int) -> float:
-	return radius * WIDTH * count
 
 
 ## Perfil (radio, alto) de una tapa abierta vista de afuera: el canto y la

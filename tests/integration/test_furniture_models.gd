@@ -203,25 +203,47 @@ func test_the_cube_shelf_stands_against_the_wall() -> void:
 	await _load(state)
 	var node: Node3D = _room.get_node("Furniture%d" % against.uid)
 	var bounds: AABB = node.transform * PropBounds.local_aabb(node)
-	assert_between(bounds.position.z - WALL_PLANE, 0.0, WALL_TOLERANCE, "Arrimado a la pared del fondo")
+	var to_wall: float = bounds.position.z - WALL_PLANE
+	assert_gt(to_wall, RoomShell.BASEBOARD.y, "No atraviesa el zócalo")
+	assert_lte(to_wall, FurnitureParts.FLOOR_WALL_GAP + 0.001, "Arrimado a la pared del fondo, contra el zócalo")
 	var centered: Node3D = _room.get_node("Furniture%d" % middle.uid)
 	assert_almost_eq(PropBounds.local_aabb(centered).get_center().z, 0.0, 0.001, "Sin pared, centrado en su lugar")
 
 
-## Lo que sostiene la repisa o el tablero sin pared: dos parantes que van del
-## piso hasta más arriba que su tabla o tablero de abajo.
+## Lo que sostiene la repisa o el tablero sin pared, a cada lado: un pie que
+## llega al piso y un parante que sube sin cortes desde el piso hasta más
+## arriba que su tabla o tablero de abajo. Cuentan las caras que caben en el
+## ancho del parante (x y z): así no cuentan los pies en T (largos en z) y las
+## puntas de los travesaños y las escuadras, que también caen ahí, dejan
+## huecos.
 func _assert_stand_holds_it_up(body: MeshInstance3D, id: String) -> void:
 	var post_x: float = FilamentStorageModels.SHELF_BRACKET_X if id == "repisa_filamento" else PegboardModel.STAND_X
 	var holds_up_to: float = FilamentStorageModels.SHELF_TOPS[0] if id == "repisa_filamento" else PegboardModel.BOARD_BOTTOM
+	var width: float = FurnitureParts.STAND_POST + 0.002
+	var faces: PackedVector3Array = body.mesh.get_faces()
 	for side: float in [-1.0, 1.0]:
-		var low: float = INF
-		var high: float = -INF
-		for vertex: Vector3 in body.mesh.get_faces():
-			if absf(vertex.x - side * post_x) <= FurnitureParts.STAND_POST / 2.0 + 0.001:
-				low = minf(low, vertex.y)
-				high = maxf(high, vertex.y)
-		assert_almost_eq(low, 0.0, 0.001, "%s: el parante %s llega al piso" % [id, side])
-		assert_gt(high, holds_up_to, "%s: el parante %s sostiene lo de arriba" % [id, side])
+		var lowest: float = INF
+		var spans: Array[Vector2] = []
+		for i: int in range(0, faces.size(), 3):
+			var face: AABB = AABB(faces[i], Vector3.ZERO).expand(faces[i + 1]).expand(faces[i + 2])
+			if face.position.x < side * post_x - width / 2.0 or face.end.x > side * post_x + width / 2.0:
+				continue
+			lowest = minf(lowest, face.position.y)
+			if face.size.z <= width:
+				spans.append(Vector2(face.position.y, face.end.y))
+		assert_almost_eq(lowest, 0.0, 0.001, "%s: el pie %s llega al piso" % [id, side])
+		assert_gt(_reach_from_floor(spans), holds_up_to, "%s: el parante %s sube sin cortes hasta lo de arriba" % [id, side])
+
+
+## Hasta qué alto cubren sin cortes los tramos (de, hasta) desde el piso.
+func _reach_from_floor(spans: Array[Vector2]) -> float:
+	spans.sort_custom(func(a: Vector2, b: Vector2) -> bool: return a.x < b.x)
+	var reach: float = 0.0
+	for span: Vector2 in spans:
+		if span.x > reach + 0.001:
+			break
+		reach = maxf(reach, span.y)
+	return reach
 
 
 func _load(state: GameState) -> void:

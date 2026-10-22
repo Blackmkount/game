@@ -444,6 +444,7 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 - **La estantería metálica se arregló:** ahora mide 2,40 m y deja 0,74 m libres en cada piso, así que cabe cualquier impresora (antes las altas atravesaban las tablas). Tiene postes negros de ángulo, tablas de madera, cruces, una regleta con los cables atados y cosas guardadas arriba.
 - **La repisa y el tablero ya no flotan:** se cuelgan de la pared donde la hay; en el lugar del medio del cuarto (y bajo la ventana) van sobre un pie propio. Te lo informo (decisión D5 del plan): se aplicó tal como estaba propuesto.
 - El taller lleno bajó de 230 a **170 llamadas de dibujo** y de 20 a 18 materiales (ya dentro de la meta final de la biblia).
+- **Arreglos de la revisión:** se borró código que ya nadie usaba (una función de los carretes y tres colores repetidos), el mueble de cubos ya no se mete en el zócalo (queda a 3 cm de la pared), las cajas organizadoras ahora son abiertas de verdad (se ve adentro), arriba de la estantería hay dos carretes parados en vez de una pila que parecía una lata, y la prueba del pie de la repisa y del tablero es más estricta.
 
 **Verificado**
 - `check.sh` y `run_tests.sh` pasan: 619 pruebas (antes 611); 8 nuevas en `tests/integration/test_furniture_models.gd` (cada mueble se arma con sus lugares para impresoras y cabe en el presupuesto; cada familia cabe en cada piso de la estantería; la repisa y el tablero quedan pegados a la pared o sobre su pie).
@@ -451,6 +452,7 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 
 **Qué revisar en el teléfono** (versión web)
 - La tienda, pestaña Muebles: los dibujitos de los seis muebles son los nuevos (la repisa y el tablero se ven sobre su pie).
+- En las capturas 26 y 38: las cajas de colores bajo las mesas se ven abiertas (con su interior más oscuro) y arriba de cada estantería hay dos carretes parados.
 - Hoy en una partida nueva no hay muebles comprados (la tienda llega con la tarea 5). Para verlos en el cuarto ya, las capturas 37 y 38 de `build/screenshots/` muestran el taller lleno de estanterías.
 
 **Problemas conocidos**

@@ -100,7 +100,11 @@ func test_the_spool_lies_on_its_side_with_open_flanges_ten_percent_bigger() -> v
 	var radius: float = 0.1
 	var spool: Node3D = SpoolModel.build(_root, "Spool", Vector3.ZERO, "4cbf5a", radius)
 	var filament: MeshInstance3D = spool.get_node("Filament")
-	var flanges: MeshInstance3D = spool.get_node("Flanges")
+	# Las tapas van dentro de la malla de la impresora (PrinterParts.spool):
+	# aquí, solas en una malla del kit, con el mismo centro que el bobinado.
+	var kit: KitMesh = KitMesh.new()
+	SpoolModel.add_flanges(kit, Vector3.ZERO, radius)
+	var flanges: MeshInstance3D = PropBuilder.kit(spool, "Flanges", kit.commit())
 	assert_eq(filament.material_override, WorldPalette.solid("4cbf5a"))
 	assert_almost_eq(absf(filament.global_basis.y.x), 1.0, 0.001, "Acostado: el eje (y las capas, los surcos del bobinado) a lo largo de X")
 	var winding: AABB = filament.transform * filament.mesh.get_aabb()

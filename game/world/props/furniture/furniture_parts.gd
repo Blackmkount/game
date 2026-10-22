@@ -15,13 +15,14 @@ const DETAIL: float = 0.8
 ## en piezas chicas no se ven y cuestan 32 triángulos cada caja. Los de los
 ## tableros y las patas (biblia §5.1: 10–20 mm en muebles) quedan.
 const BEVEL_CUTOFF: float = 0.005
-## Lo que se cuelga o se arrima queda a esto de la pared (m): pegado, sin
-## tocarla. Con menos, el borde de su sombra cae justo sobre la pared, al
-## lado de su canto de arriba, y se ven los dientes del mapa de sombras; así
-## queda detrás del mueble.
+## Lo que se cuelga queda a esto de la pared (m): pegado, sin tocarla. Con
+## menos, el borde de su sombra cae justo sobre la pared, al lado de su canto
+## de arriba, y se ven los dientes del mapa de sombras; así queda detrás del
+## mueble.
 const WALL_CLEARANCE: float = 0.015
-## Lo que va en el piso junto a la pared se separa esto (m): no choca con el
-## zócalo (sobresale 1,8 cm).
+## Lo que va en el piso contra la pared (el mueble de cubos, las cajas bajo lo
+## que se cuelga) se separa esto (m): no choca con el zócalo
+## (RoomShell.BASEBOARD, sobresale 1,8 cm).
 const FLOOR_WALL_GAP: float = 0.03
 ## Pie propio (lo que se cuelga, en un lugar sin pared): parantes cuadrados
 ## de metal y pies en T con tapones de goma.
@@ -88,6 +89,16 @@ static func bracket(mesh: KitMesh, x: float, under: float, back: float, depth: f
 	# Del pie de la placa (abajo, contra la pared) a la punta del brazo: el
 	# giro en X lleva el largo de la caja (Z) hacia arriba y afuera.
 	mesh.box(Vector3(w * 0.8, t, arm.length()), Vector3(x, under - t - arm.y / 2.0, back + t + arm.x / 2.0), 0.0, Vector3(-rad_to_deg(atan2(arm.y, arm.x)), 0.0, 0.0))
+
+
+## Caja organizadora abierta (con la pintura que esté puesta): fondo y cuatro
+## paredes de `wall` de grosor, con la base en `base`. Por arriba se ve el
+## canto de las paredes y adentro (más oscuro por la oclusión del kit).
+static func open_bin(mesh: KitMesh, base: Vector3, size: Vector3, wall: float) -> void:
+	mesh.box(Vector3(size.x, wall, size.z), base + Vector3(0.0, wall / 2.0, 0.0), 0.0)
+	for side: float in KitMesh.SIGNS:
+		mesh.box(Vector3(size.x, size.y, wall), base + Vector3(0.0, size.y / 2.0, side * (size.z - wall) / 2.0), 0.0)
+		mesh.box(Vector3(wall, size.y, size.z - wall * 2.0), base + Vector3(side * (size.x - wall) / 2.0, size.y / 2.0, 0.0), 0.0)
 
 
 ## Caja de filamento de cartón con la base en `base`, girada `yaw` grados:

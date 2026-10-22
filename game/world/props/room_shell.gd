@@ -28,6 +28,8 @@ const CUT_LAYER: float = 0.012
 const FLOOR_THICKNESS: float = 0.02
 ## Lo más bajo de la base (con el brim): ahí abajo va su sombra.
 const BASE_BOTTOM: float = -(FLOOR_THICKNESS + BASE_DEPTH)
+## Zócalo de las paredes: alto y cuánto sobresale de la pared.
+const BASEBOARD: Vector2 = Vector2(0.1, 0.018)
 ## Puerta: en la pared de la ventana, cerca del frente. Se toca: su caja (sin
 ## girar) va de x -0,03 a 0,115, de z -0,5 a 0,5 y de y 0 a 2,0.
 const DOOR_POSITION: Vector3 = Vector3(-SIZE / 2.0 + 0.03, 0.0, 2.1)
@@ -173,7 +175,7 @@ static func _walls(kit: KitMesh) -> void:
 
 	# Zócalos (en la pared de la ventana, cortados por la puerta).
 	kit.paint(LookPalette.TRIM, WorldPalette.Surface.SMOOTH, 0.2)
-	var board: Vector2 = Vector2(0.1, 0.018)
+	var board: Vector2 = BASEBOARD
 	var door_z0: float = DOOR_POSITION.z - DOOR_HALF_WIDTH
 	var door_z1: float = DOOR_POSITION.z + DOOR_HALF_WIDTH
 	kit.box(Vector3(SIZE, board.x, board.y), Vector3(0.0, board.x / 2.0, -half + board.y / 2.0), 0.004)

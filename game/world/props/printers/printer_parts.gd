@@ -82,7 +82,7 @@ static func display(printer: Node3D, size: Vector2, position: Vector3, rot_deg: 
 ## El carrete de las impresoras abiertas ("Spool/Filament", toma el color del
 ## filamento). Sus tapas van dentro de "Body" (SpoolModel.add_flanges).
 static func spool(printer: Node3D, position: Vector3, color_hex: String, radius: float, detail: float) -> Node3D:
-	var reel: Node3D = SpoolModel.build(printer, "Spool", position, color_hex, radius, false, detail)
+	var reel: Node3D = SpoolModel.build(printer, "Spool", position, color_hex, radius, detail)
 	if detail < FLOOR_DETAIL:
 		(reel.get_node("Filament") as MeshInstance3D).cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return reel
