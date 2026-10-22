@@ -441,12 +441,13 @@ Respuestas del 2026-10-21:
 | 8 | *(Antes de la Fase 5)* iOS: Mac propio o servicio en la nube | Pendiente |
 | 9 | Valores de los controles, después de probarlos en el teléfono | Caminar a 2,2 m/s, joystick de 60 px, cámara de 0,10 s y resaltar a 0,60 m; sin deslizadores en Ajustes |
 | 10 | Siguiente trabajo (2026-10-21) | El ciclo de pedidos: confirmar, modelar en 3D, imprimir, retirar, embalar y despachar. Responde la pregunta de la entrega: el personaje retira la pieza, la embala y la despacha (GDD 5.17) |
+| 11 | Diseño del ciclo de pedidos (GDD, versión 2.3): cobro al despachar, tiempos de modelado, rincón de despacho, un mensaje cada 60 minutos de juego, 3 piezas de regalo y la burbuja que hace la acción | Aprobado (2026-10-22). Los números se ajustan con el simulador (tarea 10) |
 
 ### Preguntas abiertas
 
 | Pregunta | Cuándo hace falta |
 |---|---|
-| Confirmar el diseño propuesto para el ciclo de pedidos (GDD, versión 2.3 en la sección 16): cobro al despachar, tiempos de modelado, rincón de despacho, un mensaje cada 60 minutos de juego, 3 piezas de regalo y la burbuja que hace la acción | Antes de la tarea 10 (simulador), que ajusta esos números |
+| *(Ninguna por ahora)* | — |
 
 ## 12. Cómo se mantiene esta ruta
 - `docs/PROGRESO.md` dice en qué tarea vamos. Esta ruta solo cambia cuando cambia el plan.

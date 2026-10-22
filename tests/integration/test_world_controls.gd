@@ -302,6 +302,23 @@ func test_back_button_closes_the_panel_then_the_section_then_quits() -> void:
 	assert_eq(_quit_calls, 1, "Al final sale del juego")
 
 
+func test_leaving_with_back_saves_the_game_first() -> void:
+	var previous_path: String = SaveManager.path
+	var previous_enabled: bool = SaveManager.enabled
+	var test_path: String = "user://test_back_save.json"
+	SaveManager.path = test_path
+	SaveManager.enabled = true
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_path))
+	# "Atrás" en la pantalla de inicio cierra el juego: sin esto, se perdía
+	# lo jugado desde el último guardado automático.
+	_controls.propagate_notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)
+	assert_eq(_quit_calls, 1)
+	assert_true(FileAccess.file_exists(test_path), "Guardó antes de salir")
+	SaveManager.path = previous_path
+	SaveManager.enabled = previous_enabled
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(test_path))
+
+
 func test_two_fingers_spreading_zoom_in() -> void:
 	await _press(Vector2(300.0, 900.0), 0)
 	await _press(Vector2(420.0, 900.0), 1)

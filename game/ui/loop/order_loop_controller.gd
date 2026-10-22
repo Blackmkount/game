@@ -113,7 +113,7 @@ func run_sheet(action_id: String) -> void:
 		"go_pack":
 			_open_later(_controls.room.dispatch_item)
 		DeskSheet.PRINT_READY:
-			var order: Order = DeskSheet.first_ready(Game.state)
+			var order: Order = DeskSheet.print_target(Game.state, Game.rules)
 			if order != null:
 				_open_printer_later(order.uid)
 		_:
@@ -341,13 +341,12 @@ func _wait_for_finger() -> bool:
 	var sheet: BottomSheet = _controls.hud.current_sheet()
 	if sheet == null:
 		return false
-	for node: Node in sheet.find_children("*", "BaseButton", true, false):
-		var button: BaseButton = node
-		if not button.toggle_mode and button.is_pressed():
-			if not button.button_up.is_connected(_queue_refresh):
-				button.button_up.connect(_queue_refresh, CONNECT_ONE_SHOT)
-			return true
-	return false
+	var held: BaseButton = UiKit.held_button(sheet)
+	if held == null:
+		return false
+	if not held.button_up.is_connected(_queue_refresh):
+		held.button_up.connect(_queue_refresh, CONNECT_ONE_SHOT)
+	return true
 
 
 ## Una vez por segundo real: las barras de avance del panel abierto. El

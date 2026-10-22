@@ -543,7 +543,7 @@ Cada fase termina con algo que se puede probar. No se avanza a la siguiente sin 
 
 **Pedido del dueño:** trabajar la experiencia de confirmar pedidos, modelar en 3D el pedido, imprimirlo, retirar la pieza impresa, embalarla y despacharla. Esto responde la pregunta abierta de la entrega (sección 14): el personaje retira la pieza, la embala y la despacha.
 
-**Diseño propuesto por Claude, para que el dueño lo confirme:**
+**Diseño propuesto por Claude, aprobado por el dueño (2026-10-22):**
 - El ciclo corto pasa a 6 pasos (sección 4) y se detalla en la nueva sección 5.17.
 - Se cobra al despachar, sin tiempo de viaje, y el plazo se revisa en ese momento (5.2).
 - Modelar empieza solo en el computador, uno a la vez y mientras se imprime, con tiempos según cómo llega el diseño, y un botón opcional "Concentrarse" (5.17).

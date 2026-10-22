@@ -18,9 +18,10 @@ signal card_action(verb: String, uid: int)
 signal cancel_tapped(uid: int)
 
 const ICON_SIZE: float = 56.0
-const BUTTON_HEIGHT: float = 72.0
+const BUTTON_HEIGHT: float = 88.0
 const BAR_HEIGHT: float = 16.0
-const CANCEL_HEIGHT: float = 64.0
+## El botón para cancelar se ve chico (sin fondo), pero se toca en 88 px.
+const CANCEL_HEIGHT: float = 88.0
 const CANCEL_FONT_SIZE: int = 19
 
 var uid: int

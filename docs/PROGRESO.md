@@ -4,9 +4,9 @@
 
 - **Fase actual:** 1. Ciclo jugable, en curso (ruta aprobada por el dueño en `docs/RUTA.md`).
 - **Diseño:** GDD versión 2.3, guía de estilo en `docs/ESTILO.md` y ruta en `docs/RUTA.md`.
-- **Última tarea:** el ciclo de pedidos completo, pedido por el dueño: tareas 6 y 7 de la Fase 1, con partes de las tareas 4, 5 y 8 (2026-10-22).
+- **Última tarea:** arreglos de la revisión final del ciclo de pedidos (2026-10-22), después del ciclo completo (tareas 6 y 7 de la Fase 1, con partes de las tareas 4, 5 y 8).
 - **Siguiente paso sugerido:** tarea 3, navegación nueva y HUD despejado (el número de Pedidos pasa a la barra de abajo). Después, lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
-- **Para el dueño:** confirmar el diseño propuesto para el ciclo (GDD, versión 2.3 en la sección 16).
+- **Diseño del ciclo:** aprobado por el dueño (GDD, versión 2.3 en la sección 16).
 
 | Fase | Estado |
 |---|---|
@@ -226,3 +226,23 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 - Los números de ritmo (un mensaje cada 60 minutos de juego, tiempos de modelado, 3 piezas de regalo, 3 pedidos en curso) son una propuesta: se ajustan con el simulador.
 - El número de Pedidos sigue en el botón de la izquierda hasta la navegación nueva (tarea 3).
 
+### 2026-10-22 — Arreglos de la revisión final del ciclo
+
+**Qué se hizo**
+- El dueño aprobó el diseño del ciclo (GDD 2.3): quedó anotado en el GDD, la ruta y este archivo.
+- Una revisión de código con siete miradas distintas, cada hallazgo comprobado por revisores escépticos, encontró 9 problemas reales (y descartó 12). Todos se arreglaron, cada uno con una prueba que fallaba antes:
+  - **Almacén:** el material apartado para piezas que faltan imprimir ahora ocupa lugar. Antes se podía comprar en la ferretería hasta llenar el almacén y pasarse del límite si una pieza fallaba.
+  - **Mesa del computador:** "Imprimir" apunta al primer pedido que de verdad se puede imprimir, no al primero de la lista si ese no tiene material.
+  - **Pruebas desde el editor:** correr las pruebas desde el panel de GUT ya no guarda encima de la partida del jugador ni de sus preferencias (`RunMode`).
+  - **Toques en Pedidos:** si la pantalla se actualiza mientras el dedo está sobre un botón, espera a que se suelte, como ya hacían los paneles. Antes se podía perder el toque.
+  - **"Atrás" en Android:** guarda la partida antes de cerrar.
+  - **Botones de 88 px:** Aceptar, Rechazar, el botón del paso siguiente y "Cancelar pedido" en Pedidos, y "Empezar partida nueva" en Ajustes. Las opciones del panel inferior siguen en 64 px, como excepción anotada en `docs/ESTILO.md`.
+  - **Una prueba del guardado automático** que nunca podía fallar ahora prueba de verdad.
+- Las decisiones nuevas están en `docs/DECISIONES.md`.
+
+**Verificado**
+- `check.sh` y `run_tests.sh` pasan: 505 pruebas (antes 496).
+- Revisé las capturas de Pedidos y Ajustes con los botones nuevos.
+
+**Problemas conocidos**
+- Los mismos de la entrada anterior.

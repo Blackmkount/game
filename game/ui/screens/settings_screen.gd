@@ -11,6 +11,8 @@ const LANGUAGES: Array[Dictionary] = [
 ]
 ## Segundos que "Empezar partida nueva" espera el segundo toque que confirma.
 const CONFIRM_SECONDS: float = 3.0
+## Alto del botón "Empezar partida nueva": el mínimo táctil de ESTILO.
+const NEW_GAME_HEIGHT: float = 88.0
 
 ## Qué hace la partida nueva después de guardarse: volver a armar la escena.
 ## Las pruebas lo cambian para no recargar el programa de pruebas.
@@ -50,6 +52,7 @@ func _build_content() -> void:
 	_new_game_button.name = "NewGame"
 	_new_game_button.text = tr("SETTINGS_NEW_GAME")
 	_new_game_button.focus_mode = Control.FOCUS_NONE
+	_new_game_button.custom_minimum_size = Vector2(0, NEW_GAME_HEIGHT)
 	_new_game_button.pressed.connect(_on_new_game_pressed)
 	content.add_child(_new_game_button)
 	add_section("SETTINGS_CREDITS")

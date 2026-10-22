@@ -23,6 +23,25 @@ static func storage_capacity_grams(state: GameState, rules: SimRules) -> int:
 	return capacity
 
 
+## Gramos apartados por las impresiones en curso: ya no están en el carrete,
+## pero siguen ocupando lugar, porque lo que no se imprima vuelve a él.
+## Cuenta entera la pieza que se está imprimiendo (si falla, vuelve una parte).
+static func reserved_grams(state: GameState) -> int:
+	var grams: int = 0
+	for printer: OwnedPrinter in state.printers:
+		var job: PrintJob = printer.job
+		if job == null or job.status == PrintJob.Status.DONE:
+			continue
+		var order: Order = state.find_order(job.order_uid)
+		var pieces_done: int = order.pieces_done if order != null else 0
+		var pieces: int = job.pieces_total - pieces_done
+		if job.status == PrintJob.Status.FAILED:
+			# Lo que no se imprimió de la pieza fallida ya volvió al carrete.
+			pieces -= 1
+		grams += maxi(pieces, 0) * job.grams_per_piece
+	return grams
+
+
 static func printers_on_floor(state: GameState) -> int:
 	var count: int = 0
 	for printer: OwnedPrinter in state.printers:

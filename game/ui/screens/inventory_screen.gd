@@ -34,7 +34,9 @@ func _build_content() -> void:
 		var title: String = "%s · %s" % [tr(materials[spool.material_id]["name_key"]), tr(color["name_key"])]
 		content.add_child(ItemCard.new(Previews.spool(Color(color["hex"])), title, UiFormat.grams(spool.grams)))
 	var capacity: int = WorkshopRules.storage_capacity_grams(state, Game.rules)
-	content.add_child(StatBar.new(tr("INVENTORY_STORAGE"), UiFormat.tr_format("FORMAT_KG_OF", [UiFormat.kilograms(state.total_grams()), UiFormat.kilograms(capacity)]), state.total_grams(), capacity))
+	# Lo apartado para las impresiones en curso sigue ocupando lugar.
+	var stored: int = state.total_grams() + WorkshopRules.reserved_grams(state)
+	content.add_child(StatBar.new(tr("INVENTORY_STORAGE"), UiFormat.tr_format("FORMAT_KG_OF", [UiFormat.kilograms(stored), UiFormat.kilograms(capacity)]), stored, capacity))
 
 	add_heading(LocalStoreButtons.title(Game.rules)).name = "SectionLocalStore"
 	var store: LocalStoreButtons = LocalStoreButtons.new()

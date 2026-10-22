@@ -55,7 +55,7 @@ static func build(furniture_uid: int, error_text: String = "") -> BottomSheet:
 		sheet.add_action("focus", _t("ACTION_FOCUS"), true)
 	elif not ready.is_empty():
 		sheet.add_action("orders", _t("SHEET_SEE_ORDERS"))
-		var plan: PrintPlan = PrintPlanner.recommend(state, rules, first_ready(state))
+		var plan: PrintPlan = PrintPlanner.recommend(state, rules, print_target(state, rules))
 		sheet.add_action(PRINT_READY, _t("ACTION_PRINT"), true, plan.ok, UiFormat.reason(plan.reason, rules.game_seconds_per_real_second))
 	else:
 		sheet.add_action("orders", _t("SHEET_SEE_ORDERS"), true)
@@ -69,10 +69,20 @@ static func tick(sheet: BottomSheet, now: int) -> void:
 	var designing: Order = Game.state.find_order(Game.state.designing_uid)
 	if designing != null:
 		sheet.set_progress(DESIGN_ROW, _ready_in(designing, now), OrderQueries.design_progress(designing, Game.rules, now))
-	var ready: Order = first_ready(Game.state)
+	var ready: Order = print_target(Game.state, Game.rules)
 	if ready != null:
 		var plan: PrintPlan = PrintPlanner.recommend(Game.state, Game.rules, ready)
 		sheet.set_note(PRINT_READY, UiFormat.reason(plan.reason, Game.rules.game_seconds_per_real_second))
+
+
+## El pedido al que apunta el botón Imprimir: el primero (menor uid) con el
+## modelo listo que se puede imprimir ya. Si ninguno se puede, el primero con
+## el modelo listo, para que el botón apagado diga su motivo. Null si no hay.
+static func print_target(state: GameState, rules: SimRules) -> Order:
+	for order: Order in state.orders:
+		if order.stage == Order.Stage.READY_TO_PRINT and PrintPlanner.recommend(state, rules, order).ok:
+			return order
+	return first_ready(state)
 
 
 ## El primer pedido (menor uid) con el modelo listo para imprimir, o null.

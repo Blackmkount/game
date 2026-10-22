@@ -5,6 +5,17 @@ extends RefCounted
 const ICON_DIR: String = "res://assets/icons/%s.svg"
 
 
+## Un botón dentro de `root` que tiene un dedo encima ahora mismo, o null.
+## Rearmar la interfaz en ese momento lo borraría y el toque se perdería: hay
+## que esperar a que se suelte (button_up).
+static func held_button(root: Node) -> BaseButton:
+	for node: Node in root.find_children("*", "BaseButton", true, false):
+		var button: BaseButton = node
+		if not button.toggle_mode and button.is_pressed():
+			return button
+	return null
+
+
 static func icon_texture(icon_name: String) -> Texture2D:
 	return load(ICON_DIR % icon_name)
 
