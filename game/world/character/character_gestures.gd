@@ -92,20 +92,20 @@ const DATA: Dictionary = {
 				"head": Vector3(0.08, 0.0, 0.0), "body": Vector3(0.04, 0.0, 0.0),
 			}],
 			[0.4, {
-				"hand_l": [Vector3(-0.235, 1.16, 0.05), Vector3(-0.8, -0.1, 0.6)],
-				"hand_r": [Vector3(0.235, 1.16, 0.05), Vector3(0.8, -0.1, 0.6)],
+				"hand_l": [Vector3(-0.218, 1.15, 0.045), Vector3(-0.8, -0.1, 0.6)],
+				"hand_r": [Vector3(0.218, 1.15, 0.045), Vector3(0.8, -0.1, 0.6)],
 				"head": Vector3(0.07, 0.0, 0.07), "body": Vector3(0.06, 0.0, 0.0),
 				"shape": Vector3(-0.03, 0.0, -0.01),
 			}],
 			[0.65, {
-				"hand_l": [Vector3(-0.235, 1.16, 0.05), Vector3(-0.8, -0.1, 0.6)],
-				"hand_r": [Vector3(0.235, 1.16, 0.05), Vector3(0.8, -0.1, 0.6)],
+				"hand_l": [Vector3(-0.218, 1.15, 0.045), Vector3(-0.8, -0.1, 0.6)],
+				"hand_r": [Vector3(0.218, 1.15, 0.045), Vector3(0.8, -0.1, 0.6)],
 				"head": Vector3(0.07, 0.0, -0.07), "body": Vector3(0.06, 0.0, 0.0),
 				"shape": Vector3(-0.03, 0.0, -0.01),
 			}],
 			[0.9, {
-				"hand_l": [Vector3(-0.235, 1.15, 0.05), Vector3(-0.8, -0.1, 0.6)],
-				"hand_r": [Vector3(0.235, 1.15, 0.05), Vector3(0.8, -0.1, 0.6)],
+				"hand_l": [Vector3(-0.218, 1.14, 0.045), Vector3(-0.8, -0.1, 0.6)],
+				"hand_r": [Vector3(0.218, 1.14, 0.045), Vector3(0.8, -0.1, 0.6)],
 				"head": Vector3(0.06, 0.0, 0.05), "body": Vector3(0.05, 0.0, 0.0),
 			}],
 			[1.2, {}],
@@ -164,41 +164,47 @@ const DATA: Dictionary = {
 			[0.9, {}],
 		],
 	},
-	# Saca el celular, lo mira con la cabeza gacha y lo guarda.
+	# Saca el celular y lo lee con las dos manos delante del pecho y la cabeza
+	# gacha (de frente no le tapa la cara), con la pantalla hacia sus ojos.
+	# Después lo guarda.
 	Gesture.PHONE: {
 		"length": 1.6, "peak": 0.8,
 		"keys": [
 			[0.0, {}],
 			[0.2, {"hand_r": [Vector3(0.17, 0.8, 0.17), Vector3(1.0, -1.0, -0.2)], "phone_at": Vector3(0.0, 1.12, 0.16), "shape": Vector3(0.0, 1.0, 0.0)}],
 			[0.45, {
-				"hand_r": [Vector3(0.07, 1.03, 0.27), Vector3(1.0, -1.0, -0.3)], "phone_at": Vector3(0.0, 1.12, 0.16),
-				"head": Vector3(0.16, 0.06, 0.0), "shape": Vector3(0.0, 1.0, 0.0), "eyes": Vector3(-0.004, -0.025, 0.0),
+				"hand_r": [Vector3(0.05, 0.9, 0.25), Vector3(1.0, -1.0, -0.3)], "phone_at": Vector3(0.01, 1.16, 0.17),
+				"hand_l": [Vector3(-0.06, 0.88, 0.24), Vector3(-1.0, -1.0, -0.3)],
+				"head": Vector3(0.28, 0.04, 0.0), "shape": Vector3(0.0, 1.0, 0.0), "eyes": Vector3(-0.004, -0.03, 0.0),
 			}],
 			[0.8, {
-				"hand_r": [Vector3(0.07, 1.04, 0.27), Vector3(1.0, -1.0, -0.3)], "phone_at": Vector3(0.0, 1.12, 0.16),
-				"head": Vector3(0.18, 0.06, 0.04), "shape": Vector3(0.0, 1.0, 0.0), "eyes": Vector3(-0.004, -0.025, 0.0),
+				"hand_r": [Vector3(0.05, 0.91, 0.25), Vector3(1.0, -1.0, -0.3)], "phone_at": Vector3(0.01, 1.16, 0.17),
+				"hand_l": [Vector3(-0.06, 0.89, 0.24), Vector3(-1.0, -1.0, -0.3)],
+				"head": Vector3(0.3, 0.05, 0.03), "shape": Vector3(0.0, 1.0, 0.0), "eyes": Vector3(-0.004, -0.03, 0.0),
 			}],
 			[1.2, {
-				"hand_r": [Vector3(0.07, 1.03, 0.27), Vector3(1.0, -1.0, -0.3)], "phone_at": Vector3(0.0, 1.12, 0.16),
-				"head": Vector3(0.16, 0.02, -0.02), "shape": Vector3(0.0, 1.0, 0.0), "eyes": Vector3(0.006, -0.025, 0.0),
+				"hand_r": [Vector3(0.05, 0.9, 0.25), Vector3(1.0, -1.0, -0.3)], "phone_at": Vector3(0.01, 1.16, 0.17),
+				"hand_l": [Vector3(-0.06, 0.88, 0.24), Vector3(-1.0, -1.0, -0.3)],
+				"head": Vector3(0.28, 0.02, -0.02), "shape": Vector3(0.0, 1.0, 0.0), "eyes": Vector3(0.006, -0.03, 0.0),
 			}],
 			[1.4, {"hand_r": [Vector3(0.17, 0.8, 0.17), Vector3(1.0, -1.0, -0.2)], "phone_at": Vector3(0.0, 1.12, 0.16), "shape": Vector3(0.0, 1.0, 0.0)}],
 			[1.5, {"shape": Vector3(0.0, 0.0, 0.0)}],
 			[1.6, {}],
 		],
 	},
-	# Pulgar arriba: el antebrazo hacia adelante deja el pulgar del mitón
-	# hacia arriba.
+	# Pulgar arriba: con el antebrazo hacia adelante y el codo hacia abajo, el
+	# pulgar del mitón queda hacia arriba; la mano va afuera del cuerpo, lejos
+	# de la cabeza (RoomView lo gira hacia la cámara).
 	Gesture.THUMBS_UP: {
 		"length": 0.8, "peak": 0.32,
 		"keys": [
 			[0.0, {}],
-			[0.16, {"hand_r": [Vector3(0.29, 0.84, 0.2), Vector3(1.0, -1.0, -0.5)], "body": Vector3(0.0, 0.06, 0.0)}],
+			[0.16, {"hand_r": [Vector3(0.33, 0.86, 0.19), Vector3(0.3, -1.0, 0.0)], "body": Vector3(0.0, 0.06, 0.0)}],
 			[0.32, {
-				"hand_r": [Vector3(0.3, 0.89, 0.21), Vector3(1.0, -1.0, -0.5)], "body": Vector3(0.0, 0.08, 0.0),
+				"hand_r": [Vector3(0.33, 0.93, 0.2), Vector3(0.3, -1.0, 0.0)], "body": Vector3(0.0, 0.08, 0.0),
 				"head": Vector3(0.0, 0.0, 0.08), "move": Vector3(0.0, 0.01, 0.0),
 			}],
-			[0.52, {"hand_r": [Vector3(0.29, 0.85, 0.2), Vector3(1.0, -1.0, -0.5)], "body": Vector3(0.0, 0.06, 0.0), "head": Vector3(0.0, 0.0, 0.05)}],
+			[0.52, {"hand_r": [Vector3(0.34, 0.88, 0.19), Vector3(0.3, -1.0, 0.0)], "body": Vector3(0.0, 0.06, 0.0), "head": Vector3(0.0, 0.0, 0.05)}],
 			[0.8, {}],
 		],
 	},
@@ -220,43 +226,43 @@ const DATA: Dictionary = {
 	# antebrazos abiertos hacia los lados, el cuello hundido y la cabeza de
 	# lado.
 	Gesture.SHRUG: {
-		"length": 0.8, "peak": 0.32,
+		"length": 0.7, "peak": 0.28,
 		"keys": [
 			[0.0, {}],
-			[0.3, {
+			[0.26, {
 				"shoulder_l": Vector3(0.05, -0.9, -0.22), "elbow_l": Vector3(-1.45, 0.0, 0.0),
 				"shoulder_r": Vector3(0.05, 0.9, 0.22), "elbow_r": Vector3(-1.45, 0.0, 0.0),
 				"head": Vector3(-0.04, 0.0, 0.15), "shape": Vector3(-0.02, 0.0, -0.03),
 			}],
-			[0.52, {
+			[0.46, {
 				"shoulder_l": Vector3(0.05, -0.85, -0.2), "elbow_l": Vector3(-1.4, 0.0, 0.0),
 				"shoulder_r": Vector3(0.05, 0.85, 0.2), "elbow_r": Vector3(-1.4, 0.0, 0.0),
 				"head": Vector3(-0.03, 0.0, 0.13), "shape": Vector3(-0.02, 0.0, -0.026),
 			}],
-			[0.8, {}],
+			[0.7, {}],
 		],
 	},
 	# Embala: se inclina y dobla las solapas de una caja con las dos manos.
 	Gesture.PACK: {
-		"length": 0.7, "peak": 0.28,
+		"length": 0.6, "peak": 0.24,
 		"keys": [
 			[0.0, {}],
-			[0.14, {
+			[0.12, {
 				"hand_l": [Vector3(-0.13, 0.76, 0.25), Vector3(-1.0, -0.6, 0.0)],
 				"hand_r": [Vector3(0.13, 0.76, 0.25), Vector3(1.0, -0.6, 0.0)],
 				"body": Vector3(0.2, 0.0, 0.0), "head": Vector3(0.14, 0.0, 0.0),
 			}],
-			[0.28, {
+			[0.24, {
 				"hand_l": [Vector3(-0.1, 0.72, 0.27), Vector3(-1.0, -0.6, 0.0)],
 				"hand_r": [Vector3(0.1, 0.72, 0.27), Vector3(1.0, -0.6, 0.0)],
 				"body": Vector3(0.26, 0.0, 0.0), "head": Vector3(0.16, 0.0, 0.0), "move": Vector3(0.0, -0.01, 0.0),
 			}],
-			[0.44, {
+			[0.38, {
 				"hand_l": [Vector3(-0.14, 0.76, 0.25), Vector3(-1.0, -0.6, 0.0)],
 				"hand_r": [Vector3(0.14, 0.76, 0.25), Vector3(1.0, -0.6, 0.0)],
 				"body": Vector3(0.18, 0.0, 0.0), "head": Vector3(0.12, 0.0, 0.0),
 			}],
-			[0.7, {}],
+			[0.6, {}],
 		],
 	},
 	# Se rasca la cabeza (llegó tarde, o de puro aburrido).

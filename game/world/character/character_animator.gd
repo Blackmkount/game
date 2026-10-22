@@ -348,11 +348,6 @@ func current_gesture() -> CharacterGestures.Gesture:
 	return _gesture
 
 
-## Segundos desde que empezó el gesto actual.
-func gesture_time() -> float:
-	return _gesture_time
-
-
 ## La cara que se ve (FacePainter.Face).
 func expression() -> FacePainter.Face:
 	return _shown_face
@@ -513,7 +508,7 @@ func _gesture_pose() -> void:
 	for bone: int in BONES:
 		if not CharacterGestures.drives(_gesture, bone):
 			continue
-		if bone == CharacterModel.Bone.BODY or bone == CharacterModel.Bone.HEAD:
+		if bone in CharacterGestures.ADDITIVE:
 			_rot[bone] = _rot[bone] * Quaternion.IDENTITY.slerp(_gesture_rot[bone], weight)
 		else:
 			_rot[bone] = _rot[bone].slerp(_gesture_rot[bone], weight)

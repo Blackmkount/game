@@ -472,7 +472,9 @@ func _on_offer_arrived() -> void:
 	character.animator.react(CharacterAnimator.Reaction.OFFER)
 
 
-## Una impresora que termina su pieza con el personaje cerca: pulgar arriba.
+## Una impresora que termina su pieza con el personaje cerca: pulgar arriba
+## para el jugador (se gira hacia la cámara, como al saludar, y la mira de
+## reojo). Con un panel abierto sigue de frente al objeto del panel.
 func _on_printer_changed(printer_uid: int) -> void:
 	var printer: OwnedPrinter = Game.state.find_printer(printer_uid)
 	if printer == null:
@@ -482,6 +484,8 @@ func _on_printer_changed(printer_uid: int) -> void:
 	_printers_done[printer_uid] = done
 	if done and not was_done and character_near(item_for(WorldInteractable.Kind.PRINTER, printer_uid)):
 		character.animator.react(CharacterAnimator.Reaction.PRINTER_READY, _print_head_of(printer_uid))
+		if character.animator.current_gesture() == CharacterGestures.Gesture.THUMBS_UP and not character.animator.panel_open:
+			character.face_camera()
 
 
 func _on_computer_changed() -> void:

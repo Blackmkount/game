@@ -7,6 +7,9 @@ const ROOM: Rect2 = Rect2(-3.0, -3.0, 6.0, 6.0)
 const FRAME: float = 1.0 / 60.0
 ## Hacia dónde mira la cámara del juego (giro del personaje de frente a ella).
 const CAMERA_YAW: float = deg_to_rad(45.0)
+## Manos a la cabeza: lo más lejos del costado del pelo que puede quedar el
+## centro de la mano (el mitón mide unos 0,04 m de medio ancho).
+const HAND_ON_HAIR: float = 0.06
 
 var _root: Node3D
 var _grid: WalkGrid
@@ -36,7 +39,7 @@ func test_a_failed_print_puts_the_hands_on_the_head_and_a_worried_face_quickly()
 	var skull: Vector3 = _node("Body/Head").global_transform * CharacterModel.SKULL_CENTER
 	for side: float in [-1.0, 1.0]:
 		var hand: Vector3 = _hand(side)
-		assert_lt(hand.distance_to(skull), 0.3, "Mano en la cabeza")
+		assert_lt(hand.distance_to(skull), CharacterModel.HAIR_RADII.x + HAND_ON_HAIR, "Mano en la cabeza: toca el pelo")
 		assert_gt(hand.y, skull.y - 0.08, "A la altura de la cabeza")
 		assert_gt(hand.x * side, 0.15, "A su lado")
 	assert_gt(_node("Body/Head").rotation.y, 0.1, "Mira hacia la impresora que falló (a su izquierda, +X)")
@@ -132,6 +135,18 @@ func test_idle_without_a_target_it_turns_three_quarters_to_the_camera() -> void:
 	_controller.look_target = Vector3(-1.0, 0.5, -1.0)
 	_run(3.0)
 	assert_almost_eq(_controller.yaw, deg_to_rad(-160.0), 0.001, "Con algo que mirar no se gira")
+
+
+func test_pushing_against_a_wall_is_not_standing_idle() -> void:
+	# Empujando el joystick contra la pared de atrás no avanza, pero no está
+	# "quieto": ni se gira hacia la cámara ni hace gestos sueltos.
+	_controller.camera_yaw = CAMERA_YAW
+	_controller.floor_position = Vector2(0.0, -2.75)
+	_controller.stick = Vector2(0.0, -1.0)
+	_run(CharacterAnimator.FIDGET_DELAY + CharacterAnimator.FIDGET_FIRST + 1.0)
+	assert_almost_eq(absf(_controller.yaw), PI, 0.001, "Mira hacia donde empuja")
+	assert_eq(_controller.idle_time(), 0.0, "Empujar no cuenta como estar quieto")
+	assert_eq(_animator.current_gesture(), CharacterGestures.Gesture.NONE, "Sin gestos sueltos")
 
 
 func test_walking_cancels_a_gesture() -> void:
@@ -323,6 +338,18 @@ func test_every_gesture_is_well_formed() -> void:
 			label + ": solo el salto mueve las piernas")
 	for fidget: CharacterGestures.Gesture in CharacterAnimator.FIDGETS:
 		assert_false(CharacterGestures.drives(fidget, CharacterModel.Bone.HIP_L), "Los gestos sueltos no mueven las piernas")
+
+
+func test_the_reactions_last_what_the_art_bible_says() -> void:
+	# Biblia de arte §7.8 (segundos de cada gesto de reacción).
+	var bible: Dictionary = {
+		CharacterGestures.Gesture.CHEER: 0.8, CharacterGestures.Gesture.HANDS_ON_HEAD: 1.2,
+		CharacterGestures.Gesture.JUMP: 0.9, CharacterGestures.Gesture.PHONE: 1.6,
+		CharacterGestures.Gesture.THUMBS_UP: 0.8, CharacterGestures.Gesture.SHRUG: 0.7,
+		CharacterGestures.Gesture.PACK: 0.6,
+	}
+	for gesture: CharacterGestures.Gesture in bible:
+		assert_almost_eq(CharacterGestures.length_of(gesture), float(bible[gesture]), 0.0001, CharacterGestures.Gesture.keys()[gesture])
 
 
 func _new_controller(at: Vector3) -> CharacterController:

@@ -14,7 +14,10 @@ extends Node
 ## tiene una semilla fija y lo de adorno quieto (CharacterAnimator.freeze_idle:
 ## sin respirar, parpadear ni gestos sueltos); sus reacciones sí se ven, y su
 ## tiempo solo avanza con los cuadros: mientras se espera en tiempo real (los
-## avisos, el globo) queda en pausa.
+## avisos, el globo) queda en pausa. Cuando en el juego ya habría pasado un
+## rato (se esperó que se fueran los avisos, se aceptó un pedido, la partida
+## saltó horas), termina de una vez lo que estaba haciendo (_settle_character):
+## así una reacción no sigue en capturas que son de otra cosa.
 ##
 ## Antes de empezar escribe manifest.txt con los nombres de las capturas que
 ## va a sacar; después de cada una agrega una fila a budget.csv con lo que
@@ -64,6 +67,10 @@ const CAPTURE_ANIM_TIME: float = 4.8
 const MAX_WAIT_SECONDS: int = 600
 ## Lo más que se espera a que se vayan el globo de diálogo y los avisos.
 const MAX_QUIET_FRAMES: int = 600
+## Tiempo del personaje que basta para que termine cualquier reacción (la más
+## larga, preocupado, dura CharacterFace.WORRIED_TIME) y su cabeza vuelva al
+## frente.
+const SETTLE_SECONDS: float = 4.0
 ## Lo más que se deja caminar al personaje con el joystick (cuadros).
 const MAX_WALK_FRAMES: int = 300
 
@@ -291,7 +298,9 @@ func _controls_and_screens() -> void:
 ## mensaje hasta el cobro.
 func _first_sale() -> void:
 	await _new_game(_start_spot())
+	# Llega el mensaje: mira el celular (en su punto alto).
 	Game.advance(3.0)
+	_advance_character(CharacterGestures.Gesture.PHONE)
 	await _seconds(0.6)
 	await _capture("13_pedidos_mensaje_nuevo")
 
@@ -300,6 +309,8 @@ func _first_sale() -> void:
 	await _capture("14_pedidos_oferta")
 	var order: Order = _accept(Game.state.offers[0].uid)
 	_hud.open_screen("home")
+	# Leer y aceptar el pedido lleva unos segundos: el celular ya se guardó.
+	_settle_character()
 
 	Game.advance(4.0)
 	_controls.open_sheet(_room.item_for(WorldInteractable.Kind.FURNITURE, DESK_UID))
@@ -322,6 +333,9 @@ func _first_sale() -> void:
 	await _capture("18_imprimiendo")
 
 	_advance_until(func() -> bool: return order.stage == Order.Stage.PRINTED)
+	# Hasta que el jugador vuelve a la impresora, el pulgar arriba de la
+	# impresión que terminó ya pasó (ese momento es la captura 19).
+	_settle_character()
 	_zoom(CameraRig.DEFAULT_ZOOM_INDEX)
 	_place_character(_start_spot())
 	_controls.open_sheet(_printer_item())
@@ -405,11 +419,15 @@ func _failed_piece() -> void:
 	_press("retry")
 	await _frames(2)
 	_hud.close_sheet()
+	# Un cuadro sin el panel (el personaje lo sabe en cada cuadro): así el
+	# pulgar arriba es para el jugador, de frente a la cámara.
+	await _frames(1)
 	_advance_until(func() -> bool: return order.stage == Order.Stage.PRINTED)
 	# La partida avanzó sin que pasara tiempo real, así que el globo de alguna
 	# frase de recién seguiría ahí; en el juego ya se habría ido.
 	_hud.speech.hush()
-	# Junto a la impresora que terminó, el pulgar arriba.
+	# Junto a la impresora que terminó, el pulgar arriba (se da vuelta hacia
+	# la cámara y mira la impresora de reojo).
 	_advance_character(CharacterGestures.Gesture.THUMBS_UP)
 	await _seconds(1.0)
 	await _capture("19_pieza_lista")
@@ -603,13 +621,16 @@ func _back_to_game(base_size: float) -> void:
 
 
 ## Espera a que se vayan solos el globo de diálogo y los avisos (en tiempo
-## real: el personaje queda en pausa).
+## real: el personaje queda en pausa). Después el personaje termina lo que
+## estaba haciendo, como en el juego mientras uno lee (y como el retrato del
+## HUD, que cuenta en tiempo real).
 func _wait_quiet() -> void:
 	var toast: Control = _hud.feedback.get_node("Toast")
 	_pause_character(true)
 	for i: int in MAX_QUIET_FRAMES:
 		if not toast.visible and not _hud.speech.is_talking():
 			_pause_character(false)
+			_settle_character()
 			return
 		await _frames(1)
 	_pause_character(false)
@@ -726,19 +747,28 @@ func _seconds(seconds: float) -> void:
 	_pause_character(false)
 
 
-## Adelanta la animación del personaje, sin dibujar, hasta el punto alto de
-## ese gesto (el que acaba de empezar una reacción): así se ve junto a lo que
-## pasa en tiempo real (lo cobrado que vuela, los avisos).
+## Adelanta al personaje (su giro y su animación), sin dibujar, hasta el
+## punto alto de ese gesto (el que acaba de empezar una reacción): así se ve
+## junto a lo que pasa en tiempo real (lo cobrado que vuela, los avisos).
 func _advance_character(gesture: CharacterGestures.Gesture) -> void:
 	for i: int in ceili(CharacterGestures.peak_of(gesture) / FRAME_STEP):
+		_room.character.step(FRAME_STEP)
+
+
+## Termina de una vez, sin dibujar, el gesto, la cara y la mirada que tenga
+## el personaje (SETTLE_SECONDS de su tiempo).
+func _settle_character() -> void:
+	if _room.character == null:
+		return
+	for i: int in ceili(SETTLE_SECONDS / FRAME_STEP):
 		_room.character.animator.step(FRAME_STEP)
 
 
 ## Pausa (o no) el tiempo del personaje: su animación y su giro hacia la
-## cámara cuando está quieto.
+## cámara cuando está quieto. Pausar dos veces seguidas no pierde el giro.
 func _pause_character(paused: bool) -> void:
 	var character: CharacterController = _room.character
-	if character == null:
+	if character == null or character.animator.paused == paused:
 		return
 	character.animator.paused = paused
 	if paused:

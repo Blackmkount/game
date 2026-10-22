@@ -780,3 +780,37 @@ Personaje: **7.831 triángulos** (cuerpo 4.288, cabeza 3.543; antes 6.775; tope 
 - `tests/unit/test_character_animator.gd` (16): una falla → preocupado y las manos subiendo en ≤ 0,2 s, en las sienes en su punto alto y mirando la impresora; cobrar a tiempo → feliz y el puño arriba, atrasado → se rasca sin festejo; subir de nivel → salto de más de 12 cm con los pies en el aire, se aplasta y se estira, sorpresa y después feliz; la misma semilla parpadea igual (y otra no), cada 2,4–5 s y unos 0,12 s; quieto 3 s sin objetivo → a 45° ± 20° de la cámara (y no antes de 2 s, ni con algo que mirar); caminar corta el gesto y no deja empezar otro; la rodilla se dobla más de 0,4 rad en el paso, los codos más de 0,9, y el pie de apoyo ni se hunde ni flota; quieto 30 s (con respiración y gestos sueltos) `HipL.rotation.x` sigue en 0; `freeze_idle` deja todo quieto; el celular sale solo con un mensaje, quieto y sin panel, delante de la cara y con la pantalla hacia los ojos, y se guarda; hablar alterna dos bocas 8 veces por segundo; cara concentrada al modelar cerca del escritorio; el pelo y los cordones se mecen al frenar (≤ 6°, el contorno igual) y se asientan; `hold()` congela el punto alto; las manos llegan a los puntos de los gestos (y si no alcanzan se estiran hacia ellos); los datos de los 12 gestos están bien formados y solo el salto mueve las piernas.
 - `tests/integration/test_character_reactions.gd` (9): las señales de `Events` llegan al personaje en la escena principal (falla, nivel, cobro a tiempo y atrasado, partida nueva); el celular no sale con un panel abierto; tocarlo lo da vuelta y saluda; la boca se mueve con el globo; pulgar arriba si la impresora termina cerca y nada si está lejos; embalar junto al rincón hace el gesto y un botón que no se pudo lo hace encogerse; embalar desde lejos no; el animador conoce el escritorio, los cabezales, la cámara, si se modela y la hora.
 
+
+## 2026-10-22 — Arte 2.0, paso 11, ronda de arreglos 1: código muerto, pulgar, celular y capturas
+
+### Código muerto borrado (arregla un defecto que bloqueaba)
+**Decisión:** se borraron `CharacterAnimator.gesture_time()` y `CharacterFace.is_blinking()`: nadie las llamaba (CLAUDE.md: "no quedan... código muerto"). `_gesture_pose` usa `CharacterGestures.ADDITIVE` en vez de repetir qué huesos se suman.
+
+### Empujar contra una pared no es estar quieto
+**Decisión:** `CharacterController.idle_time()` vuelve a 0 mientras el joystick empuja, aunque no avance. Antes contaba "no se movió": empujando una pared más de 2 s se giraba hacia la cámara (quedaba ~3° torcido respecto del joystick) y a los 8 s hacía gestos sueltos mientras el jugador seguía empujando. La mirada a lo cercano también espera a que suelte.
+
+### Las duraciones de la biblia
+**Decisión:** encogerse de hombros dura 0,7 s (antes 0,8) y embalar 0,6 s (antes 0,7), como dice la biblia §7.8; las poses clave se acortaron en proporción.
+
+### El pulgar arriba es para el jugador
+**Decisión:** si una impresora termina cerca y empieza el pulgar arriba, `RoomView` gira al personaje hacia la cámara (`face_camera()`, como al saludar) y él mira la impresora de reojo (cabeza y ojos). Con un panel abierto no se da vuelta: sigue mirando el objeto del panel. La mano va bien afuera del cuerpo (x 0,33) y el codo hacia abajo, así el pulgar queda hacia arriba.
+**El pulgar del mitón:** apuntaba a lo largo de la mano (un bulto al costado del puño) y en el "pulgar arriba" no se veía. Ahora sale hacia adelante y un poco hacia abajo con la mano suelta (como una mano relajada) y un poco más grande (1,6 × 3 cm), así con el antebrazo hacia adelante queda hacia arriba. Mismos triángulos.
+**Motivo:** nota de la revisión: en 19 se lo veía de espaldas con la mano junto a la cabeza y se leía "se rasca la cabeza" (en la biblia, la reacción a un pedido atrasado: lo contrario).
+
+### El celular, con las dos manos delante del pecho
+**Decisión:** el celular ya no va delante del mentón (de frente se leía "se tapa la boca" o "come algo"): lo sostiene con las dos manos a la altura del pecho, con la cabeza gacha, y la pantalla sigue mirando sus ojos (la prueba de siempre, sin cambiarla). De frente se lee "mira el celular" por la pose; de perfil y de 3/4 se ve la pantalla encendida.
+
+### Manos a la cabeza que tocan el pelo
+**Decisión:** las manos van a x ±0,218 (antes ±0,235) y un poco más abajo: se apoyan en los costados del pelo en vez de quedar al lado.
+
+### Capturas: lo que ya pasó, termina
+**Decisión:** `tools/screenshot_runner.gd` tiene `_settle_character()`: avanza 4 s el tiempo del personaje sin dibujar (más que la reacción más larga, preocupado 3,2 s). Se usa al final de `_wait_quiet()` (en el juego, mientras uno lee el globo o el aviso, la reacción termina; el retrato del HUD también cuenta en tiempo real), después de aceptar el primer pedido (antes de 16) y después de que la impresora termina en la primera venta (antes de 20). `_advance_character` avanza también al controlador (su giro), así el giro hacia la cámara del pulgar arriba no depende de lo rápido que dibuje la máquina. 13 muestra el celular en su punto alto (llegó el mensaje). Antes de 19 se espera un cuadro sin el panel (el personaje lo sabe en cada cuadro). `_pause_character(true)` dos veces seguidas ya no pierde el giro guardado.
+**Motivo:** notas de la revisión: el celular de 13 seguía en 16 y 17 (de espaldas parecía rascarse la cabeza o atender una llamada), en 23 las manos seguían en la cabeza mientras el retrato ya estaba normal, y en 20 y 21 la cara feliz que quedaba se leía "dormido".
+**Efecto en el presupuesto:** 36 vuelve a 18 llamadas y 6.267 primitivas de sombra (en el paso 11 eran 19 y 10.601 porque el personaje tenía el brazo levantado con el celular y entraba en la sombra de esa toma). Nada más cambia.
+
+### Prueba adaptada (más estricta, misma intención)
+- `tests/unit/test_character_animator.gd`, `test_a_failed_print_puts_the_hands_on_the_head_and_a_worried_face_quickly`: en el punto alto, cada mano a menos de `HAIR_RADII.x + 0,06` m (0,258) del centro del cráneo; antes 0,3. Sigue pidiendo "manos a la cabeza", ahora tocando el pelo (con la pose anterior no pasaba: 0,2583 m).
+
+### Pruebas nuevas
+- `test_character_animator.gd`: `test_pushing_against_a_wall_is_not_standing_idle` (11 s empujando la pared: sigue mirando hacia donde empuja, `idle_time()` en 0 y sin gestos sueltos; antes fallaba con ~2,7° y 10,9 s) y `test_the_reactions_last_what_the_art_bible_says` (largo de los 7 gestos de reacción según la biblia §7.8; antes fallaba con el encogerse y el embalar).
+- `test_character_reactions.gd`: `test_the_thumbs_up_turns_to_the_player` (de espaldas a la cámara, la impresora termina y queda de frente) y `test_with_a_panel_open_the_thumbs_up_keeps_facing_the_printer`.

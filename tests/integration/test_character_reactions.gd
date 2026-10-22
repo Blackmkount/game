@@ -101,6 +101,27 @@ func test_a_print_that_finishes_nearby_gets_a_thumbs_up() -> void:
 	assert_eq(_animator.emotion(), FacePainter.Face.HAPPY)
 
 
+func test_the_thumbs_up_turns_to_the_player() -> void:
+	_ready_keychain()
+	_start_print()
+	_room.character.yaw = deg_to_rad(CameraRig.YAW + 180.0)
+	Game.advance(50.0)
+	await wait_seconds(0.4)
+	assert_almost_eq(wrapf(_room.character.yaw - deg_to_rad(CameraRig.YAW), -PI, PI), 0.0, 0.05, "Se da vuelta hacia la cámara para el pulgar arriba")
+
+
+func test_with_a_panel_open_the_thumbs_up_keeps_facing_the_printer() -> void:
+	_ready_keychain()
+	_start_print()
+	_controls.open_sheet(_printer())
+	await wait_seconds(0.4)
+	var facing_printer: float = _room.character.yaw
+	Game.advance(50.0)
+	await wait_seconds(0.4)
+	assert_eq(_animator.current_gesture(), CharacterGestures.Gesture.THUMBS_UP, "Con el panel abierto, igual levanta el pulgar")
+	assert_almost_eq(_room.character.yaw, facing_printer, 0.001, "pero sigue mirando la impresora del panel")
+
+
 func test_a_print_that_finishes_far_away_gets_no_reaction() -> void:
 	_ready_keychain()
 	_start_print()

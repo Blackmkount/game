@@ -87,10 +87,6 @@ func emotion() -> FacePainter.Face:
 	return _emotion if _emotion_left > 0.0 else FacePainter.Face.NEUTRAL
 
 
-func is_blinking() -> bool:
-	return _blink_left > 0.0
-
-
 func step(delta: float) -> void:
 	if _emotion_left > 0.0:
 		_emotion_left -= delta

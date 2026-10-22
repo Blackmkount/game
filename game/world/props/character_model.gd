@@ -52,9 +52,9 @@ const HAND: Vector3 = Vector3(0.0, -0.385, 0.006)
 const SHIN: float = 0.27
 ## El celular: dónde va su centro (marco del codo: delante de la palma y
 ## asomando por la punta del mitón, así se ve entero) y su tamaño (ancho,
-## alto, grosor; un poco grande, para que se lea de lejos). Escondido, su pivote se achica a
-## PHONE_HIDDEN (sus triángulos quedan en un punto: no se ven ni cuestan
-## otra llamada).
+## alto, grosor; un poco grande, para que se lea de lejos). Escondido, su
+## pivote se achica a PHONE_HIDDEN (sus triángulos quedan en un punto: no se
+## ven ni cuestan otra llamada).
 const PHONE_GRIP: Vector3 = Vector3(-0.01, -0.262, 0.036)
 const PHONE_SIZE: Vector3 = Vector3(0.066, 0.124, 0.012)
 const PHONE_HIDDEN: float = 0.001
@@ -267,7 +267,9 @@ static func _arm(side: float) -> KitMesh:
 	kit.torus(Vector2(0.042, 0.042), 0.015, Vector3(0.0, -0.325, 0.0), Vector3.ZERO, TAU, Vector2i(LIMB_SIDES, 5))
 	kit.paint(LookPalette.SKIN, WorldPalette.Surface.SKIN, SKIN_GLOSS)
 	kit.blob(Vector3(0.038, 0.05, 0.032), HAND, Vector3.ZERO, 0.8, 0.9, Vector2.ONE, Vector2i(14, 9))
-	kit.blob(Vector3(0.014, 0.026, 0.014), Vector3(-0.026 * side, -0.365, 0.026), Vector3(0.0, 0.0, -28.0 * side), 1.0, 1.0, Vector2.ONE, Vector2i(10, 6))
+	# El pulgar sale hacia adelante y un poco hacia abajo (una mano relajada):
+	# con el antebrazo hacia adelante queda hacia arriba (el pulgar arriba).
+	kit.blob(Vector3(0.016, 0.03, 0.016), Vector3(-0.024 * side, -0.375, 0.035), Vector3(-45.0, 0.0, -12.0 * side), 1.0, 1.0, Vector2.ONE, Vector2i(10, 6))
 	return kit
 
 
@@ -302,8 +304,9 @@ static func _torso() -> KitMesh:
 	return kit
 
 
-## El celular (pivote Phone): una caja oscura con bisel y la pantalla
-## encendida hacia +Z, armada en el lugar del pivote en reposo.
+## El celular (pivote Phone): una caja mostaza con bisel (el acento del
+## buzo) y la pantalla encendida hacia +Z, armada en el lugar del pivote en
+## reposo.
 static func _phone() -> KitMesh:
 	var kit: KitMesh = _kit()
 	kit.origin = model_rest(Bone.PHONE)

@@ -4,7 +4,7 @@
 
 - **Fase actual:** 1. Ciclo jugable, en curso (ruta aprobada por el dueño en `docs/RUTA.md`).
 - **Diseño:** GDD versión 2.3, guía de estilo en `docs/ESTILO.md` y ruta en `docs/RUTA.md`.
-- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 11 de 16: el personaje vivo (trota con rodillas y codos, respira, parpadea, mira, hace gestos sueltos, cambia de cara y reacciona a lo que pasa: cobrar, una falla, subir de nivel, un mensaje, una impresora que termina, tocarlo) (2026-10-22). Antes: paso 10, el personaje nuevo.
+- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 11 de 16: el personaje vivo (trota con rodillas y codos, respira, parpadea, mira, hace gestos sueltos, cambia de cara y reacciona a lo que pasa: cobrar, una falla, subir de nivel, un mensaje, una impresora que termina, tocarlo), con su ronda de arreglos (pulgar arriba de frente, celular con las dos manos, capturas) (2026-10-22). Antes: paso 10, el personaje nuevo.
 - **Siguiente paso sugerido:** Arte 2.0, paso 12: la decoración del dormitorio que crece con el nivel. Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
 - **Diseño del ciclo:** aprobado por el dueño (GDD, versión 2.3 en la sección 16).
 
@@ -535,3 +535,29 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 - Visto de espaldas (por ejemplo, con un panel abierto, cuando mira el objeto) algunos gestos se leen menos (el pulgar arriba).
 - "Reducir movimiento" todavía no existe en Ajustes (RUTA Fase 2); cuando exista, apagará el estirar y aplastar.
 
+
+
+### 2026-10-22 — Arte 2.0, paso 11, ronda de arreglos 1
+
+**Qué se hizo** (lo pidió la revisión)
+- **Código muerto:** se borraron dos funciones que nadie usaba.
+- **El pulgar arriba se entiende:** cuando una impresora termina a su lado, se da vuelta hacia ti, levanta el pulgar y mira la impresora de reojo (antes, de espaldas, parecía rascarse la cabeza). El pulgar del mitón ahora sale hacia adelante (como una mano relajada), así en el gesto queda hacia arriba. Con un panel abierto no se da vuelta.
+- **El celular:** lo mira con las dos manos delante del pecho y la cabeza gacha (antes, de frente, parecía taparse la boca).
+- **Manos a la cabeza:** ahora tocan el pelo.
+- **Empujar contra una pared** ya no cuenta como estar quieto: no se gira hacia la cámara ni hace gestos sueltos mientras empujas.
+- Encogerse de hombros (0,7 s) y embalar (0,6 s) duran lo que dice la biblia.
+- **Capturas:** una reacción que en el juego ya habría terminado no sigue en la captura siguiente (el celular de 13 ya no aparece en 16 y 17; en 23 el personaje y el retrato están igual de tranquilos; en 20 y 21 ya no queda la cara feliz). 13 lo muestra mirando el celular y 19 con el pulgar arriba de frente.
+
+**Verificado**
+- `check.sh` (212 archivos, 0 errores) y `run_tests.sh` (663 pruebas, antes 659: 4 nuevas) pasan. Una prueba más estricta: las manos a la cabeza tienen que tocar el pelo (detalle en `docs/DECISIONES.md`).
+- `screenshots.sh` saca las 41 capturas. Revisé 13, 16, 17, 19, 20, 21, 22, 23, 32a, 45, 48 y 49, y aparte (laboratorio) los 12 gestos desde tres lados y las manos de muy cerca.
+
+**Qué revisar en el teléfono** (versión web)
+- Imprime algo y quédate al lado de la impresora sin tocar nada: al terminar, se da vuelta hacia ti y levanta el pulgar.
+- Espera un mensaje nuevo quieto y sin paneles abiertos: mira el celular con las dos manos.
+- Empuja el joystick contra una pared un buen rato: sigue mirando hacia donde empujas, sin girarse ni hacer gestos.
+
+**Problemas conocidos**
+- De cerca, con el brazo levantado de costado o más arriba (48, 49), el hombro hace un pliegue un poco anguloso donde la manga sale del buzo; se puede suavizar ensanchando la mezcla del hombro (paso 16).
+- De frente, la pantalla del celular no se ve (mira a sus ojos); se lee por la pose.
+- "Reducir movimiento" todavía no existe en Ajustes (RUTA Fase 2).

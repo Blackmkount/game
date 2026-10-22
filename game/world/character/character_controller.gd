@@ -98,7 +98,7 @@ func face_camera() -> void:
 		face(floor_position + Vector2(sin(camera_yaw), cos(camera_yaw)))
 
 
-## Segundos que lleva sin moverse.
+## Segundos que lleva quieto y sin que lo empujen con el joystick.
 func idle_time() -> float:
 	return _idle_time
 
@@ -117,7 +117,8 @@ func step(delta: float) -> void:
 
 func _step_once(dt: float) -> void:
 	var desired: Vector2 = Vector2.ZERO
-	if stick.length_squared() > 0.0001:
+	var pushing: bool = stick.length_squared() > 0.0001
+	if pushing:
 		stop_path()
 		_face_goal = null
 		desired = stick.limit_length(1.0) * tuning.walk_speed
@@ -135,12 +136,14 @@ func _step_once(dt: float) -> void:
 	# pose de caminar ni la cámara se adelanta a un personaje quieto.
 	if dt > 0.0 and moved.length() < (velocity * dt).length() - 0.0001:
 		velocity = moved / dt
-	if not desired.is_zero_approx() and stick.length_squared() > 0.0001:
+	if pushing:
 		# Con el joystick mira hacia donde se empuja, aunque esté bloqueado.
 		_turn_toward(desired, dt)
 	elif moved.length() > 0.0005:
 		_turn_toward(moved, dt)
-	if moved.length() > 0.0005:
+	# Empujar contra una pared no es estar quieto: ni se gira hacia la cámara
+	# ni hace gestos sueltos.
+	if pushing or moved.length() > 0.0005:
 		_idle_time = 0.0
 	else:
 		_idle_time += dt
