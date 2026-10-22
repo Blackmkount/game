@@ -3,6 +3,8 @@ extends GutTest
 ## secciones se abren y se cierran.
 
 const MAIN_SCENE: PackedScene = preload("res://game/scenes/main.tscn")
+## Cada prueba empieza con la misma partida nueva.
+const SEED: int = 1234
 
 var _main: Control
 var _hud: Hud
@@ -11,6 +13,7 @@ var _previous_locale: String
 
 
 func before_each() -> void:
+	Game.reset_game(SEED)
 	_previous_locale = TranslationServer.get_locale()
 	TranslationServer.set_locale("es")
 	_main = MAIN_SCENE.instantiate()

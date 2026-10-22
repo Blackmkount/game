@@ -8,6 +8,8 @@ extends GutTest
 
 const MAIN_SCENE: PackedScene = preload("res://game/scenes/main.tscn")
 const SETTINGS_PATH: String = "user://test_world_controls_settings.cfg"
+## Cada prueba empieza con la misma partida nueva.
+const SEED: int = 1234
 ## Tamaño de ventana que da la pantalla real de 720×1280 de la interfaz.
 const WINDOW_SIZE: Vector2i = Vector2i(405, 720)
 
@@ -22,6 +24,7 @@ var _quit_calls: int = 0
 
 
 func before_each() -> void:
+	Game.reset_game(SEED)
 	_previous_locale = TranslationServer.get_locale()
 	TranslationServer.set_locale("es")
 	_previous_window_size = get_tree().root.size

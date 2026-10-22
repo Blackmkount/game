@@ -2,6 +2,13 @@ extends GutTest
 ## El autoload Game avanza la partida con el tiempo real, y un cuadro largo
 ## (pestaña escondida, app que vuelve de segundo plano) pausa en lugar de saltar.
 
+## Cada prueba empieza con la misma partida nueva.
+const SEED: int = 1234
+
+
+func before_each() -> void:
+	Game.reset_game(SEED)
+
 
 func test_long_frame_advances_at_most_one_real_second() -> void:
 	var before: int = Game.state.game_seconds
