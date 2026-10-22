@@ -6,10 +6,25 @@ extends Node
 ## misma semilla) y solo avanza cuando el ejecutor lo pide (Game.advance), así
 ## cada corrida da las mismas capturas. Las del ciclo de pedidos (13 a 24) se
 ## juegan con los comandos de Game, como lo haría el jugador.
+##
+## El mundo avanza con paso fijo: el ejecutor apaga el _process de
+## WorldControls y lo llama él mismo con 1/60 s en cada cuadro. Así lo que
+## camina o se mueve no depende de lo rápido que dibuje la máquina (con
+## llvmpipe un cuadro tarda mucho más que en un teléfono).
+##
+## Antes de empezar escribe manifest.txt con los nombres de las capturas que
+## va a sacar; después de cada una agrega una fila a budget.csv con lo que
+## contó OpenGL al dibujar el mundo y la estimación sin pantalla de
+## tests/helpers/scene_budget.gd. tools/screenshots.sh falla si falta alguna
+## o si el registro tiene un error.
 
 const MAIN_SCENE: String = "res://game/scenes/main.tscn"
+const SceneBudget: GDScript = preload("res://tests/helpers/scene_budget.gd")
+const FullRoom: GDScript = preload("res://tests/helpers/full_room.gd")
 ## Semilla de las partidas: los mismos mensajes en cada corrida.
 const SEED: int = 1234
+## Paso del mundo en cada cuadro (segundos).
+const FRAME_STEP: float = 1.0 / 60.0
 ## Uids de la partida nueva (GameState.new_game): la mesa del computador y la
 ## impresora del piso.
 const DESK_UID: int = 1
@@ -27,15 +42,78 @@ const MAX_WAIT_SECONDS: int = 600
 ## Lo más que se espera a que se vayan el globo de diálogo y los avisos.
 const MAX_QUIET_FRAMES: int = 600
 
+## Grupos de capturas (--only=...): todas, solo las de arte (con las del
+## personaje) o solo las del personaje.
+const ONLY_ALL: String = "all"
+const ONLY_ART: String = "art"
+const ONLY_CHARACTER: String = "char"
+const QUALITIES: Array[String] = ["auto", "high", "low"]
+## Las capturas de cada grupo, en el orden en que se sacan.
+const GAME_SHOTS: Array[String] = [
+	"01_inicio", "02_zoom_lejos", "03_zoom_cerca", "04_joystick", "05_cerca_de_la_impresora",
+	"06_panel_impresora", "07_panel_computador", "08_panel_lugar_libre", "09_panel_puerta",
+	"10_globo_personaje", "11_tienda_muebles", "12_ajustes", "13_pedidos_mensaje_nuevo",
+	"14_pedidos_oferta", "16_computador_modelando", "17_plan_impresion", "18_imprimiendo",
+	"20_rincon_embalar", "21_listo_despachar", "22_cobro", "15_pedidos_en_curso",
+	"24_zoom_lejos_taller", "23_fallo", "19_pieza_lista",
+]
+const CHARACTER_SHOTS: Array[String] = [
+	"32a_personaje_frente", "32b_personaje_perfil", "32c_personaje_espalda", "33_personaje_retrato",
+]
+const ART_SHOTS: Array[String] = [
+	"30_heroe_sin_hud", "31_normal_sin_hud", "34_impresora_y_escritorio", "45_pieza_creciendo_lejos",
+	"46_tienda_impresoras", "26_familias_de_impresoras", "37_taller_lleno_sin_hud", "38_impresoras_de_cerca",
+]
+## Columnas de budget.csv. gl_*: lo que contó OpenGL al dibujar el mundo
+## (WorldView/SubViewport); las llamadas suman las de color y las de sombra
+## (en Compatibility 4.7.2 las de sombra ya vienen dentro de las visibles).
+## estimated_draw_calls: tests/helpers/scene_budget.gd sobre Room, que no
+## descarta lo que queda fuera de la vista. frame_*: todo el cuadro, con la
+## interfaz (lo que mostrará el panel de depuración en el teléfono).
+const BUDGET_HEADER: String = "shot,window,world_view,camera_size,quality,gl_draw_calls,estimated_draw_calls,gl_primitives,gl_shadow_primitives,gl_objects,frame_draw_calls,frame_primitives"
+
+## Encuadres de las capturas de arte. Ancho de la vista (metros) con el zoom
+## cerca: el personaje de cuerpo entero y su cara.
+const BODY_FRAME: float = 2.0
+const PORTRAIT_FRAME: float = 0.9
+## Giro del personaje (grados; 0 mira hacia +Z y la cámara mira desde +X +Z):
+## de frente, de perfil y de espaldas a la cámara.
+const CHARACTER_TURNS: Array[float] = [45.0, 135.0, 225.0]
+## El cuarto entero: punto que queda al centro con el zoom lejos.
+const ROOM_CENTER: Vector3 = Vector3(0.0, 0.8, 0.0)
+## La impresora del piso y el escritorio, de cerca (zoom normal).
+const STARS_POINT: Vector3 = Vector3(-1.55, 0.55, -1.35)
+const STARS_FRAME: float = 3.4
+## Las siete familias: la del piso más dos por mesa de trabajo en los lugares
+## de la pared del fondo (de frente a la cámara, para comparar siluetas).
+const FAMILY_TABLE_ID: String = "mesa_trabajo"
+const FAMILY_TABLES: Array[Array] = [
+	[2, ["rayo_mini", "rayo_x1"]], [3, ["prisma_mc", "boveda_p1"]], [4, ["gota_r1", "titan_pro"]],
+]
+const FAMILIES_POINT: Vector3 = Vector3(0.4, 0.6, -2.3)
+const FAMILIES_FRAME: float = 5.0
+## Las estanterías del fondo del cuarto lleno, de cerca (zoom cerca).
+const RACKS_POINT: Vector3 = Vector3(1.0, 0.9, -2.3)
+
 var _out: String = ""
+var _only: String = ONLY_ALL
+var _quality: String = "auto"
+var _planned: Array[String] = []
+var _captured: Array[String] = []
+var _budget_file: FileAccess
 var _main: Control
 var _hud: Hud
 var _controls: WorldControls
 var _room: RoomView
+## Punto que sigue la cámara en las capturas de arte (null: la maneja
+## WorldControls, como en el juego).
+var _camera_point: Variant = null
 
 
-func _init(out_dir: String) -> void:
+func _init(out_dir: String, only: String, quality: String) -> void:
 	_out = out_dir
+	_only = only
+	_quality = quality
 
 
 func _ready() -> void:
@@ -45,21 +123,64 @@ func _ready() -> void:
 	_run.call_deferred()
 
 
+## Un paso fijo del mundo por cuadro (ver arriba).
+func _process(_delta: float) -> void:
+	if _controls == null:
+		return
+	if _camera_point == null:
+		_controls._process(FRAME_STEP)
+		return
+	_room.camera.inset_top_px = 0.0
+	_room.camera.inset_bottom_px = 0.0
+	_room.camera.follow_point = _camera_point
+	_room.step(FRAME_STEP)
+
+
 func _run() -> void:
+	if _only not in [ONLY_ALL, ONLY_ART, ONLY_CHARACTER] or _quality not in QUALITIES:
+		push_error("Capturas: opciones no válidas (--only=%s, --quality=%s)" % [_only, _quality])
+		get_tree().quit(1)
+		return
+	_planned = _planned_shots()
+	_write_manifest()
+	_budget_file = FileAccess.open(_out.path_join("budget.csv"), FileAccess.WRITE)
+	_budget_file.store_line(BUDGET_HEADER)
 	Game.set_process(false)
 	Game.reset_game(SEED)
-	_main = load(MAIN_SCENE).instantiate()
-	get_tree().root.add_child(_main)
-	await _frames(30)
-	_hud = _main.get_node("Hud")
-	_controls = _main.get_node("WorldControls")
-	_room = _main.get_node("WorldView/SubViewport/Room")
+	await _load_main()
 
-	await _controls_and_screens()
-	await _first_sale()
-	await _orders_in_progress()
-	await _failed_piece()
+	if _only == ONLY_ALL:
+		await _controls_and_screens()
+		await _first_sale()
+		await _orders_in_progress()
+		await _failed_piece()
+	await _character_shots()
+	if _only != ONLY_CHARACTER:
+		await _art_room_shots()
+		await _families_room()
+		await _full_room()
+	for shot: String in _planned:
+		if shot not in _captured:
+			push_error("Capturas: faltó %s" % shot)
+	_budget_file.close()
 	get_tree().quit()
+
+
+func _planned_shots() -> Array[String]:
+	var shots: Array[String] = []
+	if _only == ONLY_ALL:
+		shots.append_array(GAME_SHOTS)
+	shots.append_array(CHARACTER_SHOTS)
+	if _only != ONLY_CHARACTER:
+		shots.append_array(ART_SHOTS)
+	return shots
+
+
+func _write_manifest() -> void:
+	var file: FileAccess = FileAccess.open(_out.path_join("manifest.txt"), FileAccess.WRITE)
+	for shot: String in _planned:
+		file.store_line(shot)
+	file.close()
 
 
 ## 01 a 12: la habitación, el zoom, el joystick, los paneles y las secciones.
@@ -74,7 +195,8 @@ func _controls_and_screens() -> void:
 	_zoom(CameraRig.DEFAULT_ZOOM_INDEX)
 	await _frames(30)
 
-	# Joystick a mitad de un arrastre, caminando hacia la impresora.
+	# Joystick a mitad de un arrastre, caminando hacia la impresora. Unos
+	# pasos más y se suelta, ya junto a ella.
 	var printer: WorldInteractable = _first(WorldInteractable.Kind.PRINTER)
 	var start: Vector2 = Vector2(360.0, 900.0)
 	var direction: Vector2 = (_controls.world_to_ui(printer.top_center()) - _controls.world_to_ui(_room.character_focus_point())).normalized()
@@ -82,7 +204,7 @@ func _controls_and_screens() -> void:
 	_controls.tracker.drag(0, start + direction * 50.0)
 	await _frames(6)
 	await _capture("04_joystick")
-	await _frames(40)
+	await _frames(12)
 	_controls.tracker.release(0, start + direction * 50.0)
 	await _frames(20)
 	await _capture("05_cerca_de_la_impresora")
@@ -243,6 +365,131 @@ func _failed_piece() -> void:
 	_zoom(CameraRig.DEFAULT_ZOOM_INDEX)
 
 
+## 32a, 32b, 32c y 33: el personaje sin interfaz, de cuerpo entero de frente,
+## de perfil y de espaldas, y la cara de muy cerca. La cámara lo sigue a él y
+## no a WorldControls, así nada cercano le cambia la mirada.
+func _character_shots() -> void:
+	await _new_game(ROOM_MIDDLE_SPOT)
+	_hud.visible = false
+	var character: CharacterController = _room.character
+	character.look_target = null
+	var base: float = _base_size()
+	_zoom(ZOOM_NEAR)
+	_room.camera.set_base_size(BODY_FRAME)
+	for i: int in CHARACTER_TURNS.size():
+		_turn_character(CHARACTER_TURNS[i])
+		_camera_point = character.model.position + Vector3(0.0, CharacterModel.HEIGHT / 2.0, 0.0)
+		await _frames(40)
+		await _capture(CHARACTER_SHOTS[i])
+	_turn_character(CHARACTER_TURNS[0])
+	_room.camera.set_base_size(PORTRAIT_FRAME)
+	_camera_point = _head_center()
+	await _frames(40)
+	await _capture("33_personaje_retrato")
+	await _back_to_game(base)
+
+
+## 30, 31, 34, 45 y 46: el cuarto inicial a las 08:00 sin interfaz (entero y
+## con el zoom normal), las dos estrellas de cerca, la pieza que crece vista
+## desde lejos y la tienda de impresoras.
+func _art_room_shots() -> void:
+	await _new_game(_start_spot())
+	_hud.visible = false
+	var base: float = _base_size()
+	_zoom(ZOOM_FAR)
+	_camera_point = ROOM_CENTER
+	await _frames(40)
+	await _capture("30_heroe_sin_hud")
+	_camera_point = null
+	_zoom(CameraRig.DEFAULT_ZOOM_INDEX)
+	await _frames(40)
+	await _capture("31_normal_sin_hud")
+	_room.camera.set_base_size(STARS_FRAME)
+	_camera_point = STARS_POINT
+	await _frames(40)
+	await _capture("34_impresora_y_escritorio")
+	await _back_to_game(base)
+
+	# La capa caliente tiene que leerse aun con el zoom lejos.
+	Game.advance(3.0)
+	var order: Order = _accept(Game.state.offers[0].uid)
+	_advance_until(func() -> bool: return order.stage == Order.Stage.READY_TO_PRINT)
+	_print_recommended(order)
+	Game.advance(25.0)
+	_hud.speech.hush()
+	await _wait_quiet()
+	_hud.visible = false
+	_place_character(ROOM_MIDDLE_SPOT)
+	_zoom(ZOOM_FAR)
+	await _frames(40)
+	await _capture("45_pieza_creciendo_lejos")
+	_hud.visible = true
+	_zoom(CameraRig.DEFAULT_ZOOM_INDEX)
+
+	_hud.open_screen("shop", "printers")
+	await _frames(10)
+	await _capture("46_tienda_impresoras")
+	_hud.open_screen("home")
+
+
+## 26: una impresora de cada familia en el cuarto (la del piso y dos por mesa
+## de trabajo en la pared del fondo), para comparar sus siluetas.
+func _families_room() -> void:
+	var state: GameState = GameState.new_game(Game.rules, SEED)
+	for table: Array in FAMILY_TABLES:
+		var furniture: OwnedFurniture = OwnedFurniture.new(state.take_uid(), FAMILY_TABLE_ID, int(table[0]))
+		state.furniture.append(furniture)
+		for printer_id: String in table[1]:
+			state.printers.append(OwnedPrinter.new(state.take_uid(), printer_id, furniture.uid))
+	await _rebuild_main(state)
+	_hud.visible = false
+	_place_character(ROOM_MIDDLE_SPOT)
+	_room.camera.set_base_size(FAMILIES_FRAME)
+	_camera_point = FAMILIES_POINT
+	await _frames(40)
+	await _capture("26_familias_de_impresoras")
+
+
+## 37 y 38: el cuarto más cargado (el mismo que mide la prueba de
+## presupuesto), entero y con las estanterías de cerca.
+func _full_room() -> void:
+	var state: GameState = GameState.new_game(Game.rules, SEED)
+	FullRoom.fill(state, Game.rules)
+	await _rebuild_main(state)
+	_hud.visible = false
+	_place_character(ROOM_MIDDLE_SPOT)
+	_zoom(ZOOM_FAR)
+	_camera_point = ROOM_CENTER
+	await _frames(40)
+	await _capture("37_taller_lleno_sin_hud")
+	_zoom(ZOOM_NEAR)
+	_camera_point = RACKS_POINT
+	await _frames(40)
+	await _capture("38_impresoras_de_cerca")
+
+
+## Vuelve a crear la escena principal con `state`, como al cargar la partida
+## (el cuarto se arma una sola vez, al crear la escena).
+func _rebuild_main(state: GameState) -> void:
+	_controls = null
+	_camera_point = null
+	_main.queue_free()
+	await _frames(1)
+	Game._start(state)
+	await _load_main()
+
+
+func _load_main() -> void:
+	_main = (load(MAIN_SCENE) as PackedScene).instantiate()
+	get_tree().root.add_child(_main)
+	_hud = _main.get_node("Hud")
+	_room = _main.get_node("WorldView/SubViewport/Room")
+	_controls = _main.get_node("WorldControls")
+	# Desde aquí lo mueve el ejecutor, con paso fijo (ver _process).
+	_controls.set_process(false)
+	await _frames(30)
+
+
 ## Empieza la misma partida nueva, de vuelta en la habitación con el zoom
 ## normal y el personaje en `spot`, cuando ya no queda nada de la anterior en
 ## pantalla (avisos ni globos).
@@ -253,6 +500,15 @@ func _new_game(spot: Vector2) -> void:
 	Game.reset_game(SEED)
 	_zoom(CameraRig.DEFAULT_ZOOM_INDEX)
 	_place_character(spot)
+	await _frames(30)
+
+
+## Después de una captura de arte: la cámara y la interfaz como en el juego.
+func _back_to_game(base_size: float) -> void:
+	_camera_point = null
+	_room.camera.set_base_size(base_size)
+	_zoom(CameraRig.DEFAULT_ZOOM_INDEX)
+	_hud.visible = true
 	await _frames(30)
 
 
@@ -272,6 +528,11 @@ func _start_spot() -> Vector2:
 	return Vector2(start.origin.x, start.origin.z)
 
 
+## Ancho de la vista con el zoom 1× (lo que cambian las capturas de arte).
+func _base_size() -> float:
+	return _room.camera.size * _room.camera.zoom
+
+
 func _zoom(index: int) -> void:
 	_room.camera.set_zoom_index(index)
 	_hud.set_zoom_label(index)
@@ -280,6 +541,19 @@ func _zoom(index: int) -> void:
 func _place_character(spot: Vector2) -> void:
 	_room.character.stop_path()
 	_room.character.floor_position = _room.grid.resolve(spot)
+
+
+## Gira al personaje (grados; 0 mira hacia +Z) mirando un punto del piso.
+func _turn_character(degrees: float) -> void:
+	var character: CharacterController = _room.character
+	var angle: float = deg_to_rad(degrees)
+	character.face(character.floor_position + Vector2(sin(angle), cos(angle)))
+
+
+## Centro de la cabeza (de sus mallas, o del pivote si no tiene).
+func _head_center() -> Vector3:
+	var head: Node3D = _room.character.model.get_node("Body/Head")
+	return head.global_transform * PropBounds.local_aabb(head).get_center()
 
 
 func _printer_item() -> WorldInteractable:
@@ -337,6 +611,26 @@ func _seconds(seconds: float) -> void:
 	await get_tree().create_timer(seconds).timeout
 
 
+## Guarda la captura (con la interfaz) y anota lo que costó dibujar el mundo.
 func _capture(file_name: String) -> void:
+	if file_name not in _planned:
+		push_error("Capturas: %s no está en el manifiesto" % file_name)
 	await RenderingServer.frame_post_draw
 	get_tree().root.get_texture().get_image().save_png(_out.path_join(file_name + ".png"))
+	_captured.append(file_name)
+	var sub: SubViewport = _main.get_node("WorldView/SubViewport")
+	var visible_type: Viewport.RenderInfoType = Viewport.RENDER_INFO_TYPE_VISIBLE
+	var shadow_type: Viewport.RenderInfoType = Viewport.RENDER_INFO_TYPE_SHADOW
+	var estimate: RefCounted = SceneBudget.measure(_room)
+	var window: Vector2i = get_tree().root.size
+	_budget_file.store_line("%s,%dx%d,%dx%d,%.3f,%s,%d,%d,%d,%d,%d,%d,%d" % [
+		file_name, window.x, window.y, sub.size.x, sub.size.y, _room.camera.size, _quality,
+		sub.get_render_info(visible_type, Viewport.RENDER_INFO_DRAW_CALLS_IN_FRAME)
+			+ sub.get_render_info(shadow_type, Viewport.RENDER_INFO_DRAW_CALLS_IN_FRAME),
+		estimate.get("draw_calls"),
+		sub.get_render_info(visible_type, Viewport.RENDER_INFO_PRIMITIVES_IN_FRAME),
+		sub.get_render_info(shadow_type, Viewport.RENDER_INFO_PRIMITIVES_IN_FRAME),
+		sub.get_render_info(visible_type, Viewport.RENDER_INFO_OBJECTS_IN_FRAME),
+		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME),
+		RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_PRIMITIVES_IN_FRAME)])
+	_budget_file.flush()

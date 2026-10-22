@@ -4,8 +4,8 @@
 
 - **Fase actual:** 1. Ciclo jugable, en curso (ruta aprobada por el dueño en `docs/RUTA.md`).
 - **Diseño:** GDD versión 2.3, guía de estilo en `docs/ESTILO.md` y ruta en `docs/RUTA.md`.
-- **Última tarea:** arreglos de la revisión final del ciclo de pedidos (2026-10-22), después del ciclo completo (tareas 6 y 7 de la Fase 1, con partes de las tareas 4, 5 y 8).
-- **Siguiente paso sugerido:** tarea 3, navegación nueva y HUD despejado (el número de Pedidos pasa a la barra de abajo). Después, lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
+- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 1 de 16: prueba de presupuesto de dibujo y capturas de arte, sin cambiar el aspecto (2026-10-22). Antes: arreglos de la revisión final del ciclo de pedidos.
+- **Siguiente paso sugerido:** Arte 2.0, paso 2: el mundo a alta resolución, sin pixel art. Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
 - **Diseño del ciclo:** aprobado por el dueño (GDD, versión 2.3 en la sección 16).
 
 | Fase | Estado |
@@ -246,3 +246,24 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 
 **Problemas conocidos**
 - Los mismos de la entrada anterior.
+
+### 2026-10-22 — Arte 2.0, paso 1: guardas antes de tocar el arte
+
+**Pedido del dueño:** empezar la fase de diseño para que el personaje y los espacios se vean como un juego caro, con libertad total de estilo. La dirección de arte elegida es "Mundo Impreso" y se implementa en 16 pasos; este es el primero.
+
+**Qué se hizo** (el juego se ve igual que antes)
+- **Prueba de presupuesto de dibujo:** mide cuánto le cuesta al teléfono dibujar el cuarto inicial y el cuarto más lleno de hoy (16 impresoras): llamadas de dibujo, triángulos, materiales, sombras y luces. Falla si un cambio de arte lo encarece, si aparece una luz extra del motor o si hay algo que no sabe medir. Hoy: 334 llamadas el cuarto inicial y 1.042 el lleno; la meta del arte nuevo es 70 y 200.
+- **Capturas de arte nuevas, sin interfaz:** el cuarto entero (30), con zoom normal (31), el personaje de frente, de perfil y de espaldas (32a, 32b, 32c) y su cara de muy cerca (33), la impresora y el escritorio de cerca (34), la pieza que crece vista desde lejos (45), la tienda de impresoras (46), una impresora de cada familia (26) y el cuarto lleno de estanterías, entero y de cerca (37, 38). Son la foto del "antes".
+- **`tools/screenshots.sh` más estricto:** ahora falla si algo sale mal a mitad de camino (antes terminaba "bien" con menos capturas), deja la lista de capturas (`manifest.txt`) y lo que costó dibujar cada una (`budget.csv`). Opciones nuevas: `--only=art` (solo las de arte, unos 25 segundos), `--only=char` (solo el personaje) y `--resolution=1080x2400` (otro tamaño de pantalla).
+- **Arreglo en las capturas 04 a 06:** el personaje caminaba de más y terminaba contra la pared; ahora queda junto a la impresora, porque el mundo avanza con un paso fijo en cada cuadro.
+
+**Verificado**
+- `check.sh` y `run_tests.sh` pasan: 517 pruebas (antes 505; las de antes no cambiaron).
+- `screenshots.sh` saca las 36 capturas del manifiesto. Se comprobó que falla si se mete un error a propósito en un escenario (y se deshizo). Lo que cuenta OpenGL coincide con la medida de la prueba (334 y 1.042 llamadas con todo el cuarto a la vista).
+- Revisé las 36 capturas.
+
+**Qué revisar en el teléfono:** nada cambia en el juego con este paso.
+
+**Problemas conocidos**
+- Entre dos corridas de capturas cambian unos píxeles de lo que se anima con tiempo real (el latido de las marcas de lugar libre y el marco de resalte). El personaje y la cámara salen iguales.
+- La opción `--quality` de las capturas solo queda anotada: el juego todavía tiene un solo nivel de calidad (llega en el paso 15).
