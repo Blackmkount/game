@@ -24,6 +24,8 @@ signal zoom_pressed
 signal sheet_command(action_id: String)
 ## Botón de una tarjeta de la pantalla de pedidos (aceptar, imprimir...).
 signal order_card_action(verb: String, uid: int)
+## Comprar un carrete en la ferretería (desde Pedidos o Inventario).
+signal local_store_requested(material_id: String)
 
 const MARGIN: float = 16.0
 const TOP: float = 20.0
@@ -242,7 +244,9 @@ func _create_screen(screen_id: String, option: String) -> ScreenBase:
 		"workshop":
 			return WorkshopScreen.new()
 		"inventory":
-			return InventoryScreen.new()
+			var inventory: InventoryScreen = InventoryScreen.new()
+			inventory.local_store_requested.connect(local_store_requested.emit)
+			return inventory
 		"shop":
 			return ShopScreen.new(option if not option.is_empty() else ShopScreen.DEFAULT_CATEGORY)
 		"profile":
@@ -250,6 +254,7 @@ func _create_screen(screen_id: String, option: String) -> ScreenBase:
 		"orders":
 			var orders: OrdersScreen = OrdersScreen.new()
 			orders.card_action.connect(func(verb: String, uid: int) -> void: order_card_action.emit(verb, uid))
+			orders.local_store_requested.connect(local_store_requested.emit)
 			return orders
 		"tasks":
 			return TasksScreen.new()

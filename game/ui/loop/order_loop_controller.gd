@@ -24,6 +24,10 @@ extends Node
 ##   que pasa en el mundo y lo que se cobra.
 ## - Si un comando no se puede, el motivo aparece en un aviso rojo.
 ##
+## Ferretería (run_local_store), desde Pedidos o Inventario: compra en el
+## lugar; la pantalla se refresca con las señales. Si no se puede, el motivo
+## aparece en un aviso rojo.
+##
 ## Burbuja de cercanía (run_quick): corre la acción sin abrir panel cuando no
 ## hay nada que decidir (QuickActions); si no se puede, el personaje dice por
 ## qué.
@@ -51,6 +55,7 @@ func _init(controls: WorldControls) -> void:
 func _ready() -> void:
 	_controls.hud.order_card_action.connect(run_card)
 	_controls.hud.sheet_command.connect(run_sheet)
+	_controls.hud.local_store_requested.connect(run_local_store)
 	Events.printer_changed.connect(_queue_refresh.unbind(1))
 	Events.computer_changed.connect(_queue_refresh)
 	Events.order_changed.connect(_queue_refresh.unbind(1))
@@ -134,6 +139,13 @@ func run_card(verb: String, uid: int) -> void:
 			_run_at_dispatch(Game.dispatch_order, uid)
 		_:
 			push_error("Acción de tarjeta desconocida: " + verb)
+
+
+## Botón de la ferretería (Hud.local_store_requested): compra un carrete.
+func run_local_store(material_id: String) -> void:
+	if Game.state == null:
+		return
+	_report(Game.buy_local_material(material_id))
 
 
 ## Burbuja de cercanía de `item`: corre su acción si no hay nada que decidir

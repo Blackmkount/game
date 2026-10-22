@@ -2,22 +2,27 @@ class_name OrdersScreen
 extends ScreenBase
 ## Pedidos, con estilo de chat: los mensajes nuevos de los clientes, los
 ## pedidos en curso con el paso en que van y lo último que se entregó. Arriba,
-## cuándo llega el próximo mensaje, o por qué no llega.
+## cuándo llega el próximo mensaje, o por qué no llega; si es porque nadie pide
+## algo que se pueda hacer, ahí mismo se puede comprar material en la
+## ferretería.
 ##
 ## Se mantiene al día sola:
 ## - Se vuelve a armar (sin perder el desplazamiento) cuando cambian los
-##   mensajes, los pedidos, las impresoras, el material o el nivel. Nunca
-##   dentro del botón que se tocó: al final del cuadro y una sola vez.
+##   mensajes, los pedidos, las impresoras, el material, el dinero o el nivel.
+##   Nunca dentro del botón que se tocó: al final del cuadro y una sola vez.
 ## - Con el reloj (una vez por segundo real) solo cambian las cuentas
 ##   regresivas y las barras.
 ##
 ## Los botones de las tarjetas avisan con card_action; el Hud lo reenvía y el
-## ciclo de pedidos (OrderLoopController) corre el comando.
+## ciclo de pedidos (OrderLoopController) corre el comando. Lo mismo con los
+## botones de la ferretería (local_store_requested).
 
 ## Botón de una tarjeta: `verb` es "accept" o "reject" (uid del mensaje), o
 ## "cancel", "focus", "print", "see_printer", "remove", "pack" o "dispatch"
 ## (uid del pedido). Hud lo reenvía como order_card_action.
 signal card_action(verb: String, uid: int)
+## Se tocó comprar un carrete en la ferretería. Hud lo reenvía.
+signal local_store_requested(material_id: String)
 
 ## Segundos que "Cancelar pedido" espera el segundo toque que confirma.
 const CANCEL_CONFIRM_SECONDS: float = 3.0
@@ -27,9 +32,10 @@ enum Header { HIDDEN, BOARD_FULL, NONE_MAKEABLE, NEXT_OFFER }
 
 var _header: PanelContainer
 var _header_label: Label
+## Debajo del texto de arriba: la ferretería, cuando nada se puede hacer.
+var _store_box: VBoxContainer
 var _header_mode: Header = Header.HIDDEN
 var _order_cards: Array[OrderCard] = []
-var _rebuild_queued: bool = false
 ## Pedido con el primer toque de "Cancelar pedido" hecho, o -1.
 var _cancel_uid: int = -1
 var _cancel_timer: Timer
@@ -46,13 +52,14 @@ func _init() -> void:
 
 func _ready() -> void:
 	super()
-	Events.offers_changed.connect(_queue_rebuild)
-	Events.order_changed.connect(_queue_rebuild.unbind(1))
-	Events.order_removed.connect(_queue_rebuild.unbind(1))
-	Events.printer_changed.connect(_queue_rebuild.unbind(1))
-	Events.spools_changed.connect(_queue_rebuild)
-	Events.level_up.connect(_queue_rebuild.unbind(1))
-	Events.game_loaded.connect(_queue_rebuild)
+	Events.offers_changed.connect(queue_rebuild)
+	Events.order_changed.connect(queue_rebuild.unbind(1))
+	Events.order_removed.connect(queue_rebuild.unbind(1))
+	Events.printer_changed.connect(queue_rebuild.unbind(1))
+	Events.spools_changed.connect(queue_rebuild)
+	Events.money_changed.connect(queue_rebuild.unbind(1))
+	Events.level_up.connect(queue_rebuild.unbind(1))
+	Events.game_loaded.connect(queue_rebuild)
 	Events.clock_ticked.connect(_on_clock_ticked)
 
 
@@ -61,10 +68,18 @@ func _build_header(column: VBoxContainer) -> void:
 	_header.name = "HeaderLine"
 	var row: HBoxContainer = UiKit.hbox(10)
 	_header.add_child(row)
-	row.add_child(UiKit.icon("star", 28, UiPalette.GOLD))
+	var star: TextureRect = UiKit.icon("star", 28, UiPalette.GOLD)
+	star.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	row.add_child(star)
+	var lines: VBoxContainer = UiKit.vbox(10)
+	lines.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(lines)
 	_header_label = UiKit.label("", "MutedLabel", true)
 	_header_label.name = "HeaderText"
-	row.add_child(_header_label)
+	lines.add_child(_header_label)
+	_store_box = UiKit.vbox(8)
+	_store_box.name = "LocalStoreBox"
+	lines.add_child(_store_box)
 	column.add_child(_header)
 
 
@@ -123,6 +138,23 @@ func _refresh_header(state: GameState, rules: SimRules) -> void:
 			_header_label.text = tr("ORDERS_NONE_MAKEABLE")
 		Header.NEXT_OFFER:
 			_header_label.text = _next_offer_text(state, rules)
+	_refresh_local_store(rules)
+
+
+## Si nadie pide algo que se pueda hacer, la ferretería: material al instante.
+func _refresh_local_store(rules: SimRules) -> void:
+	for child: Node in _store_box.get_children():
+		_store_box.remove_child(child)
+		child.queue_free()
+	_store_box.visible = _header_mode == Header.NONE_MAKEABLE
+	if not _store_box.visible:
+		return
+	var store_title: Label = UiKit.label(LocalStoreButtons.title(rules), "SmallLabel", true)
+	store_title.name = "LocalStoreTitle"
+	_store_box.add_child(store_title)
+	var buttons: LocalStoreButtons = LocalStoreButtons.new()
+	buttons.buy_requested.connect(local_store_requested.emit)
+	_store_box.add_child(buttons)
 
 
 func _next_offer_text(state: GameState, rules: SimRules) -> String:
@@ -151,24 +183,6 @@ func _delivery_card(rules: SimRules, delivery: Delivery) -> Control:
 	var client: String = tr(rules.clients[definition["client"]]["name_key"])
 	column.add_child(UiKit.label(UiFormat.tr_format("FEEDBACK_THANKS", [client, tr(delivery.thanks_key)]), "MutedLabel", true))
 	return card
-
-
-## Pide volver a armar la lista al final del cuadro: los avisos de un mismo
-## cambio (un despacho cambia el pedido, la impresora...) la arman una sola
-## vez, y nunca dentro del botón que se acaba de tocar.
-func _queue_rebuild() -> void:
-	if _rebuild_queued:
-		return
-	_rebuild_queued = true
-	_rebuild_now.call_deferred()
-
-
-func _rebuild_now() -> void:
-	_rebuild_queued = false
-	# La pantalla se cerró en este mismo cuadro: se borra sola.
-	if not is_inside_tree():
-		return
-	rebuild()
 
 
 ## Una vez por segundo real: solo las cuentas regresivas y las barras.

@@ -154,6 +154,17 @@ func cancel_order(order_uid: int) -> CommandResult:
 	return CommandResult.success()
 
 
+## Ferretería: compra un carrete de ese material al instante, más caro que la
+## tienda. `uid` del resultado es el del carrete nuevo.
+func buy_local_material(material_id: String) -> CommandResult:
+	var result: CommandResult = LocalStore.check_buy(sim.state, sim.rules, material_id)
+	if not result.ok:
+		return result
+	result.uid = LocalStore.buy(sim, material_id).uid
+	sim.mark_dirty()
+	return result
+
+
 ## Agrega el pedido manteniendo state.orders en orden de uid: se puede aceptar
 ## un mensaje viejo después de uno nuevo.
 func _insert_order(order: Order) -> void:

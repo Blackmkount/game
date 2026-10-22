@@ -11,6 +11,7 @@ var content: VBoxContainer
 var scroll: ScrollContainer
 var _icon_name: String
 var _title_key: String
+var _rebuild_queued: bool = false
 
 
 func _init(icon_name: String, title_key: String) -> void:
@@ -66,6 +67,16 @@ func rebuild() -> void:
 	_restore_scroll.call_deferred(offset)
 
 
+## Pide volver a armar el contenido al final del cuadro: los avisos de un
+## mismo cambio lo arman una sola vez, y nunca dentro del botón que se acaba
+## de tocar.
+func queue_rebuild() -> void:
+	if _rebuild_queued:
+		return
+	_rebuild_queued = true
+	_rebuild_now.call_deferred()
+
+
 func clear_content() -> void:
 	for child: Node in content.get_children():
 		content.remove_child(child)
@@ -92,6 +103,14 @@ func add_notice(parent: Container, text_key: String) -> void:
 	row.add_child(UiKit.icon("star", 28, UiPalette.GOLD))
 	row.add_child(UiKit.label(tr(text_key), "MutedLabel", true))
 	parent.add_child(notice)
+
+
+func _rebuild_now() -> void:
+	_rebuild_queued = false
+	# La pantalla se cerró en este mismo cuadro: se borra sola.
+	if not is_inside_tree():
+		return
+	rebuild()
 
 
 func _restore_scroll(offset: int) -> void:

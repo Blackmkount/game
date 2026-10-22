@@ -173,6 +173,16 @@ func test_signals_come_out_after_each_change_in_a_fixed_order() -> void:
 	assert_true(Game.sim.changes.is_empty())
 
 
+func test_buying_at_the_local_store_through_game() -> void:
+	var money: int = Game.state.money_cents
+	var result: CommandResult = Game.buy_local_material("pla")
+	assert_true(result.ok, result.reason)
+	assert_eq(Game.state.find_spool(result.uid).material_id, "pla")
+	assert_true(Game.sim.changes.is_empty(), "Game avisa apenas termina el comando")
+	assert_eq(_heard, ["spools_changed", "money_changed"] as Array[String])
+	assert_signal_emitted_with_parameters(Events, "money_changed", [money - 2700])
+
+
 func test_a_listener_that_uses_a_command_loses_no_signal() -> void:
 	Events.offer_arrived.connect(_reject_arrived, CONNECT_ONE_SHOT)
 	Game.advance(3.0)
@@ -201,6 +211,7 @@ func test_a_failed_command_says_why_and_changes_nothing() -> void:
 		"ERR_ORDER_GONE pack": Game.pack_order(GONE_UID),
 		"ERR_ORDER_GONE dispatch": Game.dispatch_order(GONE_UID),
 		"ERR_ORDER_GONE cancel": Game.cancel_order(GONE_UID),
+		"ERR_NOT_IN_LOCAL_STORE buy": Game.buy_local_material("tpu"),
 	}
 	for key: String in expected:
 		assert_false(expected[key].ok, key)
@@ -216,7 +227,7 @@ func test_commands_without_a_game_fail_with_a_reason() -> void:
 		Game.accept_offer.bind(1), Game.reject_offer.bind(1), Game.focus_design.bind(1),
 		Game.start_print.bind(1, 2, 3, "normal"), Game.retry_piece.bind(2, "normal"), Game.clean_printer.bind(2),
 		Game.remove_pieces.bind(2), Game.pack_order.bind(1), Game.dispatch_order.bind(1),
-		Game.cancel_order.bind(1), Game.pack_all, Game.dispatch_all,
+		Game.cancel_order.bind(1), Game.pack_all, Game.dispatch_all, Game.buy_local_material.bind("pla"),
 	]
 	var reasons: Array[String] = []
 	for command: Callable in commands:
@@ -225,7 +236,7 @@ func test_commands_without_a_game_fail_with_a_reason() -> void:
 	Game.state = saved
 	for reason: String in reasons:
 		assert_eq(reason, "ERR_NO_GAME")
-	assert_eq(reasons.size(), 12)
+	assert_eq(reasons.size(), 13)
 
 
 func test_reset_game_starts_a_new_game_and_says_so() -> void:

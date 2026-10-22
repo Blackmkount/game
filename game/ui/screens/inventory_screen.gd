@@ -1,11 +1,24 @@
 class_name InventoryScreen
 extends ScreenBase
-## Inventario: material en carretes, espacio de almacenamiento, impresoras y
-## muebles del jugador.
+## Inventario: material en carretes, espacio de almacenamiento, la ferretería
+## del barrio, impresoras y muebles del jugador.
+##
+## Se vuelve a armar (sin perder el desplazamiento) cuando cambian el material
+## o el dinero, por ejemplo después de comprar en la ferretería.
+
+## Se tocó comprar un carrete en la ferretería. Hud lo reenvía.
+signal local_store_requested(material_id: String)
 
 
 func _init() -> void:
 	super("box", "SCREEN_INVENTORY")
+
+
+func _ready() -> void:
+	super()
+	Events.spools_changed.connect(queue_rebuild)
+	Events.money_changed.connect(queue_rebuild.unbind(1))
+	Events.game_loaded.connect(queue_rebuild)
 
 
 func _build_content() -> void:
@@ -22,6 +35,11 @@ func _build_content() -> void:
 		content.add_child(ItemCard.new(Previews.spool(Color(color["hex"])), title, UiFormat.grams(spool.grams)))
 	var capacity: int = WorkshopRules.storage_capacity_grams(state, Game.rules)
 	content.add_child(StatBar.new(tr("INVENTORY_STORAGE"), UiFormat.tr_format("FORMAT_KG_OF", [UiFormat.kilograms(state.total_grams()), UiFormat.kilograms(capacity)]), state.total_grams(), capacity))
+
+	add_heading(LocalStoreButtons.title(Game.rules)).name = "SectionLocalStore"
+	var store: LocalStoreButtons = LocalStoreButtons.new()
+	store.buy_requested.connect(local_store_requested.emit)
+	content.add_child(store)
 
 	add_section("INVENTORY_PRINTERS")
 	var printers: Dictionary = DataLookup.by_id(Game.catalog, "printers")
