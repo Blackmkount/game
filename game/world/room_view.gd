@@ -328,7 +328,7 @@ func _build_contents() -> void:
 	var furniture_nodes: Dictionary[int, Node3D] = {}
 	var used_slots: Array[int] = []
 	for item: OwnedFurniture in state.furniture:
-		var node: Node3D = FurnitureModel.build(self, "Furniture%d" % item.uid, item.furniture_id)
+		var node: Node3D = FurnitureModel.build(self, "Furniture%d" % item.uid, item.furniture_id, layout.wall_gaps[item.slot])
 		node.transform = layout.slots[item.slot]
 		furniture_nodes[item.uid] = node
 		used_slots.append(item.slot)

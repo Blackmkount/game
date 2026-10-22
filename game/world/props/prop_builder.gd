@@ -2,9 +2,10 @@ class_name PropBuilder
 extends RefCounted
 ## Atajos para poner mallas en un modelo. kit() pone una malla del kit
 ## (KitMesh: varias formas en una malla, con el origen en la base del
-## objeto). Las formas básicas de antes (box, cylinder, sphere, quad) quedan
-## centradas en su origen (la capa caliente de la pieza que se imprime lo
-## supone) hasta que todos los modelos pasen al kit.
+## objeto). Quedan tres formas básicas, centradas en su origen: box (la pieza
+## que crece, un BoxMesh por contrato, y los bloquecitos de la bandeja),
+## quad (las pantallas y la vista de la ventana, que cambian de material) y
+## sphere (el personaje de cajas, hasta el paso 10 de Arte 2.0).
 
 
 ## Una malla del kit (KitMesh) como hijo de `parent`. Sin `material` usa el
@@ -18,18 +19,6 @@ static func box(parent: Node3D, node_name: String, size: Vector3, position: Vect
 	var mesh: BoxMesh = BoxMesh.new()
 	mesh.size = size
 	return _add(parent, node_name, mesh, position, material)
-
-
-static func cylinder(parent: Node3D, node_name: String, radius: float, height: float, position: Vector3, material: Material, rotation_degrees: Vector3 = Vector3.ZERO) -> MeshInstance3D:
-	var mesh: CylinderMesh = CylinderMesh.new()
-	mesh.top_radius = radius
-	mesh.bottom_radius = radius
-	mesh.height = height
-	mesh.radial_segments = 12
-	mesh.rings = 1
-	var instance: MeshInstance3D = _add(parent, node_name, mesh, position, material)
-	instance.rotation_degrees = rotation_degrees
-	return instance
 
 
 static func sphere(parent: Node3D, node_name: String, radius: float, position: Vector3, material: Material) -> MeshInstance3D:

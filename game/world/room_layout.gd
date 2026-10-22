@@ -9,6 +9,10 @@ extends RefCounted
 const FLOOR_PRINTER_RAISE: float = 0.035
 
 var slots: Array[Transform3D] = []
+## Distancia del centro de cada lugar (mismo índice que `slots`) a la pared
+## que tiene detrás, donde se cuelgan la repisa y el tablero
+## (FurnitureModel.NO_WALL si no hay dónde colgar nada).
+var wall_gaps: Array[float] = []
 var floor_printer_spots: Array[Transform3D] = []
 ## Rincón de despacho (mesa de embalar y cajón de salida), junto a la puerta.
 ## Es fijo: no ocupa ninguno de los lugares para muebles.
@@ -27,6 +31,10 @@ static func for_space(_space_id: String) -> RoomLayout:
 		_at(Vector3(1.95, 0.0, -2.6), 0.0),
 		_at(Vector3(1.0, 0.0, 1.1), 0.0),
 	]
+	# Los lugares 0 y 1 dan la espalda a la pared de la ventana (x = −3,0) y
+	# los 2, 3 y 4 a la del fondo (z = −3,0). El 0 queda bajo la ventana (ahí
+	# no se cuelga nada) y el 5 en el medio del cuarto.
+	layout.wall_gaps = [FurnitureModel.NO_WALL, 0.45, 0.4, 0.4, 0.4, FurnitureModel.NO_WALL]
 	layout.floor_printer_spots = [_at(Vector3(-0.55, FLOOR_PRINTER_RAISE, -1.55), 25.0)]
 	# Ocupa en el piso x -1,88..-1,00 y z 2,42..2,82, así que el paso frente a
 	# la puerta (x -2,95..-2,0, z 1,6..2,6) queda libre. Ahí, en (-2,50, 0, 2,10),

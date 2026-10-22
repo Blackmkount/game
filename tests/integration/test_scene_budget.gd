@@ -24,7 +24,7 @@ const SEED: int = 1234
 
 ## Cuarto inicial. Medido el 2026-10-22 en el paso 7 de Arte 2.0 (el
 ## escritorio del kit: una malla y la pantalla, 3 llamadas; el rincón de
-## despacho: una malla, 2 llamadas), igual en el paso 8: 75 llamadas, 18
+## despacho: una malla, 2 llamadas), igual en los pasos 8 y 9: 75 llamadas, 18
 ## materiales, 30 mallas con sombra y 8 superficies transparentes (5 marcas,
 ## el marco de resalte, el haz de la ventana y la sombra bajo la base).
 ## Antes: 120 llamadas, 27 materiales y 53 mallas con sombra (paso 6); 136
@@ -36,18 +36,18 @@ const START_MAX_MATERIALS: int = 19
 const START_MAX_SHADOW_MESHES: int = 33
 const START_MAX_TRANSPARENT: int = 9
 
-## Cuarto lleno. Medido el 2026-10-22 en el paso 8 (las siete familias del
-## kit; las de los muebles con detalle 0,6 y solo su cuerpo dando sombra):
-## 230 llamadas, 20 materiales, 80 mallas con sombra y 5 superficies
-## transparentes (las 2 tapas ámbar de las Gota R1 y 3 más; sin lugares
-## libres no hay marcas: el tope de transparentes es el final del cuarto
-## inicial). Antes: 395 llamadas, 29 materiales y 191 mallas con sombra (paso
-## 7); 440 (paso 6); 519 (paso 5); 535 (paso 3); 1.042 (paso 1).
-const FULL_MAX_DRAW_CALLS: int = 253
+## Cuarto lleno. Medido el 2026-10-22 en el paso 9 (las estanterías del kit
+## de 2,40 m: una malla cada una, 2 llamadas): 170 llamadas, 18 materiales,
+## 50 mallas con sombra y 5 superficies transparentes (las 2 tapas ámbar de
+## las Gota R1 y 3 más; sin lugares libres no hay marcas: el tope de
+## transparentes es el final del cuarto inicial). Antes: 230 llamadas, 20
+## materiales y 80 mallas con sombra (paso 8); 395 (paso 7); 440 (paso 6);
+## 519 (paso 5); 535 (paso 3); 1.042 (paso 1).
+const FULL_MAX_DRAW_CALLS: int = 187
 const FULL_MAX_VISIBLE_TRIANGLES: int = 60000
 const FULL_MAX_TOTAL_TRIANGLES: int = 99999
-const FULL_MAX_MATERIALS: int = 22
-const FULL_MAX_SHADOW_MESHES: int = 88
+const FULL_MAX_MATERIALS: int = 19
+const FULL_MAX_SHADOW_MESHES: int = 55
 const FULL_MAX_TRANSPARENT: int = 12
 
 ## Armar la escena principal con las mallas y los materiales ya en caché

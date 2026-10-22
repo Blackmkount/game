@@ -4,8 +4,8 @@
 
 - **Fase actual:** 1. Ciclo jugable, en curso (ruta aprobada por el dueño en `docs/RUTA.md`).
 - **Diseño:** GDD versión 2.3, guía de estilo en `docs/ESTILO.md` y ruta en `docs/RUTA.md`.
-- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 8 de 16: las otras seis familias de impresoras (Rayo Mini, Rayo X1, Prisma MC, Bóveda P1, Titán Pro y Gota R1), cada una con su silueta, la pieza que crece y su falla, y el estado de noche por impresora (halo del color del estado y luz de adentro de las cerradas) (2026-10-22). Antes: paso 7, escritorio, despacho y paquetes.
-- **Siguiente paso sugerido:** Arte 2.0, paso 9: muebles y estantería arreglada (con lugar para impresoras de 0,72 m). Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
+- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 9 de 16: los seis muebles que se compran, del kit (mesa auxiliar, mesa de trabajo, estantería metálica de 2,40 m con lugar para cualquier impresora, repisa de filamento y tablero de herramientas colgados de la pared o sobre su pie, y estantería de cubos) (2026-10-22). Antes: paso 8, las siete familias de impresoras.
+- **Siguiente paso sugerido:** Arte 2.0, paso 10: el personaje nuevo (modelo, piel, cara, pelo y retratos). Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
 - **Diseño del ciclo:** aprobado por el dueño (GDD, versión 2.3 en la sección 16).
 
 | Fase | Estado |
@@ -436,4 +436,25 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 - La estantería metálica todavía es la vieja (tablas cada 0,62 m): las impresoras altas la atraviesan (se ve en 38). La arregla el paso 9 (0,74 m por nivel).
 - El carrete de las cerradas no cambia de color con el trabajo (es parte del cuerpo, para que cuesten 6 llamadas); se ve poco.
 - La noche y sus halos solo se vieron en el laboratorio (paso 13).
+
+### 2026-10-22 — Arte 2.0, paso 9: muebles y estantería arreglada
+
+**Qué se hizo**
+- **Los seis muebles de la tienda son del kit**, cada uno una sola pieza con su historia: la **mesa auxiliar** blanca con el canto de madera a la vista y una repisa abajo (un tarro impreso y el atomizador de alcohol); la **mesa de trabajo** de madera clara con una cajonera metálica y cajas organizadoras de colores en la repisa baja; la **estantería metálica**; la **repisa de filamento** con 6 carretes y escuadras impresas naranjas; la **estantería de cubos** blanca con pilas de carretes de los 9 colores, una caja de filamento, tarros impresos y un florero; y el **tablero de herramientas** con alicate, cortafríos, espátula, calibrador, llaves Allen, cinta y una caja de herramientas en el piso.
+- **La estantería metálica se arregló:** ahora mide 2,40 m y deja 0,74 m libres en cada piso, así que cabe cualquier impresora (antes las altas atravesaban las tablas). Tiene postes negros de ángulo, tablas de madera, cruces, una regleta con los cables atados y cosas guardadas arriba.
+- **La repisa y el tablero ya no flotan:** se cuelgan de la pared donde la hay; en el lugar del medio del cuarto (y bajo la ventana) van sobre un pie propio. Te lo informo (decisión D5 del plan): se aplicó tal como estaba propuesto.
+- El taller lleno bajó de 230 a **170 llamadas de dibujo** y de 20 a 18 materiales (ya dentro de la meta final de la biblia).
+
+**Verificado**
+- `check.sh` y `run_tests.sh` pasan: 619 pruebas (antes 611); 8 nuevas en `tests/integration/test_furniture_models.gd` (cada mueble se arma con sus lugares para impresoras y cabe en el presupuesto; cada familia cabe en cada piso de la estantería; la repisa y el tablero quedan pegados a la pared o sobre su pie).
+- `screenshots.sh` saca las 38 capturas. Revisé 11, 26, 37 y 38, y aparte (laboratorio) cada mueble de cerca, colgado y sobre su pie.
+
+**Qué revisar en el teléfono** (versión web)
+- La tienda, pestaña Muebles: los dibujitos de los seis muebles son los nuevos (la repisa y el tablero se ven sobre su pie).
+- Hoy en una partida nueva no hay muebles comprados (la tienda llega con la tarea 5). Para verlos en el cuarto ya, las capturas 37 y 38 de `build/screenshots/` muestran el taller lleno de estanterías.
+
+**Problemas conocidos**
+- La estantería mide 2,40 m: puesta en el lugar del medio del cuarto tapa un poco lo que hay detrás con el zoom lejos (es su alto real).
+- Las tablas de la estantería quedaron 2 cm más abajo que lo que decía la biblia, para que los tres pisos tengan 0,74 m (detalle en `docs/DECISIONES.md`).
+- El mueble de cubos tiene 2 × 4 huecos (la biblia decía 2 × 2 con las mismas medidas).
 

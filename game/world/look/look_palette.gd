@@ -50,6 +50,13 @@ const CRATE_DARK: String = "a8703a"
 const CONCRETE_TILE: String = "cfcac0"
 const CONCRETE_GRAIN: String = "b9b3a8"
 const FAILED_PIECE: String = "3b3b45"
+## Muebles blancos de melamina (§10): el blanco cálido de los zócalos; por
+## dentro de los huecos, un tono más oscuro (el de la suela, §4.6), que hace
+## de sombra donde no llega la oclusión de contacto.
+const MELAMINE: String = TRIM
+const MELAMINE_SHADE: String = "d9d2c4"
+## Tablero perforado (cartón prensado): la madera clara.
+const PEGBOARD: String = WOOD_LIGHT
 
 # Textiles, plantas y decoración (§4.4).
 const TIGER_BLANKET: String = "d08a48"
@@ -87,6 +94,18 @@ const TITAN_ORANGE: String = "f28c28"
 const TITAN_INSIDE: String = "fff1d6"
 const SPOOL_FLANGE: String = "d9dde3"
 const SPOOL_HUB: String = "8a8f9c"
+## Los 9 filamentos de config.filament_colors (no se inventan otros). Los
+## carretes de los muebles y lo impreso de la historia (escuadras, ganchos,
+## cajas) salen de aquí.
+const FILAMENT_WHITE: String = "f2efe6"
+const FILAMENT_BLACK: String = "2b2b33"
+const FILAMENT_GREY: String = "8a8f9c"
+const FILAMENT_RED: String = "e0453a"
+const FILAMENT_ORANGE: String = "f28c28"
+const FILAMENT_YELLOW: String = "f5cf3c"
+const FILAMENT_GREEN: String = "4cbf5a"
+const FILAMENT_BLUE: String = "3b7fe0"
+const FILAMENT_PURPLE: String = "9b5de5"
 
 # Personaje (§4.6).
 const SKIN: String = "e9b48e"
