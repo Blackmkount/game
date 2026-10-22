@@ -36,9 +36,9 @@ static func next_step(state: GameState, rules: SimRules) -> NextStep:
 		return NextStep.FAILED
 	if _has_job_with(state, PrintJob.Status.DONE):
 		return NextStep.REMOVE
-	if _count_stage(state, Order.Stage.TO_PACK) > 0:
+	if count_stage(state, Order.Stage.TO_PACK) > 0:
 		return NextStep.PACK
-	if _count_stage(state, Order.Stage.PACKED) > 0:
+	if count_stage(state, Order.Stage.PACKED) > 0:
 		return NextStep.DISPATCH
 	for order: Order in state.orders:
 		if order.stage == Order.Stage.READY_TO_PRINT and PrintPlanner.recommend(state, rules, order).ok:
@@ -58,12 +58,12 @@ static func next_step(state: GameState, rules: SimRules) -> NextStep:
 static func pending_actions(state: GameState, rules: SimRules) -> int:
 	var count: int = state.offers.size()
 	for stage: Order.Stage in [Order.Stage.PRINTED, Order.Stage.TO_PACK, Order.Stage.PACKED]:
-		count += _count_stage(state, stage)
+		count += count_stage(state, stage)
 	for printer: OwnedPrinter in state.printers:
 		if printer.job != null and printer.job.status == PrintJob.Status.FAILED:
 			count += 1
 	if _has_free_printer(state):
-		count += _count_stage(state, Order.Stage.READY_TO_PRINT)
+		count += count_stage(state, Order.Stage.READY_TO_PRINT)
 	return count
 
 
@@ -130,6 +130,17 @@ static func is_late(state: GameState, order: Order) -> bool:
 	return order.due_live >= 0 and state.live_seconds > order.due_live
 
 
+## Lo que se cobra al despachar el pedido ahora, en centavos: la mitad (según
+## late_delivery) si va atrasado.
+static func payout_cents(state: GameState, rules: SimRules, order: Order) -> int:
+	return roundi(rules.payment_cents[order.order_id] * (rules.late_payment_multiplier if is_late(state, order) else 1.0))
+
+
+## La experiencia que da despachar el pedido ahora: menos (o nada) si va atrasado.
+static func payout_xp(state: GameState, rules: SimRules, order: Order) -> int:
+	return roundi(int(rules.orders[order.order_id]["xp"]) * (rules.late_xp_multiplier if is_late(state, order) else 1.0))
+
+
 ## Segundos de juego hasta el próximo mensaje, o -1 con el tablero en pausa.
 static func seconds_to_next_offer(state: GameState) -> int:
 	if state.next_offer_at < 0:
@@ -154,6 +165,15 @@ static func level(state: GameState, rules: SimRules) -> int:
 	return rules.levels.level_for_xp(state.xp)
 
 
+## Cuántos pedidos están en esa etapa.
+static func count_stage(state: GameState, stage: Order.Stage) -> int:
+	var count: int = 0
+	for order: Order in state.orders:
+		if order.stage == stage:
+			count += 1
+	return count
+
+
 static func _has_job_with(state: GameState, status: PrintJob.Status) -> bool:
 	for printer: OwnedPrinter in state.printers:
 		if printer.job != null and printer.job.status == status:
@@ -166,11 +186,3 @@ static func _has_free_printer(state: GameState) -> bool:
 		if printer.job == null:
 			return true
 	return false
-
-
-static func _count_stage(state: GameState, stage: Order.Stage) -> int:
-	var count: int = 0
-	for order: Order in state.orders:
-		if order.stage == stage:
-			count += 1
-	return count

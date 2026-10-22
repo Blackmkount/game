@@ -217,6 +217,23 @@ func test_the_dispatch_corner_and_the_door_each_take_a_tap_at_their_own_centre()
 	assert_eq(_pick_under(_screen_of(door)), door, "El centro de la puerta sigue eligiendo la puerta")
 	_controls.tap(_screen_of(door))
 	assert_eq(_controls.sheet_item, door, "La puerta sigue abriendo su panel")
+	_controls.tap(_screen_of(corner))
+	assert_eq(_controls.sheet_item, corner, "El rincón abre su panel")
+	assert_has(_label_texts(_hud.current_sheet()), "Rincón de despacho")
+	# El panel reemplazado se borra al final del cuadro.
+	await wait_process_frames(1)
+
+
+func test_tapping_a_status_bubble_opens_its_sheet_from_anywhere() -> void:
+	Game.advance(3.0)
+	assert_true(Game.accept_offer(Game.state.offers[0].uid).ok)
+	await wait_process_frames(3)
+	var bubble: StatusBubble = _controls.status.bubble_for(_desk())
+	assert_true(bubble.visible, "El computador muestra que modela")
+	assert_ne(_controls.highlighted, _desk(), "El personaje está lejos del computador")
+	await _touch(bubble.get_global_rect().get_center())
+	assert_eq(_controls.sheet_item, _desk())
+	assert_has(_label_texts(_hud.current_sheet()), "Modelando: Llavero con nombre · Plantilla: solo hay que adaptarla")
 
 
 func test_walking_up_to_the_dispatch_corner_shows_the_truck_bubble() -> void:

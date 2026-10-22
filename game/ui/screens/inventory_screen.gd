@@ -13,6 +13,10 @@ func _build_content() -> void:
 	add_section("INVENTORY_MATERIALS")
 	var materials: Dictionary = DataLookup.by_id(Game.catalog, "materials")
 	for spool: Spool in state.spools:
+		# Los carretes vacíos siguen en la partida (allí vuelve el material
+		# apartado si se cancela), pero no se muestran.
+		if spool.grams <= 0:
+			continue
 		var color: Dictionary = DataLookup.config_entry(Game.catalog, "filament_colors", spool.color_id)
 		var title: String = "%s · %s" % [tr(materials[spool.material_id]["name_key"]), tr(color["name_key"])]
 		content.add_child(ItemCard.new(Previews.spool(Color(color["hex"])), title, UiFormat.grams(spool.grams)))

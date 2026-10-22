@@ -30,8 +30,8 @@ static func dispatch(sim: Simulation, order: Order, t: int) -> Delivery:
 	var rules: SimRules = sim.rules
 	var definition: Dictionary = rules.orders[order.order_id]
 	var late: bool = OrderQueries.is_late(state, order)
-	var cents: int = roundi(rules.payment_cents[order.order_id] * (rules.late_payment_multiplier if late else 1.0))
-	var xp: int = roundi(int(definition["xp"]) * (rules.late_xp_multiplier if late else 1.0))
+	var cents: int = OrderQueries.payout_cents(state, rules, order)
+	var xp: int = OrderQueries.payout_xp(state, rules, order)
 	var level_before: int = OrderQueries.level(state, rules)
 	state.money_cents += cents
 	state.xp += xp

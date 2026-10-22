@@ -240,7 +240,7 @@ func _build_contents() -> void:
 		furniture_nodes[item.uid] = node
 		used_slots.append(item.slot)
 		_register(WorldInteractable.Kind.FURNITURE, item.uid, node, true)
-		if item.furniture_id == "mesa_computador":
+		if item.furniture_id == DeskSheet.FURNITURE_ID:
 			_add_view(node, DeskView.new())
 
 	var spool_color: String = _first_spool_color(state)

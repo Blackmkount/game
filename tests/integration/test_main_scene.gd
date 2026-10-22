@@ -97,6 +97,17 @@ func test_closing_a_screen_goes_back_home() -> void:
 	assert_null(_hud.get_node_or_null("ScreenHost/Screen"))
 
 
+func test_the_inventory_hides_empty_spools() -> void:
+	var empty: Spool = Spool.new(Game.state.take_uid(), "petg", "negro", 0)
+	Game.state.spools.append(empty)
+	_hud.open_screen("inventory")
+	var texts: Array[String] = _label_texts(_hud.get_node("ScreenHost/Screen"))
+	assert_has(texts, "PLA · Blanco")
+	assert_does_not_have(texts, "PETG · Negro", "El carrete vacío no se muestra")
+	_hud.open_screen("home")
+	await wait_process_frames(1)
+
+
 func test_every_screen_opens() -> void:
 	for screen_id: String in ["workshop", "inventory", "shop", "profile", "orders", "tasks", "map", "settings"]:
 		_hud.open_screen(screen_id)

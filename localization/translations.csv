@@ -220,7 +220,6 @@ SHEET_PRINTER_FLOOR_TIP,"En el suelo pierde %d%% de fiabilidad (polvo, vibracion
 SHEET_BUY_TABLE,Ver mesas en la tienda,See tables in the shop
 SHEET_SEE_ORDERS,Ver pedidos,See orders
 SHEET_FURNITURE_PRINTERS,Impresoras: %d de %d,Printers: %d of %d
-SHEET_COMPUTER_MESSAGES,Aquí te llegan los mensajes de tus clientes.,Your clients' messages arrive here.
 SHEET_COMPUTER_IDLE,"El computador está libre. Cuando aceptas un pedido, se pone a modelar solo.","The computer is free. When you accept an order, it starts modeling on its own."
 SHEET_SEE_INVENTORY,Ver inventario,See inventory
 SHEET_SLOT_TITLE,Lugar libre,Free spot

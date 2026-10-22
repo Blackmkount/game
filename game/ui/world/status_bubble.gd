@@ -30,6 +30,9 @@ func _init() -> void:
 	visible = false
 	var column: VBoxContainer = UiKit.vbox(0)
 	column.alignment = BoxContainer.ALIGNMENT_CENTER
+	# Los contenedores dejan pasar el toque a sus padres del HUD: así nunca
+	# llegaría a WorldControls, que es el que revisa la burbuja.
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(column)
 	_icon = UiKit.icon("printer", ICON_SIZE)
 	_icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
