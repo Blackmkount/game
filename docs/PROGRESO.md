@@ -6,7 +6,7 @@
 - **Diseño:** GDD versión 2.3, guía de estilo en `docs/ESTILO.md` y ruta en `docs/RUTA.md`.
 - **Última tarea:** el ciclo de pedidos completo, pedido por el dueño: tareas 6 y 7 de la Fase 1, con partes de las tareas 4, 5 y 8 (2026-10-22).
 - **Siguiente paso sugerido:** tarea 3, navegación nueva y HUD despejado (el número de Pedidos pasa a la barra de abajo). Después, lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
-- **Para el dueño:** confirmar el diseño propuesto para el ciclo (GDD, versión 2.3 en la sección 16).
+- **Diseño del ciclo:** aprobado por el dueño (GDD, versión 2.3 en la sección 16).
 
 | Fase | Estado |
 |---|---|
