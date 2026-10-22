@@ -73,6 +73,10 @@ uniform vec3 face_axis = vec3(0.0, 0.19, 0.0);
 uniform float face_span = 2.0944;
 uniform float face_height = 0.3;
 uniform vec4 eye_ink = vec4(0.1647, 0.102, 0.1333, 1.0);
+// Sesgo del nivel de detalle del atlas (negativo: más nítido) y texeles por
+// píxel entre los que los ojos pasan de pintados a puntos de tinta.
+const float CC_FACE_LOD_BIAS = -1.0;
+const vec2 CC_FACE_FAR = vec2(2.5, 5.0);
 instance uniform int expression = 0;
 instance uniform vec2 gaze = vec2(0.0);
 #endif
@@ -237,14 +241,24 @@ vec3 cc_face(vec3 skin, int kind) {
 	vec2 uv = vec2(0.5 + atan(q.x, q.z) / face_span, 0.5 - q.y / face_height);
 	float cells = float(face_cells);
 	vec2 cell = vec2((uv.x + float(clamp(expression, 0, face_cells - 1))) / cells, uv.y);
-	vec4 face = texture(face_atlas, cell);
-	vec4 moved = texture(face_atlas, cell - vec2(gaze.x / cells, -gaze.y));
+	// Texeles de la celda por píxel. Lejos la cara mide pocos píxeles: se lee
+	// un nivel de detalle más nítida (sesgo) y los ojos pasan a ser puntos de
+	// tinta con borde firme, en vez de una mancha gris del promedio de
+	// contorno, iris y brillos.
+	float texels = max(fwidth(uv.x), fwidth(uv.y)) * float(textureSize(face_atlas, 0).y);
+	float lod = max(log2(max(texels, 1.0)) + CC_FACE_LOD_BIAS, 0.0);
+	vec4 face = textureLod(face_atlas, cell, lod);
+	vec4 moved = textureLod(face_atlas, cell - vec2(gaze.x / cells, -gaze.y), lod);
 	bool inside = kind == CC_SKIN && uv.x > 0.0 && uv.x < 1.0 && uv.y > 0.0 && uv.y < 1.0;
 	if (!inside) {
 		return skin;
 	}
 	vec3 eye = moved.a > 0.5 ? moved.rgb : eye_ink.rgb;
-	return mix(face.rgb, eye, face.a);
+	float far = smoothstep(CC_FACE_FAR.x, CC_FACE_FAR.y, texels);
+	float sparkle = smoothstep(0.5, 0.8, dot(moved.rgb, vec3(0.3, 0.55, 0.15)));
+	eye = mix(eye, mix(eye_ink.rgb, moved.rgb, sparkle), far);
+	float cover = mix(face.a, smoothstep(0.25, 0.6, face.a), far);
+	return mix(face.rgb, eye, cover);
 }
 #endif
 

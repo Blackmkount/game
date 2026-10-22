@@ -38,6 +38,9 @@ const ZOOM_NEAR: int = 2
 ## vista de la impresora y otro en medio del cuarto.
 const NEAR_PRINTER_SPOT: Vector2 = Vector2(-0.3, -0.25)
 const ROOM_MIDDLE_SPOT: Vector2 = Vector2(0.3, 0.2)
+## Lejos de la impresora del piso, fuera del encuadre de 36 (la impresora de
+## cerca, sin la manga del personaje en el borde).
+const AWAY_FROM_PRINTER_SPOT: Vector2 = Vector2(-1.2, 1.2)
 ## Caminata con el joystick de 04 y 05: en línea recta desde el primer punto
 ## hasta el segundo, junto a la impresora del piso (a su izquierda en la
 ## pantalla, como el punto de partida). Son 1,27 m, más que
@@ -477,6 +480,7 @@ func _art_room_shots() -> void:
 	await _frames(40)
 	await _capture("45_pieza_creciendo_lejos")
 	_zoom(ZOOM_NEAR)
+	_place_character(AWAY_FROM_PRINTER_SPOT)
 	_room.camera.set_base_size(PRINTER_FRAME)
 	_camera_point = _room.get_node("Printer%d" % PRINTER_UID).global_transform * PRINTER_POINT
 	await _frames(40)

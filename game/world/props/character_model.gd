@@ -32,13 +32,14 @@ const HEIGHT: float = 1.40
 const HIP_HEIGHT: float = 0.50
 const HIP_X: float = 0.08
 const KNEE_DROP: float = 0.23
-## Hombros desde el pivote Body (en y 0,90 del modelo), su giro hacia afuera
-## en reposo y el eje del brazo, un poco por fuera de la articulación (así
-## cuelga sin rozar el buzo). El codo, bajando por ese eje.
-const SHOULDER: Vector2 = Vector2(0.17, 0.40)
-const SHOULDER_ROLL: float = 0.06
-const ARM_OFFSET: float = 0.05
-const ELBOW_DROP: float = 0.20
+## Hombros desde el pivote Body (en y 0,86 del modelo) y su giro hacia
+## afuera en reposo (cuelga sin rozar el buzo). El pivote está dentro de la
+## cúpula del hombro (ARM_DOME), en el eje del brazo: al girar el brazo la
+## cúpula gira casi sobre sí misma y la punta de la manga no se despega del
+## buzo. El codo, bajando por ese eje.
+const SHOULDER: Vector2 = Vector2(0.195, 0.36)
+const SHOULDER_ROLL: float = 0.11
+const ELBOW_DROP: float = 0.16
 ## Pivote de la cabeza (el cuello) desde Body, y el mentón levantado 6° en
 ## reposo: la cámara alta ve la cara.
 const NECK_Y: float = 0.43
@@ -66,18 +67,24 @@ const CULL_MARGIN: float = 0.3
 ## Pierna de jeans y brazo de buzo: perfiles (radio, alto) de un tubo
 ## cerrado arriba y abierto abajo (esa punta queda adentro de la zapatilla y
 ## del puño), con más anillos en la rodilla y el codo, donde se doblan. El
-## brazo, en el marco del hombro (cuelga hacia −Y).
+## brazo, en el marco del hombro (cuelga hacia −Y), más delgado que la
+## pierna y un poco más grueso arriba (el hombro).
 const LEG_PROFILE: PackedVector2Array = [
 	Vector2(0.052, 0.09), Vector2(0.054, 0.15), Vector2(0.056, 0.21), Vector2(0.0575, 0.245), Vector2(0.058, 0.27),
 	Vector2(0.059, 0.295), Vector2(0.061, 0.33), Vector2(0.063, 0.39), Vector2(0.065, 0.45), Vector2(0.066, 0.51),
 	Vector2(0.064, 0.55), Vector2(0.0, 0.565),
 ]
 const ARM_PROFILE: PackedVector2Array = [
-	Vector2(0.046, -0.375), Vector2(0.047, -0.33), Vector2(0.049, -0.28), Vector2(0.05, -0.235), Vector2(0.0505, -0.21),
-	Vector2(0.051, -0.19), Vector2(0.052, -0.165), Vector2(0.053, -0.12), Vector2(0.054, -0.07), Vector2(0.05, -0.035),
-	Vector2(0.0, -0.01),
+	Vector2(0.042, -0.335), Vector2(0.043, -0.29), Vector2(0.045, -0.24), Vector2(0.046, -0.195), Vector2(0.0465, -0.17),
+	Vector2(0.047, -0.15), Vector2(0.048, -0.125), Vector2(0.05, -0.08), Vector2(0.052, -0.035),
 ]
-const LIMB_SIDES: int = 12
+## El hombro: la punta de arriba del brazo es una cúpula lisa del mismo
+## torno (media elipse de radio x alto, con ARM_DOME_ROWS anillos), centrada
+## en su eje: sin bola aparte ni costura. Queda metida bajo la esquina del
+## buzo y se dobla con el anillo de mezcla del hombro.
+const ARM_DOME: Vector2 = Vector2(0.052, 0.068)
+const ARM_DOME_ROWS: int = 8
+const LIMB_SIDES: int = 16
 
 static var _skin: Skin
 
@@ -130,7 +137,7 @@ static func local_rest(bone: Bone) -> Transform3D:
 		Bone.SHOULDER_L, Bone.SHOULDER_R:
 			return Transform3D(Basis(Vector3.BACK, SHOULDER_ROLL * side), Vector3(SHOULDER.x * side, SHOULDER.y, 0.0))
 		Bone.ELBOW_L, Bone.ELBOW_R:
-			return Transform3D(Basis.IDENTITY, Vector3(ARM_OFFSET * side, -ELBOW_DROP, 0.0))
+			return Transform3D(Basis.IDENTITY, Vector3(0.0, -ELBOW_DROP, 0.0))
 	return Transform3D(Basis(Vector3.RIGHT, CHIN_UP), Vector3(0.0, NECK_Y, 0.0))
 
 
@@ -206,21 +213,31 @@ static func _leg(side: float) -> KitMesh:
 	return kit
 
 
+## Perfil del brazo: el tubo (ARM_PROFILE) y, arriba, la cúpula del hombro.
+static func arm_profile() -> PackedVector2Array:
+	var profile: PackedVector2Array = ARM_PROFILE.duplicate()
+	var top: Vector2 = ARM_PROFILE[ARM_PROFILE.size() - 1]
+	for k: int in range(1, ARM_DOME_ROWS + 1):
+		var angle: float = PI / 2.0 * k / ARM_DOME_ROWS
+		profile.append(Vector2(ARM_DOME.x * cos(angle), top.y + ARM_DOME.y * sin(angle)))
+	# La punta cierra en horizontal: su normal es el eje (sin pellizco de luz).
+	profile[profile.size() - 1] = Vector2(0.0, profile[profile.size() - 2].y)
+	return profile
+
+
 ## Brazo de buzo en un solo tubo desde el hombro (se dobla en el codo), puño
 ## acanalado y mano de mitón con pulgar. Se arma en el marco del hombro: el
 ## brazo cuelga hacia −Y.
 static func _arm(side: float) -> KitMesh:
 	var kit: KitMesh = _kit()
 	kit.origin = model_rest(Bone.SHOULDER_L if side < 0.0 else Bone.SHOULDER_R)
-	var x: float = ARM_OFFSET * side
 	kit.paint(LookPalette.HOODIE, WorldPalette.Surface.SMOOTH, 0.08)
-	kit.blob(Vector3(0.054, 0.058, 0.054), Vector3(x * 0.7, -0.07, 0.0), Vector3.ZERO, 1.0, 1.0, Vector2.ONE, Vector2i(10, 7))
-	kit.lathe(ARM_PROFILE, Vector3(x, 0.0, 0.0), Vector3.ZERO, LIMB_SIDES)
+	kit.lathe(arm_profile(), Vector3.ZERO, Vector3.ZERO, LIMB_SIDES)
 	kit.paint(LookPalette.HOODIE_CUFF, WorldPalette.Surface.SMOOTH, 0.05)
-	kit.torus(Vector2(0.046, 0.046), 0.016, Vector3(x, -0.365, 0.0), Vector3.ZERO, TAU, Vector2i(10, 5))
+	kit.torus(Vector2(0.042, 0.042), 0.015, Vector3(0.0, -0.325, 0.0), Vector3.ZERO, TAU, Vector2i(LIMB_SIDES, 5))
 	kit.paint(LookPalette.SKIN, WorldPalette.Surface.SKIN, SKIN_GLOSS)
-	kit.blob(Vector3(0.038, 0.05, 0.032), Vector3(x, -0.425, 0.006), Vector3.ZERO, 0.8, 0.9, Vector2.ONE, Vector2i(10, 8))
-	kit.blob(Vector3(0.014, 0.026, 0.014), Vector3(x - 0.026 * side, -0.405, 0.026), Vector3(0.0, 0.0, -28.0 * side), 1.0, 1.0, Vector2.ONE, Vector2i(8, 5))
+	kit.blob(Vector3(0.038, 0.05, 0.032), Vector3(0.0, -0.385, 0.006), Vector3.ZERO, 0.8, 0.9, Vector2.ONE, Vector2i(14, 9))
+	kit.blob(Vector3(0.014, 0.026, 0.014), Vector3(-0.026 * side, -0.365, 0.026), Vector3(0.0, 0.0, -28.0 * side), 1.0, 1.0, Vector2.ONE, Vector2i(10, 6))
 	return kit
 
 
@@ -232,13 +249,13 @@ static func _torso() -> KitMesh:
 	kit.paint(LookPalette.JEANS, WorldPalette.Surface.SMOOTH, 0.05)
 	kit.blob(Vector3(0.148, 0.075, 0.102), Vector3(0.0, 0.515, 0.0), Vector3.ZERO, 0.6, 0.8, Vector2.ONE, Vector2i(12, 6))
 	kit.paint(LookPalette.HOODIE, WorldPalette.Surface.SMOOTH, 0.08)
-	kit.blob(Vector3(0.17, 0.222, 0.11), Vector3(0.0, 0.69, 0.0), Vector3.ZERO, 0.62, 0.56, Vector2(1.05, 0.95), Vector2i(18, 12))
+	kit.blob(Vector3(0.17, 0.222, 0.11), Vector3(0.0, 0.69, 0.0), Vector3.ZERO, 0.62, 0.56, Vector2(1.05, 1.0), Vector2i(18, 12))
 	kit.blob(Vector3(0.112, 0.058, 0.022), Vector3(0.0, 0.585, 0.098), Vector3.ZERO, 0.4, 0.5, Vector2.ONE, Vector2i(10, 5))
 	kit.blob(Vector3(0.135, 0.105, 0.055), Vector3(0.0, 0.86, -0.115), Vector3(14.0, 0.0, 0.0), 0.7, 0.8, Vector2.ONE, Vector2i(12, 8))
 	# La capucha enrollada abre adelante (el cuello en V de los cordones).
-	kit.torus(Vector2(0.116, 0.104), 0.046, Vector3(0.0, 0.922, -0.008), Vector3(-12.0, 180.0, 0.0), deg_to_rad(300.0), Vector2i(18, 8))
+	kit.torus(Vector2(0.116, 0.104), 0.046, Vector3(0.0, 0.922, -0.008), Vector3(-12.0, 180.0, 0.0), deg_to_rad(280.0), Vector2i(26, 10), true)
 	kit.paint(LookPalette.HOODIE_ACCENT, WorldPalette.Surface.SMOOTH, 0.1)
-	kit.torus(Vector2(0.104, 0.092), 0.03, Vector3(0.0, 0.952, -0.01), Vector3(-12.0, 180.0, 0.0), deg_to_rad(290.0), Vector2i(16, 5))
+	kit.torus(Vector2(0.104, 0.092), 0.03, Vector3(0.0, 0.952, -0.01), Vector3(-12.0, 180.0, 0.0), deg_to_rad(272.0), Vector2i(24, 6), true)
 	kit.paint(LookPalette.HOODIE_CUFF, WorldPalette.Surface.SMOOTH, 0.05)
 	kit.torus(Vector2(0.168, 0.106), 0.021, Vector3(0.0, 0.48, 0.0), Vector3.ZERO, TAU, Vector2i(18, 5))
 	for i: int in LookPalette.LOGO.size():
@@ -246,9 +263,9 @@ static func _torso() -> KitMesh:
 		kit.blob(Vector3(0.024 - i * 0.004, 0.0055, 0.005), Vector3(0.068, 0.80 - i * 0.014, 0.104), Vector3.ZERO, 0.3, 0.6, Vector2.ONE, Vector2i(8, 4))
 	for side: float in [-1.0, 1.0]:
 		kit.paint(LookPalette.DRAWSTRINGS, WorldPalette.Surface.SMOOTH, 0.2)
-		kit.tube(PackedVector3Array([Vector3(0.03 * side, 0.9, 0.098), Vector3(0.034 * side, 0.845, 0.106), Vector3(0.038 * side, 0.785, 0.11)]), 0.0065, 6, 3)
+		kit.tube(PackedVector3Array([Vector3(0.03 * side, 0.9, 0.098), Vector3(0.034 * side, 0.845, 0.106), Vector3(0.038 * side, 0.785, 0.11)]), 0.0065, 8, 3)
 		kit.paint(LookPalette.HOODIE_ACCENT, WorldPalette.Surface.SMOOTH, 0.3)
-		kit.blob(Vector3(0.008, 0.013, 0.008), Vector3(0.038 * side, 0.775, 0.11), Vector3.ZERO, 1.0, 1.0, Vector2.ONE, Vector2i(6, 4))
+		kit.blob(Vector3(0.008, 0.013, 0.008), Vector3(0.038 * side, 0.775, 0.11), Vector3.ZERO, 1.0, 1.0, Vector2.ONE, Vector2i(8, 5))
 	return kit
 
 

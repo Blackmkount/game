@@ -1,12 +1,13 @@
 class_name HairKit
 extends RefCounted
 ## El pelo del protagonista como UNA superficie continua (biblia de arte §7.6,
-## idea del pelo de "Pixel HD"): un casquete deformado en 7 mechones grandes y
-## redondos que bajan desde la coronilla, un flequillo de 4 lenguas redondeadas
-## barrido hacia un lado, patillas y nuca, y 3 mechoncitos sueltos en la
-## coronilla. Al ser una sola superficie, el contorno del personaje dibuja
-## solo la silueta (nada de "piedras" ni "coliflor") y el pliegue entre dos
-## mechones es un surco suave, no un borde.
+## idea del pelo de "Pixel HD"): un casquete deformado en 14 mechones
+## redondos que bajan desde la coronilla (6 grandes atrás, uno sobre cada
+## oreja, uno en cada sien y las 4 lenguas redondeadas del flequillo, barrido
+## hacia un lado), patillas y nuca, y 3 mechoncitos sueltos en la coronilla.
+## Al ser una sola superficie, el contorno del personaje dibuja solo la
+## silueta (nada de "piedras" ni "coliflor") y el pliegue entre dos mechones
+## es un surco suave, no un borde.
 ##
 ## El color va por vértice: el café de base, el brillo pintado en lo alto de
 ## cada mechón, los pliegues oscuros y el borde de abajo en sombra.
@@ -26,12 +27,14 @@ const FRONT_EDGE: Vector2 = Vector2(0.75, 1.0)
 const BACK_EDGE: Vector2 = Vector2(1.6, 2.3)
 ## Mechones alrededor de la cabeza, de un lado al otro pasando por el frente:
 ## dónde empieza cada uno (ángulo desde el frente, el último cierra la
-## vuelta) y lo que baja su punta (radianes de latitud). Al frente, las 4
-## lenguas del flequillo; a cada lado, el de la sien; atrás, 7 mechones.
+## vuelta) y lo que baja su punta (radianes de latitud): atrás, 6 mechones
+## (3 por lado, de anchos distintos para que la espalda no se vea pareja);
+## sobre cada oreja, uno; en cada sien, otro; y al frente, las 4 lenguas del
+## flequillo.
 const LOCK_EDGES: Array[float] = [
-	-3.1416, -2.6823, -2.2231, -1.7638, -1.3, -0.82, -0.4, 0.02, 0.43, 0.82, 1.3, 1.7638, 2.2231, 2.6823, 3.1416,
+	-3.1416, -2.58, -2.16, -1.7638, -1.3, -0.82, -0.4, 0.02, 0.43, 0.82, 1.3, 1.7638, 2.3, 2.74, 3.1416,
 ]
-const LOCK_DEPTHS: Array[float] = [0.12, 0.13, 0.12, 0.06, 0.04, 0.16, 0.23, 0.25, 0.2, 0.04, 0.06, 0.12, 0.13, 0.12]
+const LOCK_DEPTHS: Array[float] = [0.14, 0.1, 0.13, 0.06, 0.04, 0.16, 0.23, 0.25, 0.2, 0.04, 0.06, 0.11, 0.15, 0.1]
 ## Las lenguas se tuercen hacia un lado (barridas): exponente de su forma.
 const SKEW: float = 0.72
 ## Patillas: delante de las orejas, cuánto bajan y su ancho.
@@ -41,7 +44,10 @@ const SIDEBURN_WIDTH: float = 0.08
 ## Cuánto se abomba cada mechón (fracción del radio) y cuánto se enrosca
 ## hacia un lado al subir (radianes alrededor por radián de latitud).
 const RIDGE: float = 0.055
-const SWIRL: float = 0.32
+const SWIRL: float = 0.2
+## Latitudes donde los mechones (lomo y pliegue) se apagan hacia la
+## coronilla: arriba queda un casco liso con brillo, sin remolino marcado.
+const CROWN_FADE: Vector2 = Vector2(0.6, 1.1)
 ## El borde se mete hacia la cabeza (la línea del pelo queda limpia).
 const EDGE_TUCK: float = 0.9
 ## Grilla: columnas alrededor y filas (con `detail` 1,0). Las columnas se
@@ -72,14 +78,14 @@ static func add_to(kit: KitMesh, center: Vector3, radii: Vector3) -> void:
 			var lat: float = lerpf(line, PI / 2.0, pow(v, 1.4))
 			var ridge: float = _ridge(u, lat)
 			# Los mechones se abomban hacia afuera, menos cerca de la coronilla.
-			var crown: float = 1.0 - smoothstep(0.8, 1.4, lat)
+			var crown: float = 1.0 - smoothstep(CROWN_FADE.x, CROWN_FADE.y, lat)
 			var r: float = 1.0 + RIDGE * (ridge - 0.5) * crown
 			r *= lerpf(EDGE_TUCK, 1.0, smoothstep(0.0, 0.16, v))
 			points.append(center + _direction(u, lat) * radii * r)
 			# Color: pliegue entre mechones, brillo arriba de cada uno, borde de
 			# abajo en sombra.
 			var color: Color = base.lerp(fold, (1.0 - smoothstep(0.1, 0.55, ridge)) * crown * 0.85)
-			var band: float = smoothstep(0.45, 0.75, lat) * (1.0 - smoothstep(1.0, 1.3, lat))
+			var band: float = smoothstep(0.45, 0.75, lat) * crown
 			color = color.lerp(mid, smoothstep(0.55, 0.85, ridge) * band)
 			color = color.lerp(shine, smoothstep(0.82, 0.97, ridge) * band * 0.85)
 			color = color.lerp(fold, (1.0 - smoothstep(0.0, 0.2, v)) * 0.7)

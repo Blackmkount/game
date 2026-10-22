@@ -360,8 +360,10 @@ func tube(points: PackedVector3Array, radius: float, sides: int = 6, steps: int 
 
 ## Toroide acostado en el plano XZ, centrado en `pos` (puños, rollos, aros):
 ## `ring` son los radios del anillo en X y en Z, `tube_radius` su grosor.
-## Con `arc` < TAU es un arco centrado hacia +Z, con las puntas cerradas.
-func torus(ring: Vector2, tube_radius: float, pos: Vector3, rot_deg: Vector3 = Vector3.ZERO, arc: float = TAU, segs: Vector2i = Vector2i(20, 8)) -> KitMesh:
+## Con `arc` < TAU es un arco centrado hacia +Z, con las puntas cerradas:
+## planas, o con `round_ends` redondeadas (media esfera del grosor del tubo,
+## que sobresale `tube_radius` de cada punta: capuchas, rollos de tela).
+func torus(ring: Vector2, tube_radius: float, pos: Vector3, rot_deg: Vector3 = Vector3.ZERO, arc: float = TAU, segs: Vector2i = Vector2i(20, 8), round_ends: bool = false) -> KitMesh:
 	_place(pos, rot_deg)
 	var nu: int = _count(segs.x, MIN_AROUND)
 	var nv: int = _count(segs.y, MIN_ROWS)
@@ -380,11 +382,29 @@ func torus(ring: Vector2, tube_radius: float, pos: Vector3, rot_deg: Vector3 = V
 			var u: float = PI / 2.0 - span / 2.0 + span * i / nu
 			var center: Vector3 = _torus_center(ring, u)
 			var ahead: Vector3 = (_torus_center(ring, u + NORMAL_STEP) - _torus_center(ring, u - NORMAL_STEP)).normalized()
+			var out: Vector3 = -ahead if i == 0 else ahead
+			if round_ends:
+				_round_end(center, ring, u, out, tube_radius, nv)
+				continue
 			var cap: PackedVector3Array = PackedVector3Array()
 			for k: int in nv:
 				cap.append(center + _torus_normal(ring, u, TAU * k / nv) * tube_radius)
-			_fan(center, cap, -ahead if i == 0 else ahead)
+			_fan(center, cap, out)
 	return self
+
+
+## Media esfera que cierra la punta de un arco de toroide en `u`, hacia `out`
+## (la tangente que sale del arco): el primer anillo coincide con el del
+## tubo, así no queda costura.
+func _round_end(center: Vector3, ring: Vector2, u: float, out: Vector3, tube_radius: float, nv: int) -> void:
+	var rows: int = maxi(2, ceili(nv * 0.5))
+	var base: int = _positions.size()
+	for k: int in rows + 1:
+		var phi: float = PI / 2.0 * k / rows
+		for j: int in nv + 1:
+			var n: Vector3 = _torus_normal(ring, u, TAU * j / nv) * cos(phi) + out * sin(phi)
+			_vertex(center + n * tube_radius, n)
+	_grid(base, nv, rows)
 
 
 ## Círculo plano centrado en `pos` que mira hacia +Z.

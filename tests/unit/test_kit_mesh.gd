@@ -303,6 +303,33 @@ func test_a_repeated_profile_point_makes_a_sharp_edge() -> void:
 	assert_eq(kit.triangle_count(), 8 + 16 + 8, "Tapa, costado y tapa: ningún triángulo en las esquinas repetidas")
 
 
+func test_an_arc_can_close_with_round_ends() -> void:
+	# Media vuelta hacia +Z: las puntas quedan en x = ±0,1, en z = 0, y salen
+	# hacia −Z. Planas no pasan de z = 0; redondas sobresalen el grosor.
+	var flat: KitMesh = KitMesh.new()
+	flat.torus(Vector2(0.1, 0.1), 0.02, Vector3.ZERO, Vector3.ZERO, PI)
+	var rounded: KitMesh = KitMesh.new()
+	rounded.torus(Vector2(0.1, 0.1), 0.02, Vector3.ZERO, Vector3.ZERO, PI, Vector2i(20, 8), true)
+	assert_almost_eq(flat.commit().get_aabb().position.z, 0.0, GOAL_TOLERANCE, "Puntas planas")
+	var aabb: AABB = rounded.commit().get_aabb()
+	assert_almost_eq(aabb.position.z, -0.02, GOAL_TOLERANCE, "Cada punta es media esfera del grosor del tubo")
+	assert_almost_eq(aabb.size.x, 0.24, GOAL_TOLERANCE, "Lo demás no cambia")
+	assert_almost_eq(aabb.end.z, 0.12, GOAL_TOLERANCE)
+	# La media esfera empieza en el anillo de la punta (sin costura) y sus
+	# normales salen del centro de la punta.
+	var arrays: Array = rounded.commit().surface_get_arrays(0)
+	var positions: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var capped: int = 0
+	for i: int in positions.size():
+		if positions[i].z < -0.0001:
+			capped += 1
+			var tip: Vector3 = Vector3(signf(positions[i].x) * 0.1, 0.0, 0.0)
+			assert_almost_eq(positions[i].distance_to(tip), 0.02, 0.0001, "Sobre la esfera de la punta")
+			assert_almost_eq(normals[i].dot((positions[i] - tip).normalized()), 1.0, 0.0001, "Normal de la esfera")
+	assert_gt(capped, 20, "Las dos puntas")
+
+
 func test_an_empty_kit_gives_an_empty_mesh() -> void:
 	var kit: KitMesh = KitMesh.new()
 	assert_true(kit.is_empty())
@@ -333,6 +360,7 @@ func _every_shape() -> KitMesh:
 	kit.night_glow("ffd27a", 0.7)
 	kit.torus(Vector2(0.12, 0.08), 0.02, Vector3(0.0, 0.5, 0.0), Vector3(90.0, 0.0, 0.0))
 	kit.torus(Vector2(0.1, 0.1), 0.015, Vector3(0.0, 0.4, 0.0), Vector3.ZERO, PI * 0.8)
+	kit.torus(Vector2(0.12, 0.1), 0.03, Vector3(0.0, 0.6, 0.0), Vector3(-12.0, 180.0, 0.0), deg_to_rad(280.0), Vector2i(20, 8), true)
 	kit.paint("2a2730")
 	kit.tube(PackedVector3Array([Vector3.ZERO, Vector3.ZERO, Vector3(0.2, 0.0, 0.0), Vector3(0.2, 0.3, 0.0), Vector3(0.21, 0.31, 0.2), Vector3(0.0, 0.0, 0.0)]), 0.004)
 	kit.tube(PackedVector3Array([Vector3(0.0, 0.0, 0.0), Vector3(0.0, 0.5, 0.0)]), 0.01, 3, 1)

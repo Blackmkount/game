@@ -700,3 +700,41 @@ Medido: cuarto inicial **33 llamadas** (antes 75), **13 materiales** (antes 18),
 - `tests/unit/test_character_model.gd` (8): los pivotes del contrato, rodillas, codos y `SpeechAnchor` a las alturas de la biblia (y el cráneo, el mentón y el alto total); cada hueso con el reposo de su pivote, la misma jerarquía y, después de `follow()`, la pose (giro, lugar y escala) de su pivote; el cuerpo es una malla con piel, pesos que suman 1, las zapatillas con la rodilla, el pecho con el cuerpo y vértices mezclados en la rodilla; los contornos comparten la malla, no dan sombra y el del cuerpo se dobla con la piel; el pelo es una superficie entera con normales finitas y unitarias y el flequillo termina más de 1 cm sobre las cejas; el atlas tiene 8 celdas de 128 px, la máscara de los ojos abiertos (y ninguna con los ojos cerrados), expresiones distintas y ojos de más de 6 px con el zoom normal; mallas, piel y materiales compartidos entre dos personajes; cada personaje con su propia expresión.
 - `tests/unit/test_scene_budget_helper.gd`: `child_geometry` cuenta una vez la malla que comparten dos instancias (el contorno).
 - `tests/integration/test_hud.gd`: el retrato cambia de cara en los momentos importantes y vuelve a la normal.
+
+## 2026-10-22 — Arte 2.0, paso 10, ronda de arreglos 1: hombros, capucha, cara de lejos y pelo arriba
+
+### El hombro es una cúpula del mismo brazo, con el pivote adentro (arregla un defecto que bloqueaba)
+**Problema:** la revisión encontró un corte y una "hombrera" en los dos hombros (biblia §7.2 pide "sin cortes ni hombreras"): la manga era un torno centrado 5 cm por fuera del pivote, con la punta cónica, y encima una bola aparte corrida hacia adentro; la punta del tubo asomaba por fuera de la bola (muesca oscura y facetas) y la bola sobre el tubo se leía como hombrera. Además, al revisar con el brazo levantado de costado apareció otro defecto: como el pivote estaba en el borde de arriba del brazo, al levantarlo 0,9 rad la punta de la manga se despegaba 8,5 cm del buzo (quedaba flotando), y 4 cm al balancearlo caminando.
+**Decisión:** sin bola: la punta de la manga es una **cúpula lisa del mismo torno** (media elipse de 5,2 × 6,7 cm con 8 anillos, `CharacterModel.ARM_DOME`, `arm_profile()`), cerrada en horizontal (su normal es el eje: sin pellizco de luz). El **pivote del hombro baja a y 0,86 y sale a x ±0,195**, dentro de la cúpula y en el eje del brazo (`ARM_OFFSET` desaparece; `ELBOW_DROP` 0,20 → 0,16, así el codo sigue en y 0,70). El brazo cuelga un poco abierto (`SHOULDER_ROLL` 0,06 → 0,11) y su punta queda metida bajo la esquina del buzo, que arriba ya no se angosta (taper 0,95 → 1,0; el pecho sigue en 0,34 m). Medido con la piel calculada a mano: levantando el brazo de costado 0,9 rad la punta de la manga se mueve en promedio 0,2 cm (antes 3,7) y como mucho 1,5 cm (antes 8,5); balanceándolo, como mucho 1,3 cm (antes 4,1).
+**Desvío de la biblia §7.1:** los pivotes de los hombros pasan de (±0,17; 0,90) a (±0,195; 0,86). El alto del hombro que se ve (la punta de la manga, y 0,89) no cambia; cambia dónde gira: en el centro de la cúpula, como una articulación de verdad. Los nombres del contrato (A.7) no cambian.
+**Motivo:** biblia §7.2, y que los gestos del paso 11 (puño arriba, estirarse, saludar) no dejen el brazo flotando.
+
+### Brazos más delgados que las piernas y más redondos
+**Decisión:** el brazo baja de 4,6–5,4 cm de radio a 4,2–5,2 (la pierna va de 5,2 a 6,6), y el puño se achica con él. Las piernas y los brazos pasan de 10 a 13 lados (`LIMB_SIDES` 12 → 16 con el detalle 0,8), las manos y los puños tienen más filas y los cordones son octogonales: de cerca (32a, 33 y retratos) ya no se ven prismas.
+**Motivo:** nota de la revisión (brazos tan gruesos como las piernas y facetas de cerca).
+
+### La capucha enrollada con puntas redondeadas
+**Decisión:** `KitMesh.torus` tiene una opción nueva, `round_ends`: un arco termina en media esfera del grosor del tubo (sin costura con el tubo) en vez de una tapa plana. La capucha (280°, antes 300°, porque las puntas redondas sobresalen) y su forro mostaza (272°) la usan, con más segmentos (26 × 10 y 24 × 6).
+**Motivo:** nota de la revisión: en 33 el rollo y el forro se veían en bloques y con las puntas cortadas en plano.
+
+### La cara de lejos: más nítida y ojos de tinta
+**Decisión:** `kit_head` lee el atlas de la cara con `textureLod` y el nivel de detalle que corresponde menos uno (`CC_FACE_LOD_BIAS`), calculado con los texeles de la celda por píxel. Con 2,5 a 5 texeles por píxel (`CC_FACE_FAR`; el zoom normal anda por 4 y el lejos por 8) los ojos pasan de pintados a **puntos de tinta con borde firme** (la máscara de los ojos se afila), conservando el brillo blanco donde todavía se ve. De cerca y en los retratos no cambia nada.
+**Motivo:** nota de la revisión: con el zoom lejos (02, 24, 30, 37) y aun con el normal, el promedio de contorno, iris y brillos dejaba manchas café grisáceas con un anillo gris ("ojos morados"). El paso 9 tenía puntos nítidos; ahora vuelven, más grandes.
+
+### El pelo visto desde arriba
+**Decisión:** el remolino se suaviza (`SWIRL` 0,32 → 0,2) y los mechones (lomo, pliegue y las vetas de brillo) se apagan antes hacia la coronilla (`CROWN_FADE`, latitud 0,6 → 1,1 rad; antes 0,8 → 1,4 y las vetas hasta 1,3): arriba queda un casco liso. Los 6 mechones de atrás tienen anchos y largos distintos (antes iguales y simétricos). De frente, de perfil y de 3/4 no cambia.
+**Motivo:** nota de la revisión: desde arriba los pliegues se juntaban en un molinillo marcado ("empanada" o "ajo"; la biblia §7.6 pide revisar que no parezca alcachofa) y la espalda se veía pareja.
+
+### Captura 36
+**Decisión:** `tools/screenshot_runner.gd` aleja al personaje (`AWAY_FROM_PRINTER_SPOT`) antes de 36: la manga del personaje (más alto desde el paso 10) asomaba como una barra oscura en el borde.
+
+### Presupuesto
+Personaje: **7.831 triángulos** (cuerpo 4.288, cabeza 3.543; antes 6.775; tope 8.000) y las mismas 6 llamadas. El resto del cuarto no cambia.
+
+### Prueba adaptada (misma intención)
+- `tests/unit/test_character_model.gd`, `PIVOT_HEIGHTS`: los hombros a 0,86 (antes 0,90), por el desvío de arriba. Sigue comprobando que cada pivote está a su altura; el codo sigue en 0,70.
+
+### Pruebas nuevas
+- `test_character_model.gd`: `test_the_top_of_the_sleeve_is_one_round_dome_without_seams` (el brazo cierra arriba en una cúpula lisa: sin ensancharse, sin quiebres de más de 25° y con la punta casi horizontal; el perfil viejo fallaba con un quiebre de 57°) y `test_the_top_of_the_sleeve_stays_on_the_shoulder_when_the_arm_moves` (con la piel calculada a mano, la punta de la manga se mueve menos de 2,5 cm, 5 cm con los brazos arriba, y en promedio menos de 1 cm al levantar el brazo de costado, adelante, atrás y arriba; el modelo anterior fallaba con 8,5 cm).
+- `test_kit_mesh.gd`: `test_an_arc_can_close_with_round_ends` (las puntas son medias esferas del grosor del tubo, sin costura) y el arco con puntas redondas entra en la malla con todas las formas (caras, normales y valores finitos).
+- `test_world_palette.gd`: `test_the_shaders_number_the_surfaces_like_the_palette` (las constantes `CC_*` de `kit_body.gdshaderinc` y de `outline_character.gdshader` valen lo mismo que `WorldPalette.Surface`; antes nada ataba el `CC_HAIR` del contorno).

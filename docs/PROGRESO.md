@@ -4,7 +4,7 @@
 
 - **Fase actual:** 1. Ciclo jugable, en curso (ruta aprobada por el dueño en `docs/RUTA.md`).
 - **Diseño:** GDD versión 2.3, guía de estilo en `docs/ESTILO.md` y ruta en `docs/RUTA.md`.
-- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 10 de 16: el personaje nuevo (1,40 m, una malla con piel que dobla rodillas y codos, la cara pintada con 8 expresiones, el pelo en una sola superficie, un contorno fino y los retratos con luz de estudio) (2026-10-22). Antes: paso 9, los muebles del kit.
+- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 10 de 16: el personaje nuevo (1,40 m, una malla con piel que dobla rodillas y codos, la cara pintada con 8 expresiones, el pelo en una sola superficie, un contorno fino y los retratos con luz de estudio), con una ronda de arreglos (hombros sin cortes que giran desde su centro, brazos más delgados, capucha suave, ojos nítidos de lejos y el pelo de arriba sin remolino) (2026-10-22). Antes: paso 9, los muebles del kit.
 - **Siguiente paso sugerido:** Arte 2.0, paso 11: el personaje vivo (animación por capas, expresiones y reacciones a lo que pasa). Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
 - **Diseño del ciclo:** aprobado por el dueño (GDD, versión 2.3 en la sección 16).
 
@@ -488,3 +488,22 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 - La captura de la cara de muy cerca (33) se ve un poco suave: la cara está hecha para el zoom del juego.
 - El paso 12 (decoración) va a necesitar subir un poco los topes de la prueba de presupuesto del cuarto inicial (detalle en `docs/DECISIONES.md`).
 
+
+### 2026-10-22 — Arte 2.0, paso 10, ronda de arreglos 1: hombros y detalles del personaje
+
+**Qué se hizo**
+- **Hombros arreglados** (lo pidió la revisión): antes cada hombro era una bola pegada encima del brazo, corrida hacia un lado, y se veía un corte oscuro y una "hombrera". Ahora la punta de cada manga es redonda y lisa, de una sola pieza con el brazo, y queda metida bajo el buzo.
+- **El brazo gira desde el centro del hombro:** al levantar el brazo de costado o hacia arriba la manga ya no se despega del cuerpo (antes quedaba flotando a 8 cm). Esto prepara los gestos del paso 11 (puño arriba, estirarse, saludar).
+- **Brazos más delgados** que las piernas, un poco abiertos, y más redondos de cerca (también las manos y los puños). La **capucha enrollada** es más suave y sus puntas son redondas.
+- **La cara de lejos:** con el zoom lejos y el normal los ojos ya no se ven como manchas grises; ahora son puntos oscuros nítidos con su brillo. De cerca se ven igual que antes.
+- **El pelo visto desde arriba** ya no hace un remolino tipo molinillo, y la espalda tiene mechones de distinto ancho.
+- La captura 36 (la impresora de cerca) ya no muestra la manga del personaje en el borde.
+
+**Verificado**
+- `check.sh` y `run_tests.sh` pasan: 634 pruebas (4 nuevas: la manga es una sola cúpula lisa, la manga no se despega al mover el brazo, las puntas redondas del kit y que los sombreadores numeran las superficies igual que la paleta). Una prueba adaptada: los hombros a 0,86 m (detalle en `docs/DECISIONES.md`).
+- `screenshots.sh` saca las 39 capturas. Revisé 32a, 32b, 32c, 33, 01, 02, 03, 30, 31, 36, 37 y 47, y aparte (laboratorio) los hombros desde 5 lados, con los brazos adelante, atrás, de costado y arriba, el pelo desde arriba y la cara en los tres zooms.
+
+**Qué revisar en el teléfono** (versión web)
+- Zoom "Cerca" junto a la impresora: los hombros redondos, sin cortes ni bultos; la capucha suave.
+- Zoom "Lejos" y "Normal": se le ven los dos ojos como puntos oscuros (no manchas).
+- Camina con el joystick: los brazos se balancean sin despegarse del buzo.

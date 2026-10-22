@@ -2,7 +2,8 @@ extends GutTest
 ## Materiales del mundo (WorldPalette, biblia de arte §3.6): la caché devuelve
 ## siempre el mismo material para el mismo pedido (las vistas y las pruebas
 ## los comparan por identidad), cada uno lleva el color y la superficie
-## pedidos, y cada estado de pantalla es un material propio.
+## pedidos, cada estado de pantalla es un material propio y los sombreadores
+## numeran las superficies igual que WorldPalette.Surface.
 
 
 func test_the_same_request_gives_the_same_material() -> void:
@@ -81,3 +82,19 @@ func test_floor_marks_are_see_through_markers() -> void:
 	assert_same(WorldPalette.glow_transparent(WorldPalette.SLOT_MARK, 0.6, 0.2, 2.4), pulsing)
 	assert_eq(pulsing.get_shader_parameter("alpha_low"), 0.2)
 	assert_eq(pulsing.get_shader_parameter("period"), 2.4)
+
+
+func test_the_shaders_number_the_surfaces_like_the_palette() -> void:
+	# Las superficies viajan como número (UV.x entero): cada constante CC_<NOMBRE>
+	# de los sombreadores tiene que valer lo mismo que Surface.<NOMBRE>. El kit
+	# las declara todas; el contorno del personaje, la del pelo.
+	var pattern: RegEx = RegEx.create_from_string("const int CC_([A-Z]+) = (\\d+);")
+	var expected: Dictionary[String, int] = {"kit_body.gdshaderinc": WorldPalette.Surface.size(), "outline_character.gdshader": 1}
+	for file: String in expected:
+		var found: int = 0
+		for constant: RegExMatch in pattern.search_all(FileAccess.get_file_as_string("res://game/world/look/" + file)):
+			var surface_name: String = constant.get_string(1)
+			if WorldPalette.Surface.has(surface_name):
+				found += 1
+				assert_eq(constant.get_string(2).to_int(), WorldPalette.Surface[surface_name], "%s: CC_%s" % [file, surface_name])
+		assert_eq(found, expected[file], "%s numera sus superficies" % file)

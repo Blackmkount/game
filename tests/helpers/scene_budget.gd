@@ -105,7 +105,8 @@ func child_triangles(child_name: String) -> int:
 
 
 ## Triángulos de las mallas distintas de un hijo de la raíz (su geometría,
-## una vez, aunque dos instancias compartan una malla).
+## una vez, aunque dos instancias compartan una malla). Un MultiMesh cuenta
+## todas sus copias: es geometría que dibuja.
 func child_geometry(child_name: String) -> int:
 	var share: Share = by_child.get(child_name)
 	var total: int = 0

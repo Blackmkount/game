@@ -7,7 +7,7 @@ extends GutTest
 ## Pivotes y medidas en reposo (biblia §7.1), en metros desde el piso.
 const PIVOT_HEIGHTS: Dictionary[String, float] = {
 	"HipL": 0.50, "HipR": 0.50, "HipL/KneeL": 0.27, "HipR/KneeR": 0.27, "Body": 0.50,
-	"Body/ShoulderL": 0.90, "Body/ShoulderR": 0.90, "Body/ShoulderL/ElbowL": 0.70, "Body/ShoulderR/ElbowR": 0.70,
+	"Body/ShoulderL": 0.86, "Body/ShoulderR": 0.86, "Body/ShoulderL/ElbowL": 0.70, "Body/ShoulderR/ElbowR": 0.70,
 }
 const TOLERANCE: float = 0.01
 
@@ -98,6 +98,65 @@ func test_the_body_is_one_skinned_mesh_bent_only_at_the_joints() -> void:
 	assert_almost_eq(body.extra_cull_margin, CharacterModel.CULL_MARGIN, 0.0001, "Su caja es la del reposo")
 
 
+func test_the_top_of_the_sleeve_is_one_round_dome_without_seams() -> void:
+	# El hombro no es una bola pegada a un tubo (biblia §7.2: sin cortes ni
+	# hombreras): el brazo es un solo torno que arriba se cierra en una
+	# cúpula lisa, sin quiebres ni punta.
+	var profile: PackedVector2Array = CharacterModel.arm_profile()
+	var dome_start: int = CharacterModel.ARM_PROFILE.size() - 1
+	assert_eq(profile[profile.size() - 1].x, 0.0, "Cerrado arriba, en el eje")
+	var previous: Vector2 = profile[dome_start] - profile[dome_start - 1]
+	for k: int in range(dome_start + 1, profile.size()):
+		var step: Vector2 = profile[k] - profile[k - 1]
+		assert_lt(step.x, 0.0, "La cúpula se cierra sin ensancharse (sin muesca)")
+		assert_true(step.y >= 0.0, "La cúpula no baja (sin escalones)")
+		assert_lt(absf(rad_to_deg(previous.angle_to(step))), 25.0, "Sin quiebres en el perfil (fila %d)" % k)
+		previous = step
+	assert_lt(rad_to_deg(atan2(previous.y, -previous.x)), 15.0, "La punta es redonda: el último tramo va casi horizontal")
+
+
+func test_the_top_of_the_sleeve_stays_on_the_shoulder_when_the_arm_moves() -> void:
+	# El pivote del hombro está en el centro de la cúpula: al levantar o
+	# balancear el brazo la punta de la manga gira en su lugar y no se despega
+	# del buzo (antes, con el pivote en el borde del brazo, se iba 8 cm).
+	var model: Node3D = CharacterModel.build(_root, "Character")
+	var rig: CharacterRig = model.get_node("Rig")
+	var arrays: Array = (model.get_node("Rig/Mesh") as MeshInstance3D).mesh.surface_get_arrays(0)
+	var positions: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var bones: PackedInt32Array = arrays[Mesh.ARRAY_BONES]
+	var weights: PackedFloat32Array = arrays[Mesh.ARRAY_WEIGHTS]
+	var arm_bones: Array[int] = [CharacterModel.Bone.SHOULDER_R, CharacterModel.Bone.ELBOW_R]
+	var arm: Array[int] = []
+	var top: float = -INF
+	for i: int in positions.size():
+		if bones[i * 4] in arm_bones or bones[i * 4 + 1] in arm_bones:
+			arm.append(i)
+			top = maxf(top, positions[i].y)
+	var cap: Array[int] = []
+	for i: int in arm:
+		if positions[i].y > top - 0.03:
+			cap.append(i)
+	assert_gt(cap.size(), 20, "La punta de la manga")
+	var shoulder: Node3D = model.get_node("Body/ShoulderR")
+	var skin: Skin = CharacterModel.skin()
+	# Levantar de costado, adelante, atrás y arriba: (giro, lo más que se mueve un punto).
+	var poses: Array[Array] = [[Vector3(0.0, 0.0, 0.9), 0.025], [Vector3(-0.7, 0.0, 0.11), 0.025], [Vector3(0.6, 0.0, 0.11), 0.025], [Vector3(0.0, 0.0, 2.6), 0.05]]
+	for pose: Array in poses:
+		shoulder.rotation = pose[0]
+		rig.follow()
+		var worst: float = 0.0
+		var shift: Vector3 = Vector3.ZERO
+		for i: int in cap:
+			var moved: Vector3 = Vector3.ZERO
+			for k: int in 2:
+				var bone: int = bones[i * 4 + k]
+				moved += weights[i * 4 + k] * (_bone_global_pose(rig, bone) * skin.get_bind_pose(bone) * positions[i])
+			worst = maxf(worst, moved.distance_to(positions[i]))
+			shift += moved - positions[i]
+		assert_lt(worst, float(pose[1]), "Ningún punto de la punta se despega (%s)" % pose[0])
+		assert_lt((shift / cap.size()).length(), 0.01, "La punta gira en su lugar (%s)" % pose[0])
+
+
 func test_the_outlines_share_the_meshes_and_cast_no_shadow() -> void:
 	var model: Node3D = CharacterModel.build(_root, "Character")
 	for holder: String in ["Rig", "Body/Head"]:
@@ -179,6 +238,14 @@ func test_each_character_shows_its_own_expression() -> void:
 	CharacterModel.set_expression(first, FacePainter.Face.WORRIED)
 	assert_eq((first.get_node("Body/Head/Mesh") as GeometryInstance3D).get_instance_shader_parameter(&"expression"), FacePainter.Face.WORRIED)
 	assert_ne((second.get_node("Body/Head/Mesh") as GeometryInstance3D).get_instance_shader_parameter(&"expression"), FacePainter.Face.WORRIED, "La otra cara no cambia")
+
+
+## Pose de un hueso en el espacio del esqueleto, armada desde las poses
+## locales (no depende de cuándo el esqueleto actualiza las suyas).
+func _bone_global_pose(rig: CharacterRig, bone: int) -> Transform3D:
+	var local: Transform3D = Transform3D(Basis(rig.get_bone_pose_rotation(bone)).scaled(rig.get_bone_pose_scale(bone)), rig.get_bone_pose_position(bone))
+	var parent: int = rig.get_bone_parent(bone)
+	return local if parent < 0 else _bone_global_pose(rig, parent) * local
 
 
 ## Píxel de la celda `cell` del atlas en el punto `at` de la cara (m, desde
