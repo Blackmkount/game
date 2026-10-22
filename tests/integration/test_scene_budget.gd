@@ -22,29 +22,30 @@ const SceneBudget: GDScript = preload("res://tests/helpers/scene_budget.gd")
 const FullRoom: GDScript = preload("res://tests/helpers/full_room.gd")
 const SEED: int = 1234
 
-## Cuarto inicial. Medido el 2026-10-22 en el paso 6 de Arte 2.0 (la Cubo
-## Uno del kit: 4 mallas que dan sombra y la pantallita; la baldosa y su cable
-## en una malla sin sombra): 120 llamadas, 27 materiales, 53 mallas con sombra
-## y 8 superficies transparentes (5 marcas, el marco de resalte, el haz de la
-## ventana y la sombra bajo la base). Antes: 136 llamadas, 32 materiales y 62
-## mallas con sombra (paso 5); 177 llamadas (paso 3); 334 (paso 1).
-const START_MAX_DRAW_CALLS: int = 132
+## Cuarto inicial. Medido el 2026-10-22 en el paso 7 de Arte 2.0 (el
+## escritorio del kit: una malla y la pantalla, 3 llamadas; el rincón de
+## despacho: una malla, 2 llamadas): 75 llamadas, 18 materiales, 30 mallas
+## con sombra y 8 superficies transparentes (5 marcas, el marco de resalte, el
+## haz de la ventana y la sombra bajo la base). Antes: 120 llamadas, 27
+## materiales y 53 mallas con sombra (paso 6); 136 (paso 5); 177 (paso 3);
+## 334 (paso 1).
+const START_MAX_DRAW_CALLS: int = 82
 const START_MAX_VISIBLE_TRIANGLES: int = 45000
 const START_MAX_TOTAL_TRIANGLES: int = 80000
-const START_MAX_MATERIALS: int = 29
-const START_MAX_SHADOW_MESHES: int = 58
+const START_MAX_MATERIALS: int = 19
+const START_MAX_SHADOW_MESHES: int = 33
 const START_MAX_TRANSPARENT: int = 9
 
-## Cuarto lleno. Medido el 2026-10-22 en el paso 6: 440 llamadas, 37
-## materiales, 214 mallas con sombra y 3 superficies transparentes (sin
+## Cuarto lleno. Medido el 2026-10-22 en el paso 7: 395 llamadas, 29
+## materiales, 191 mallas con sombra y 3 superficies transparentes (sin
 ## lugares libres no hay marcas: el tope de transparentes es el final del
-## cuarto inicial). Antes: 519 llamadas y 39 materiales (paso 5); 535 (paso
-## 3); 1.042 (paso 1).
-const FULL_MAX_DRAW_CALLS: int = 484
+## cuarto inicial). Antes: 440 llamadas y 37 materiales (paso 6); 519 (paso
+## 5); 535 (paso 3); 1.042 (paso 1).
+const FULL_MAX_DRAW_CALLS: int = 434
 const FULL_MAX_VISIBLE_TRIANGLES: int = 60000
 const FULL_MAX_TOTAL_TRIANGLES: int = 99999
-const FULL_MAX_MATERIALS: int = 40
-const FULL_MAX_SHADOW_MESHES: int = 235
+const FULL_MAX_MATERIALS: int = 31
+const FULL_MAX_SHADOW_MESHES: int = 210
 const FULL_MAX_TRANSPARENT: int = 12
 
 ## Armar la escena principal con las mallas y los materiales ya en caché

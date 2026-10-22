@@ -57,11 +57,9 @@ const SUN_SHADOW_OPACITY: float = 0.9
 ## más abajo que la base.
 const BASE_SHADOW_SCALE: float = 1.9
 const BASE_SHADOW_GAP: float = 0.06
-## Luz LED de la impresora del piso (si su modelo no tiene el marcador
-## "BedLight": cuánto más arriba de la cama) y brillo del monitor (cuánto
-## delante de la pantalla).
+## Luz LED de la impresora del piso, si su modelo no tiene el marcador
+## "BedLight": cuánto más arriba de la cama.
 const PRINTER_LED_ABOVE_BED: float = 0.18
-const MONITOR_GLOW_AHEAD: float = 0.12
 
 var camera: CameraRig
 var character: CharacterController
@@ -336,8 +334,7 @@ func _build_contents() -> void:
 			_publish_window_occluders(node, item.furniture_id)
 		if item.furniture_id == DeskSheet.FURNITURE_ID:
 			_add_view(node, DeskView.new())
-			var screen: Node3D = node.get_node("Monitor/Screen")
-			day_cycle.place_light("monitor", screen.global_transform * Vector3(0.0, 0.0, MONITOR_GLOW_AHEAD))
+			_place_desk_lights(node)
 
 	var spool_color: String = _first_spool_color(state)
 	var floor_index: int = 0
@@ -437,6 +434,14 @@ func _build_destination() -> void:
 	_destination = PropBuilder.kit(self, "Destination", ring, _destination_material)
 	_destination.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	_destination.visible = false
+
+
+## Las luces del escritorio (biblia §6.2): la lámpara (cc_pl0) en su
+## ampolleta y el monitor (cc_pl1) delante de la pantalla, en los marcadores
+## "LampBulb" y "ScreenGlow" del modelo.
+func _place_desk_lights(desk: Node3D) -> void:
+	day_cycle.place_light("desk_lamp", (desk.get_node("LampBulb") as Node3D).global_position)
+	day_cycle.place_light("monitor", (desk.get_node("ScreenGlow") as Node3D).global_position)
 
 
 ## La luz LED que alumbra la cama de la impresora del piso (cc_pl3): en su

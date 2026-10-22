@@ -10,7 +10,6 @@ func test_the_same_request_gives_the_same_material() -> void:
 	assert_same(WorldPalette.solid("e0453a"), WorldPalette.solid("e0453a"))
 	assert_same(WorldPalette.printing("e0453a"), WorldPalette.printing("e0453a"))
 	assert_same(WorldPalette.paint("b97a48", WorldPalette.Surface.WOOD, 0.15), WorldPalette.paint("b97a48", WorldPalette.Surface.WOOD, 0.15))
-	assert_same(WorldPalette.textured("cardboard"), WorldPalette.textured("cardboard"))
 	assert_same(WorldPalette.glow("7fe0a0"), WorldPalette.glow("7fe0a0"))
 	assert_same(WorldPalette.glow("ffffff", "crt_screen"), WorldPalette.glow("ffffff", "crt_screen"))
 	assert_same(WorldPalette.glow_transparent(WorldPalette.SLOT_MARK, 0.6), WorldPalette.glow_transparent(WorldPalette.SLOT_MARK, 0.6))
@@ -38,19 +37,17 @@ func test_solid_is_printed_plastic_of_that_color() -> void:
 	assert_eq(printing.get_shader_parameter("layer"), PieceModel.LAYER_STEP)
 
 
-func test_paint_and_textures_carry_their_color_and_surface() -> void:
+func test_paint_carries_its_color_and_surface() -> void:
 	var wood: ShaderMaterial = WorldPalette.paint(WorldPalette.WOOD_MID, WorldPalette.Surface.WOOD, 0.15)
 	assert_eq(wood.get_shader_parameter("albedo"), Color(WorldPalette.WOOD_MID))
 	assert_eq(wood.get_shader_parameter("surface"), WorldPalette.Surface.WOOD)
 	assert_eq(wood.get_shader_parameter("gloss"), 0.15)
 	assert_eq(wood.get_shader_parameter("layer"), 0.0, "Lo pintado no tiene capas")
-	for texture_name: String in WorldPalette.TEXTURES:
-		var look: Array = WorldPalette.TEXTURES[texture_name]
-		var material: ShaderMaterial = WorldPalette.textured(texture_name)
+	for surface: int in WorldPalette.Surface.size():
+		var material: ShaderMaterial = WorldPalette.paint(LookPalette.CARDBOARD, surface as WorldPalette.Surface)
 		assert_eq(material.shader, WorldPalette.TINTED_SHADER)
-		assert_eq(material.get_shader_parameter("albedo"), Color(look[0] as String), texture_name)
-		assert_eq(material.get_shader_parameter("surface"), look[1], texture_name)
-	assert_eq(WorldPalette.textured("cardboard").get_shader_parameter("surface"), WorldPalette.Surface.CARDBOARD)
+		assert_eq(material.get_shader_parameter("albedo"), Color(LookPalette.CARDBOARD), "Superficie %d" % surface)
+		assert_eq(material.get_shader_parameter("surface"), surface, "Superficie %d" % surface)
 
 
 func test_a_plain_glow_is_a_lit_kit_color_with_its_own_light() -> void:

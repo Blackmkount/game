@@ -44,8 +44,6 @@ func test_every_palette_material_can_be_drawn_on_a_mesh() -> void:
 	]
 	for surface: int in WorldPalette.Surface.size():
 		materials.append(WorldPalette.paint("cccccc", surface as WorldPalette.Surface))
-	for texture_name: String in WorldPalette.TEXTURES:
-		materials.append(WorldPalette.textured(texture_name))
 	for material: Material in materials:
 		var box: MeshInstance3D = PropBuilder.box(root, "Box", Vector3.ONE * 0.2, Vector3.ZERO, material)
 		assert_eq(box.material_override, material)

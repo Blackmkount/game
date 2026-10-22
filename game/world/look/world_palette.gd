@@ -13,12 +13,10 @@ extends RefCounted
 const BACKGROUND: String = LookPalette.BACKGROUND
 const WOOD_LIGHT: String = LookPalette.WOOD_LIGHT
 const WOOD_MID: String = LookPalette.WOOD_MID
-const WOOD_DARK: String = LookPalette.WOOD_DARK
 const METAL_DARK: String = LookPalette.METAL_DARK
 const METAL_MID: String = LookPalette.METAL_MID
 const PLASTIC_BLACK: String = LookPalette.CUBE_FRAME
 const PLASTIC_BEIGE: String = LookPalette.COMPUTER_BEIGE
-const PLASTIC_BEIGE_DARK: String = LookPalette.COMPUTER_BEIGE_WORN
 const ACCENT_BLUE: String = LookPalette.CUBE_ACCENT
 const SKIN: String = LookPalette.SKIN
 const HAIR: String = LookPalette.HAIR
@@ -30,8 +28,6 @@ const EYES: String = LookPalette.PUPIL
 const SLOT_MARK: String = LookPalette.INTERACTION
 ## Cama de las impresoras abiertas: lámina PEI dorada texturizada.
 const PRINT_BED: String = LookPalette.PEI_BED
-## Cinta de embalar (rollo y paquetes del rincón de despacho).
-const TAPE: String = LookPalette.TAPE
 ## Pieza que falló: plástico quemado y opaco.
 const FAILED_PIECE: String = LookPalette.FAILED_PIECE
 
@@ -58,11 +54,6 @@ const SCREEN_MODES: Dictionary[String, int] = {
 }
 ## La vista del barrio por la ventana (window_view.gdshader).
 const WINDOW_VIEW: String = "window_view"
-## Color y superficie de cada nombre de textured(): [hex, Surface, brillo].
-## (El piso y las paredes ya son del kit: RoomShell.)
-const TEXTURES: Dictionary[String, Array] = {
-	"cardboard": [LookPalette.CARDBOARD, Surface.CARDBOARD, 0.0],
-}
 ## Brillo satinado del plástico impreso.
 const PRINTED_GLOSS: float = 0.25
 ## Luz propia de glow(hex): se ve encendido aun a la sombra.
@@ -107,15 +98,6 @@ static func paint(hex: String, surface: Surface = Surface.SMOOTH, gloss: float =
 	var key: String = "paint:%s:%d:%s" % [hex, surface, gloss]
 	if not _cache.has(key):
 		_cache[key] = _tinted(hex, surface, gloss, 0.0, 0.0)
-	return _cache[key]
-
-
-## Superficie con nombre (TEXTURES): el cartón de los modelos de cajas.
-static func textured(texture_name: String) -> ShaderMaterial:
-	var key: String = "textured:" + texture_name
-	if not _cache.has(key):
-		var look: Array = TEXTURES[texture_name]
-		_cache[key] = _tinted(look[0], look[1], look[2], 0.0, 0.0)
 	return _cache[key]
 
 

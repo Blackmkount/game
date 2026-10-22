@@ -48,6 +48,27 @@ func test_the_dispatch_corner_stands_by_the_door_without_taking_a_slot() -> void
 	assert_eq(_room.find_children("FreeSlot*", "", false, false).size(), 5, "No usa ninguno de los 6 lugares")
 
 
+func test_the_dispatch_corner_measures_the_same_with_its_hidden_boxes() -> void:
+	var corner: Node3D = _room.get_node("DispatchCorner")
+	for i: int in DispatchCornerModel.PACK_SPOTS:
+		assert_false((corner.get_node("PackSpot%d/OpenBox" % i) as Node3D).visible, "PackSpot%d vacío al empezar" % i)
+	for i: int in DispatchCornerModel.OUT_SPOTS:
+		assert_false((corner.get_node("OutSpot%d/Package" % i) as Node3D).visible, "OutSpot%d vacío al empezar" % i)
+	# La zona que se toca (y el obstáculo) incluye las cajas escondidas.
+	var bounds: AABB = PropBounds.local_aabb(corner)
+	assert_almost_eq(Vector2(bounds.position.x, bounds.end.x), Vector2(-0.435, 0.45), Vector2.ONE * 0.01, "De x −0,435 a 0,45")
+	assert_almost_eq(Vector2(bounds.position.z, bounds.end.z), Vector2(-0.2, 0.2), Vector2.ONE * 0.01, "De z −0,2 a 0,2")
+
+
+func test_the_desk_lamp_and_monitor_light_from_the_desk_markers() -> void:
+	var room: RoomView = _room
+	var desk: Node3D = _room.get_node("Furniture%d" % Game.state.furniture[0].uid)
+	var lights: Dictionary[String, Vector3] = room.day_cycle._light_positions
+	assert_true(lights.has("desk_lamp"), "La lámpara del escritorio tiene lugar (cc_pl0)")
+	assert_almost_eq(lights.get("desk_lamp", Vector3.ZERO), (desk.get_node("LampBulb") as Node3D).global_position, Vector3.ONE * 0.0001, "En la ampolleta")
+	assert_almost_eq(lights.get("monitor", Vector3.ZERO), (desk.get_node("ScreenGlow") as Node3D).global_position, Vector3.ONE * 0.0001, "Delante de la pantalla (cc_pl1)")
+
+
 func test_the_floor_darkens_under_the_desk_the_printer_and_the_dispatch_corner() -> void:
 	var room: RoomView = _room
 	var image: Image = room.floor_ao.get_image()

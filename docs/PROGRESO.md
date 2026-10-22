@@ -4,8 +4,8 @@
 
 - **Fase actual:** 1. Ciclo jugable, en curso (ruta aprobada por el dueño en `docs/RUTA.md`).
 - **Diseño:** GDD versión 2.3, guía de estilo en `docs/ESTILO.md` y ruta en `docs/RUTA.md`.
-- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 6 de 16: la impresora estrella (Cubo Uno del kit, sobre su baldosa de concreto con el cable al enchufe), la pieza con su capa caliente, el espagueti y el warping que se leen sin abrir el panel, los destellos de "pieza lista" y el carrete de tapas abiertas (2026-10-22). Antes: paso 5, el cuarto.
-- **Siguiente paso sugerido:** Arte 2.0, paso 7: el escritorio, el rincón de despacho y los paquetes. Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
+- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 7 de 16: el escritorio del comienzo (mesa con cajonera, monitor de tubo, torre, teclado, lámpara articulada, taza, portalápices impreso, papeles y la caja de cartón con cojín como silla), el rincón de despacho (mesa de embalar y guacal) y los paquetes, todo del kit (2026-10-22). Antes: paso 6, la impresora estrella.
+- **Siguiente paso sugerido:** Arte 2.0, paso 8: las otras seis familias de impresoras y el estado de noche por impresora. Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
 - **Diseño del ciclo:** aprobado por el dueño (GDD, versión 2.3 en la sección 16).
 
 | Fase | Estado |
@@ -391,3 +391,27 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 - El espagueti usa un hilo de 6 mm (la biblia pedía 4 mm, que no se leía en la captura).
 - El escritorio, el despacho y el personaje siguen con los modelos de cajas (pasos 7 y 10).
 
+### 2026-10-22 — Arte 2.0, paso 7: escritorio, despacho y paquetes
+
+**Qué se hizo**
+- **El escritorio del comienzo, nuevo:** mesa vieja de madera con una cajonera de tres cajones (el del medio entreabierto) y tiradores de bronce; monitor de tubo beige con un papelito amarillo y su luz verde; torre con sus bahías; teclado con teclas; ratón sobre su alfombrilla; una **lámpara articulada amarilla** (de noche se ve la ampolleta encendida); taza roja; un portalápices impreso morado con lápices; papeles con un croquis, cuaderno y calibrador; cables que bajan a una regleta en el piso, y la **caja de cartón con un cojín** como silla (el comienzo humilde). Ocupa exactamente lo mismo que antes: se toca, se rodea y se resalta igual.
+- **Las luces del escritorio** (la lámpara y el brillo del monitor) salen de dos marcas del modelo. De día la lámpara está apagada; el paso 13 la enciende de noche.
+- **El rincón de despacho, nuevo:** una mesita de embalar con dispensador de cinta, cúter, etiquetas y un marcador, y abajo cartones planos y un rollo de plástico de burbujas; al lado, un **guacal** de listones con relleno de papel triturado, donde se apilan los paquetes (un poco girados, como a mano).
+- **Las cajas:** la caja abierta tiene las solapas hacia afuera, relleno de papel y la pieza del color del pedido asomando; el paquete es de cartón corrugado con cinta y una etiqueta blanca con un ícono azul (sin letras).
+- Se dibuja menos: el cuarto inicial bajó de 120 a **75 llamadas de dibujo** y de 27 a 18 materiales.
+
+**Verificado**
+- `check.sh` y `run_tests.sh` pasan: 600 pruebas (antes 590); 10 nuevas (medidas, nodos, luces y presupuesto del escritorio, del rincón y de las cajas) y 2 adaptadas porque se borró una función que ya nadie usaba (detalle en `docs/DECISIONES.md`).
+- `screenshots.sh` saca las 38 capturas. Revisé 03, 07, 16, 20, 21, 22, 30 y 34, y aparte (laboratorio) el escritorio y el rincón de muy cerca, de día y con una noche puesta a mano.
+
+**Qué revisar en el teléfono** (versión web)
+- Con el zoom cerca, junto al escritorio: la cajonera con el cajón entreabierto, el monitor con el papelito amarillo, la lámpara amarilla, la taza roja, el portalápices morado y la caja de cartón con el cojín.
+- Toca el escritorio: el panel y su dibujito muestran el escritorio nuevo; al aceptar un pedido el monitor muestra el cubo que gira.
+- Al retirar una pieza: la caja abierta aparece sobre la mesita de embalar con la pieza de su color asomando; al embalar, el paquete aparece sobre el guacal; al despachar, se va hacia la puerta.
+- Que caminar alrededor del escritorio y del rincón se sienta igual que antes (no deben haber cambiado de tamaño).
+
+**Problemas conocidos**
+- La noche todavía no existe en el juego (paso 13): la lámpara encendida solo se probó en el laboratorio.
+- Con el zoom normal el rincón de despacho sigue siendo chico (mide lo mismo que antes, a propósito); se lee mejor que el de cajas porque el guacal tiene espacios entre listones y la mesa tiene cosas encima.
+- El cable de la regleta a la pared llega con la decoración (paso 12).
+- Las otras seis familias de impresoras, los muebles y el personaje siguen con los modelos de cajas (pasos 8 a 10).
