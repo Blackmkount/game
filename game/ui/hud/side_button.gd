@@ -1,11 +1,17 @@
 class_name SideButton
 extends Button
 ## Botón cuadrado con icono arriba y texto abajo (columna izquierda del HUD),
-## con una burbuja roja opcional para avisos.
+## con una burbuja roja opcional para avisos. Cuando el número sube, la
+## burbuja da un saltito.
+
+const POP_SCALE: float = 1.3
+const POP_TIME: float = 0.2
 
 var _text_key: String
 var _badge: PanelContainer
 var _badge_label: Label
+var _count: int = 0
+var _pop: Tween
 
 
 func _init(icon_name: String, text_key: String) -> void:
@@ -40,5 +46,18 @@ func _notification(what: int) -> void:
 
 
 func set_badge(count: int) -> void:
+	var grew: bool = count > _count
+	_count = count
 	_badge.visible = count > 0
 	_badge_label.text = str(count)
+	if grew and is_inside_tree():
+		_pop_badge()
+
+
+func _pop_badge() -> void:
+	if _pop != null:
+		_pop.kill()
+	_badge.pivot_offset = _badge.get_combined_minimum_size() / 2.0
+	_badge.scale = Vector2.ONE * POP_SCALE
+	_pop = create_tween().set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_pop.tween_property(_badge, "scale", Vector2.ONE, POP_TIME)

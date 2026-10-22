@@ -3,6 +3,11 @@ extends ScreenBase
 ## Pedidos: por ahora muestra los pedidos disponibles para el nivel actual.
 ## El tablero con pedidos que llegan y se aceptan es la tarea 4 de la Fase 1.
 
+## Botón de una tarjeta: `verb` es "accept" o "reject" (uid del mensaje), o
+## "cancel", "focus", "print", "see_printer", "remove", "pack" o "dispatch"
+## (uid del pedido). Hud lo reenvía como order_card_action.
+signal card_action(verb: String, uid: int)
+
 
 func _init() -> void:
 	super("chat", "SCREEN_ORDERS")

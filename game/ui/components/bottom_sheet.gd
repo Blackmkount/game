@@ -4,8 +4,9 @@ extends PanelContainer
 ## (impresora, mueble, lugar libre, puerta). La habitación sigue visible
 ## encima. Se cierra con la X, deslizándolo hacia abajo o tocando el mundo.
 ##
-## Se arma con add_line(), add_tip() y add_action() antes de agregarlo al
-## árbol. Hud lo coloca y lo anima.
+## Se arma con add_error(), add_line(), add_tip(), add_chips(), add_progress()
+## y add_action() antes de agregarlo al árbol. Hud lo coloca y lo anima. Las
+## filas de avance se pueden cambiar después en el lugar (set_progress).
 
 signal close_requested
 signal action_pressed(action_id: String)
@@ -19,12 +20,24 @@ const ACTION_HEIGHT: float = 96.0
 ## Lo máximo que el panel cuenta como tapado para la cámara (fracción del alto
 ## de la pantalla).
 const MAX_COVER: float = 0.6
+## Alto de los botones para elegir (modo, carrete, pedido).
+const CHIP_HEIGHT: float = 64.0
+## Lo que tarda una barra de avance en llegar a su nuevo valor: el reloj la
+## cambia una vez por segundo y así se ve avanzar sin saltos.
+const PROGRESS_TIME: float = 0.9
+
+## Tipos de fila del cuerpo, en el orden en que se agregan.
+enum Row { LINE, CHIPS, PROGRESS }
 
 var _preview: Control
 var _title: String
 var _subtitle: String
-var _lines: Array[Dictionary] = []
+var _error: String = ""
+var _rows: Array[Dictionary] = []
 var _actions: Array[Dictionary] = []
+var _progress_labels: Dictionary[String, Label] = {}
+var _progress_bars: Dictionary[String, ProgressBar] = {}
+var _progress_tweens: Dictionary[String, Tween] = {}
 var _drag_start: Variant = null
 var _drag_offset: float = 0.0
 var _tween: Tween
@@ -40,17 +53,49 @@ func _init(preview: Control, title: String, subtitle: String = "") -> void:
 
 ## Fila con icono y texto.
 func add_line(icon_name: String, text: String, color: Color = UiPalette.TEXT) -> void:
-	_lines.append({"icon": icon_name, "text": text, "color": color, "tip": false})
+	_rows.append({"kind": Row.LINE, "icon": icon_name, "text": text, "color": color, "tip": false})
 
 
 ## Consejo destacado (fondo cian oscuro con estrella dorada).
 func add_tip(text: String) -> void:
-	_lines.append({"icon": "star", "text": text, "color": UiPalette.GOLD, "tip": true})
+	_rows.append({"kind": Row.LINE, "icon": "star", "text": text, "color": UiPalette.GOLD, "tip": true})
 
 
-## Botón grande al pie del panel. El primero que se marca `primary` va destacado.
-func add_action(action_id: String, text: String, primary: bool = false) -> void:
-	_actions.append({"id": action_id, "text": text, "primary": primary})
+## Línea roja arriba del cuerpo: por qué no se pudo lo último que se intentó.
+func add_error(text: String) -> void:
+	_error = text
+
+
+## Fila de botones para elegir una opción. Cada opción es
+## {"id": String, "text": String, "selected": bool, "enabled": bool}; la
+## elegida va destacada. Tocar una avisa action_pressed("<grupo>_<id>").
+func add_chips(group_id: String, options: Array[Dictionary]) -> void:
+	_rows.append({"kind": Row.CHIPS, "group": group_id, "options": options})
+
+
+## Fila con icono, texto y una barra de avance (`ratio` de 0 a 1).
+func add_progress(row_id: String, icon_name: String, text: String, ratio: float) -> void:
+	_rows.append({"kind": Row.PROGRESS, "id": row_id, "icon": icon_name, "text": text, "ratio": ratio})
+
+
+## Cambia en el lugar el texto y la barra de una fila de avance ya armada (el
+## panel está en pantalla). La barra llega al nuevo valor en PROGRESS_TIME.
+func set_progress(row_id: String, text: String, ratio: float) -> void:
+	if not _progress_bars.has(row_id):
+		return
+	_progress_labels[row_id].text = text
+	if _progress_tweens.has(row_id):
+		_progress_tweens[row_id].kill()
+	var tween: Tween = create_tween()
+	tween.tween_property(_progress_bars[row_id], "value", clampf(ratio, 0.0, 1.0), PROGRESS_TIME)
+	_progress_tweens[row_id] = tween
+
+
+## Botón grande al pie del panel. El primero que se marca `primary` va
+## destacado. Si no se puede usar va deshabilitado, y `note` dice por qué
+## (debajo de los botones).
+func add_action(action_id: String, text: String, primary: bool = false, enabled: bool = true, note: String = "") -> void:
+	_actions.append({"id": action_id, "text": text, "primary": primary, "enabled": enabled, "note": note})
 
 
 func _ready() -> void:
@@ -86,8 +131,16 @@ func _ready() -> void:
 	close.pressed.connect(func() -> void: close_requested.emit())
 	header.add_child(close)
 
-	for line: Dictionary in _lines:
-		column.add_child(_line_row(line))
+	if not _error.is_empty():
+		column.add_child(_error_row())
+	for row: Dictionary in _rows:
+		match row["kind"]:
+			Row.LINE:
+				column.add_child(_line_row(row))
+			Row.CHIPS:
+				column.add_child(_chips_row(row))
+			Row.PROGRESS:
+				column.add_child(_progress_row(row))
 
 	if not _actions.is_empty():
 		# Con dos botones van lado a lado, para que el panel tape menos.
@@ -95,16 +148,12 @@ func _ready() -> void:
 		actions.name = "Actions"
 		column.add_child(actions)
 		for action: Dictionary in _actions:
-			var button: Button = Button.new()
-			button.name = "Action_" + action["id"]
-			button.text = action["text"]
-			button.theme_type_variation = "PrimaryButton" if action["primary"] else "Button"
-			button.custom_minimum_size = Vector2(0, ACTION_HEIGHT)
-			button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			button.focus_mode = Control.FOCUS_NONE
-			var action_id: String = action["id"]
-			button.pressed.connect(func() -> void: action_pressed.emit(action_id))
-			actions.add_child(button)
+			actions.add_child(_action_button(action))
+		for action: Dictionary in _actions:
+			if not (action["note"] as String).is_empty():
+				var note: Label = UiKit.label(action["note"], "MutedLabel", true)
+				note.name = "Note_" + action["id"]
+				column.add_child(note)
 
 
 ## Coloca el panel abajo, sobre la barra de secciones, y lo hace subir.
@@ -113,6 +162,15 @@ func _ready() -> void:
 ## acomodan. Al entrar y al salir solo se mueve el dibujo (desplazamiento
 ## visual) y se funde, sin tocar el acomodo.
 func slide_in(margin: float) -> void:
+	dock(margin)
+	offset_transform_position = Vector2(0.0, SLIDE_DISTANCE)
+	modulate.a = 0.0
+	_animate(0.0, 1.0, Tween.EASE_OUT, Callable())
+
+
+## Coloca el panel abajo ya en su lugar, sin animación: al refrescar un panel
+## abierto, el nuevo toma el lugar del anterior sin que se note.
+func dock(margin: float) -> void:
 	_margin = margin
 	set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	grow_vertical = Control.GROW_DIRECTION_BEGIN
@@ -122,9 +180,8 @@ func slide_in(margin: float) -> void:
 	offset_bottom = -margin
 	offset_transform_enabled = true
 	offset_transform_visual_only = true
-	offset_transform_position = Vector2(0.0, SLIDE_DISTANCE)
-	modulate.a = 0.0
-	_animate(0.0, 1.0, Tween.EASE_OUT, Callable())
+	offset_transform_position = Vector2.ZERO
+	modulate.a = 1.0
 
 
 ## Altura que tapa el panel en la pantalla, contando el margen de abajo.
@@ -181,3 +238,72 @@ func _line_row(line: Dictionary) -> Control:
 	tip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tip.add_child(row)
 	return tip
+
+
+func _error_row() -> Control:
+	var row: HBoxContainer = UiKit.hbox(10)
+	row.name = "Error"
+	row.add_child(UiKit.icon("warning", 30, UiPalette.BADGE))
+	var text: Label = UiKit.label(_error, "BoldLabel", true)
+	text.add_theme_color_override("font_color", UiPalette.BADGE)
+	row.add_child(text)
+	return row
+
+
+func _chips_row(chips: Dictionary) -> Control:
+	var group_id: String = chips["group"]
+	var row: HBoxContainer = UiKit.hbox(8)
+	row.name = "Chips_" + group_id
+	for option: Dictionary in chips["options"]:
+		var chip: Button = Button.new()
+		var choice: String = "%s_%s" % [group_id, option["id"]]
+		chip.name = "Chip_" + choice
+		chip.text = option["text"]
+		chip.theme_type_variation = "PrimaryButton" if option["selected"] else "TabButton"
+		chip.disabled = not option["enabled"]
+		chip.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		chip.custom_minimum_size = Vector2(0, CHIP_HEIGHT)
+		chip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		chip.focus_mode = Control.FOCUS_NONE
+		chip.pressed.connect(func() -> void: action_pressed.emit(choice))
+		row.add_child(chip)
+	return row
+
+
+func _progress_row(progress: Dictionary) -> Control:
+	var row_id: String = progress["id"]
+	var row: HBoxContainer = UiKit.hbox(10)
+	row.add_child(UiKit.icon(progress["icon"], 30, UiPalette.ACCENT))
+	var column: VBoxContainer = UiKit.vbox(6)
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(column)
+	var text: Label = UiKit.label(progress["text"], "", true)
+	text.name = "ProgressText_" + row_id
+	column.add_child(text)
+	var bar: ProgressBar = ProgressBar.new()
+	bar.name = "Progress_" + row_id
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(0, 16)
+	bar.min_value = 0.0
+	bar.max_value = 1.0
+	bar.step = 0.0
+	bar.value = clampf(progress["ratio"], 0.0, 1.0)
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	column.add_child(bar)
+	_progress_labels[row_id] = text
+	_progress_bars[row_id] = bar
+	return row
+
+
+func _action_button(action: Dictionary) -> Button:
+	var button: Button = Button.new()
+	var action_id: String = action["id"]
+	button.name = "Action_" + action_id
+	button.text = action["text"]
+	button.theme_type_variation = "PrimaryButton" if action["primary"] else "Button"
+	button.disabled = not action["enabled"]
+	button.custom_minimum_size = Vector2(0, ACTION_HEIGHT)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.focus_mode = Control.FOCUS_NONE
+	button.pressed.connect(func() -> void: action_pressed.emit(action_id))
+	return button
