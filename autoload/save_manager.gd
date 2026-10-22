@@ -18,8 +18,9 @@ extends Node
 ##   segundo plano o se cierra.
 ## - El tiempo con el juego cerrado todavía no se otorga: la partida sigue en
 ##   el segundo de juego guardado.
-## - Al correr un script con -s (las pruebas GUT, check.sh y las capturas) el
-##   guardado queda apagado y nunca toca la partida del jugador.
+## - En las pruebas GUT (con -s o desde el panel del editor), check.sh y las
+##   capturas el guardado queda apagado y nunca toca la partida del jugador
+##   (RunMode).
 
 ## Cada cuánto se guarda solo, en segundos reales. Constante técnica.
 const AUTOSAVE_SECONDS: float = 10.0
@@ -29,8 +30,9 @@ const BAD_SUFFIX: String = ".bad"
 
 ## Archivo de la partida. Las pruebas usan uno propio.
 var path: String = DEFAULT_PATH
-## Apagado al correr un script con -s, o al encontrar una partida más nueva.
-var enabled: bool = not ("-s" in OS.get_cmdline_args() or "--script" in OS.get_cmdline_args())
+## Apagado en las pruebas y herramientas (RunMode), o al encontrar una
+## partida más nueva.
+var enabled: bool = not RunMode.is_tool_run()
 
 ## Número del último guardado; sigue desde el de la partida cargada.
 var _save_seq: int = 0

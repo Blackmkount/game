@@ -10,7 +10,7 @@ extends RefCounted
 
 ## Revisa, en este orden (el primer problema gana): que la ferretería venda
 ## ese material, que alcance el dinero y que el carrete quepa en el
-## almacenamiento.
+## almacenamiento (contando lo apartado para las impresiones en curso).
 static func check_buy(state: GameState, rules: SimRules, material_id: String) -> CommandResult:
 	if not rules.local_store_cents.has(material_id):
 		return CommandResult.fail("ERR_NOT_IN_LOCAL_STORE")
@@ -18,7 +18,7 @@ static func check_buy(state: GameState, rules: SimRules, material_id: String) ->
 	if state.money_cents < price:
 		return CommandResult.fail("ERR_NO_MONEY", [CommandResult.cents_arg(price)])
 	var capacity: int = WorkshopRules.storage_capacity_grams(state, rules)
-	if state.total_grams() + rules.local_store_grams > capacity:
+	if state.total_grams() + WorkshopRules.reserved_grams(state) + rules.local_store_grams > capacity:
 		return CommandResult.fail("ERR_NO_STORAGE", [CommandResult.grams_arg(capacity)])
 	return CommandResult.success()
 

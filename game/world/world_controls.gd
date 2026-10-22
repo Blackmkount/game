@@ -300,6 +300,8 @@ func _go_back() -> void:
 	elif hud.current_screen_id() != "home":
 		hud.open_screen("home")
 	else:
+		# Salir así no avisa del cierre a la app: se guarda antes.
+		SaveManager.save_now()
 		quit_game.call()
 
 

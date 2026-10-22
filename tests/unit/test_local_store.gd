@@ -81,6 +81,24 @@ func test_the_spool_must_fit_in_storage() -> void:
 	assert_true(_commands.buy_local_material("petg").ok)
 
 
+func test_material_set_aside_for_a_print_still_takes_room() -> void:
+	# 3.050 g guardados; una maceta aparta 80 g del carrete al empezar.
+	_state.spools[0].grams = 50
+	for i: int in 3:
+		SimFixtures.add_spool(_state, "pla", 1000)
+	var order: Order = SimFixtures.accept(_sim, "maceta")
+	SimFixtures.finish_designs(_sim)
+	SimFixtures.start_print(_sim, order, _state.printers[0], _state.spools[1])
+	assert_eq(_state.total_grams(), 2970, "Los 80 g apartados ya no están en el carrete")
+	assert_eq(WorkshopRules.reserved_grams(_state), 80)
+	_assert_refused_without_changes(_commands.buy_local_material.bind("pla"), "ERR_NO_STORAGE", "Lo apartado sigue ocupando lugar")
+	# Si la pieza falla, lo que no se imprimió vuelve al carrete y sigue cabiendo.
+	DebugTools.force_fail(_sim, _state.printers[0].uid, FailureRules.SPAGHETTI, 0.1)
+	_sim.advance(60.0)
+	assert_eq(_state.printers[0].job.status, PrintJob.Status.FAILED)
+	assert_lte(_state.total_grams() + WorkshopRules.reserved_grams(_state), WorkshopRules.storage_capacity_grams(_state, _rules))
+
+
 func test_a_shelf_makes_room() -> void:
 	_state.spools[0].grams = 4000
 	assert_eq(LocalStore.check_buy(_state, _rules, "pla").reason, "ERR_NO_STORAGE")

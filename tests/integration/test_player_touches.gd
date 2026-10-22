@@ -193,6 +193,26 @@ func test_a_finger_on_a_panel_button_survives_a_refresh() -> void:
 	assert_not_null(_hud.current_sheet().find_child("Progress_job", true, false), "Y después el panel se rearma")
 
 
+func test_a_finger_on_an_orders_button_survives_a_rebuild() -> void:
+	_advance_until(func() -> bool: return not Game.state.offers.is_empty())
+	var offer_uid: int = Game.state.offers[0].uid
+	await _touch_control(_hud.get_node("SideButtons/Side_orders"))
+	await wait_process_frames(2)
+	var button: Button = _card_button("Accept_%d" % offer_uid)
+	var spot: Vector2 = button.get_global_rect().get_center()
+	_send_touch(spot, true)
+	await wait_process_frames(1)
+	# Mientras el dedo está abajo, algo cambia en la partida y la pantalla
+	# pide rearmarse.
+	Events.offers_changed.emit()
+	await wait_process_frames(2)
+	assert_true(is_instance_valid(button) and button.is_inside_tree(), "El botón bajo el dedo sigue ahí")
+	_send_touch(spot, false)
+	await wait_process_frames(2)
+	assert_not_null(Game.state.find_order(offer_uid), "Al soltar, el toque cuenta: el pedido se aceptó")
+	assert_null(_screen().content.find_child("Accept_%d" % offer_uid, true, false), "Y después la pantalla se rearma")
+
+
 func _open_main() -> void:
 	_main = MAIN_SCENE.instantiate()
 	add_child_autofree(_main)

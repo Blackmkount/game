@@ -255,8 +255,8 @@ Registro de decisiones técnicas importantes: fecha, decisión y motivo. Las má
 **Motivo:** son las reglas de `CLAUDE.md` para el guardado. El progreso fuera del juego, con la protección contra cambios de reloj, es la tarea 9. Al cargar, `SaveCodec` revisa cada valor (`SaveReader`) y repara o descarta lo que no cuadra en lugar de fallar.
 
 ### El guardado nunca corre en las pruebas ni en las herramientas
-**Decisión:** `SaveManager` se apaga solo cuando Godot se abre con `-s` (pruebas, `check.sh` y capturas). Las pruebas de integración reinician la partida con `Game.reset_game(<semilla>)` antes de cada prueba.
-**Motivo:** así ninguna prueba toca la partida real del jugador y todas empiezan igual. GUT no acepta argumentos propios, por eso se mira `-s`.
+**Decisión:** `RunMode.is_tool_run()` reconoce cuándo Godot se abrió para una herramienta: con `-s` o `--script` (`run_tests.sh`, `check.sh` y capturas) o con una escena de `res://addons/gut/` (el panel de GUT del editor). En ese caso `SaveManager` no guarda ni carga, y las preferencias van a `user://tool_settings.cfg` en lugar de `user://settings.cfg`. Las pruebas de integración reinician la partida con `Game.reset_game(<semilla>)` antes de cada prueba.
+**Motivo:** así ninguna prueba toca la partida ni las preferencias reales del jugador, y todas empiezan igual. GUT no acepta argumentos propios, por eso se miran los argumentos con que se abrió Godot. Mirar solo `-s` dejaba afuera al panel del editor, que habría pisado la partida del dueño al correr las pruebas desde ahí.
 
 ### Las señales se avisan desde una copia
 **Decisión:** `Game` junta los cambios de cada comando o avance en `SimChanges` y los avisa en un orden fijo. Antes de avisar, cambia el acumulador por uno nuevo.
@@ -267,7 +267,7 @@ Registro de decisiones técnicas importantes: fecha, decisión y motivo. Las má
 **Motivo:** nunca hay un botón encendido que falle al tocarlo, y una prueba compara que el plan y el comando den el mismo motivo.
 
 ### Los paneles se rearman al final del cuadro
-**Decisión:** cuando cambia la partida, el panel abierto se rearma una sola vez al final del cuadro, nunca dentro del botón que se tocó. Si hay un dedo sobre un botón del panel, espera a que lo suelte. Las barras y cuentas regresivas se actualizan en su lugar, una vez por segundo.
+**Decisión:** cuando cambia la partida, el panel o la pantalla abierta (Pedidos, Inventario...) se rearma una sola vez al final del cuadro, nunca dentro del botón que se tocó. Si hay un dedo sobre uno de sus botones (`UiKit.held_button`), espera a que lo suelte. Las barras y cuentas regresivas se actualizan en su lugar, una vez por segundo.
 **Motivo:** rearmar dentro del botón tocado lo borraría mientras Godot lo usa, y rearmar con el dedo encima perdería el toque.
 
 ### Burbujas de estado oscuras
@@ -282,3 +282,10 @@ Registro de decisiones técnicas importantes: fecha, decisión y motivo. Las má
 **Decisión:** la ferretería cobra el precio del material por gramo, un 50% más caro.
 **Motivo:** así lo dice el GDD (5.6). Hoy vende carretes de 1 kg, así que da $27 por PLA y $30 por PETG, pero si cambia el tamaño en los datos, el precio sigue siendo justo.
 
+### El material apartado ocupa lugar en el almacén
+**Decisión:** el espacio usado del almacén suma el material de los carretes y el que está apartado para las piezas que faltan imprimir (`WorkshopRules.reserved_grams`). La ferretería y la barra de Inventario usan esa suma.
+**Motivo:** el material apartado vuelve al carrete si una pieza falla. Si no contara, se podía comprar hasta llenar el almacén y después, con un fallo, pasarse del límite.
+
+### Guardar antes de salir con "atrás"
+**Decisión:** el botón "atrás" de Android guarda la partida antes de cerrar el juego.
+**Motivo:** cerrar desde el juego (`get_tree().quit()`) no avisa a `SaveManager` como cuando el sistema cierra la app, y se podían perder hasta los últimos 10 segundos de partida (el guardado automático).

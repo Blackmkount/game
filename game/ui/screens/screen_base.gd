@@ -110,6 +110,13 @@ func _rebuild_now() -> void:
 	# La pantalla se cerró en este mismo cuadro: se borra sola.
 	if not is_inside_tree():
 		return
+	# Con un dedo sobre un botón, se rearma al soltarlo: si no, el toque se
+	# perdería.
+	var held: BaseButton = UiKit.held_button(self)
+	if held != null:
+		if not held.button_up.is_connected(queue_rebuild):
+			held.button_up.connect(queue_rebuild, CONNECT_ONE_SHOT)
+		return
 	rebuild()
 
 

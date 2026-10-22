@@ -36,13 +36,14 @@ func after_each() -> void:
 	_remove_files()
 	SaveManager.path = _previous_path
 	SaveManager.enabled = _previous_enabled
-	_autosave.start()
+	if _autosave_was_running:
+		_autosave.start()
 	Game.set_process(_previous_processing)
 
 
 func test_tests_never_touch_the_players_save() -> void:
-	assert_true("-s" in OS.get_cmdline_args(), "GUT corre con -s")
-	assert_false(_previous_enabled, "Con -s el guardado empieza apagado")
+	assert_true(RunMode.is_tool_run(), "Las pruebas son una herramienta, no una partida")
+	assert_false(_previous_enabled, "En las pruebas el guardado empieza apagado")
 	assert_eq(_previous_path, SaveManager.DEFAULT_PATH)
 	SaveManager.enabled = false
 	assert_false(SaveManager.save_now())
@@ -91,10 +92,16 @@ func test_losing_focus_pausing_or_closing_saves() -> void:
 
 
 func test_saving_on_its_own_every_few_seconds() -> void:
-	assert_true(_autosave_was_running)
-	assert_false(_autosave.one_shot)
-	assert_almost_eq(_autosave.wait_time, SaveManager.AUTOSAVE_SECONDS, 0.001)
-	_autosave.timeout.emit()
+	# Un SaveManager nuevo, para no depender de lo que hicieron otras pruebas
+	# con el reloj del autoload.
+	var manager: Node = add_child_autofree(load("res://autoload/save_manager.gd").new())
+	manager.set("path", TEST_PATH)
+	manager.set("enabled", true)
+	var timer: Timer = manager.get_node("AutosaveTimer")
+	assert_false(timer.is_stopped(), "Empieza a contar solo")
+	assert_false(timer.one_shot)
+	assert_almost_eq(timer.wait_time, SaveManager.AUTOSAVE_SECONDS, 0.001)
+	timer.timeout.emit()
 	assert_true(FileAccess.file_exists(TEST_PATH))
 
 

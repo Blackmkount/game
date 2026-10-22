@@ -12,7 +12,7 @@ signal card_action(verb: String, uid: int)
 
 const AVATAR_SIZE: float = 56.0
 const CHIP_ICON_SIZE: float = 24.0
-const BUTTON_HEIGHT: float = 72.0
+const BUTTON_HEIGHT: float = 88.0
 
 var _offer: OrderOffer
 
