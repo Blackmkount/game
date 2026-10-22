@@ -110,12 +110,12 @@ func test_legs_swing_only_while_walking() -> void:
 func test_the_head_turns_at_most_20_degrees_and_the_pupils_do_the_rest() -> void:
 	# Quieto mirando hacia +Z, con algo a 50° a su izquierda (hacia +X).
 	_controller.look_target = Vector3(-2.0 + sin(deg_to_rad(50.0)), 0.5, -2.0 + cos(deg_to_rad(50.0)))
-	_run(CharacterController.GLANCE_DELAY + 1.5)
+	_run(CharacterAnimator.GLANCE_DELAY + 1.5)
 	var head: Node3D = _controller.model.get_node("Body/Head")
-	assert_almost_eq(head.rotation.y, CharacterController.MAX_GLANCE, 0.001, "La cabeza gira hasta 20°")
+	assert_almost_eq(head.rotation.y, CharacterAnimator.MAX_GLANCE, 0.001, "La cabeza gira hasta 20°")
 	var gaze: Vector2 = (_controller.model.get_node("Body/Head/Mesh") as GeometryInstance3D).get_instance_shader_parameter(&"gaze")
-	assert_gt(gaze.x, CharacterController.MAX_GAZE * 0.7, "Las pupilas siguen hacia el mismo lado")
-	assert_lte(gaze.x, CharacterController.MAX_GAZE + 0.0001)
+	assert_gt(gaze.x, CharacterAnimator.MAX_GAZE * 0.7, "Las pupilas siguen hacia el mismo lado")
+	assert_lte(gaze.x, CharacterAnimator.MAX_GAZE + 0.0001)
 	_controller.look_target = null
 	_run(1.5)
 	assert_almost_eq(head.rotation.y, 0.0, 0.01, "Sin nada que mirar, vuelve al frente")

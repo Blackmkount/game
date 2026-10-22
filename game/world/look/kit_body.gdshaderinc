@@ -48,6 +48,12 @@ instance uniform float hot_top = -100.0;
 // 1 en las vistas previas (retratos): una luz de estudio fija en vez de la
 // luz del mundo (ModelPreview la pone en cada malla).
 instance uniform float preview_light = 0.0;
+// Movimiento secundario (CharacterAnimator, biblia §7.7): lo que cuelga
+// (UV.y = su peso) se mueve con inercia en vez de mecerse con el viento. En
+// el cuerpo, `swing` es un corrimiento en metros (cordones y capucha); en la
+// cabeza, giros chicos (radianes alrededor de x, y, z) del pelo alrededor de
+// hair_pivot. outline_character.gdshader hace lo mismo con el contorno.
+instance uniform vec3 swing = vec3(0.0);
 // Luz de estudio (espacio de la pantalla): ambiente de arriba y de abajo,
 // llave cálida desde arriba a la izquierda, relleno frío desde la derecha y
 // borde desde atrás. Direcciones en el espacio de la cámara.
@@ -79,6 +85,9 @@ const float CC_FACE_LOD_BIAS = -1.0;
 const vec2 CC_FACE_FAR = vec2(2.5, 5.0);
 instance uniform int expression = 0;
 instance uniform vec2 gaze = vec2(0.0);
+// Centro del casquete del pelo (CharacterModel.HAIR_CENTER): alrededor de
+// él se mece el pelo.
+uniform vec3 hair_pivot = vec3(0.0, 0.24, -0.007);
 #endif
 
 // Superficies (UV.x entero).
@@ -136,11 +145,17 @@ void vertex() {
 	v_attr = vec4(UV.x, UV.y, UV2.x, UV2.y);
 #endif
 	if (v_attr.y > 0.0) {
+#ifdef KIT_HEAD
+		VERTEX += cross(swing * v_attr.y, VERTEX - hair_pivot);
+#elif defined(KIT_CHARACTER)
+		VERTEX += swing * v_attr.y;
+#else
 		vec3 w = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 		float phase = cc_anim_time * 1.3 + w.x * 2.1 + w.z * 1.7;
 		float k = v_attr.y * 0.03;
 		VERTEX.x += sin(phase) * k;
 		VERTEX.z += cos(phase * 0.83) * k * 0.7;
+#endif
 	}
 	v_local = VERTEX;
 	v_world = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;

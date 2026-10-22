@@ -12,6 +12,10 @@ extends Node3D
 ## También sabe qué se puede tocar (interactables), por dónde se puede
 ## caminar (grid) y dónde está cada cosa en la pantalla. Los gestos del
 ## jugador los interpreta WorldControls, desde la escena principal.
+##
+## El personaje reacciona a lo que pasa (biblia de arte §7.8): RoomView
+## escucha las señales de Events y se lo cuenta a su CharacterAnimator (qué
+## impresora falló o terminó, si está cerca, si se modela, la hora).
 
 const BACKDROP_SHADER: Shader = preload("res://game/world/look/backdrop.gdshader")
 const BASE_SHADOW_SHADER: Shader = preload("res://game/world/look/base_shadow.gdshader")
@@ -86,6 +90,13 @@ var decor: Node3D
 var halos: HaloField
 
 var _character_item: WorldInteractable
+## Lo que el animador del personaje necesita del cuarto: el escritorio (para
+## la cara concentrada), los cabezales de las impresoras (para mirarlos; ver
+## _watched_part) y qué impresoras tenían una pieza lista (para el pulgar
+## arriba al terminar).
+var _desk_area: Rect2 = Rect2()
+var _print_heads: Array[Node3D] = []
+var _printers_done: Dictionary[int, bool] = {}
 ## El esqueleto del personaje (copia la pose de sus pivotes) y el punto
 ## sobre su cabeza donde va el globo de diálogo.
 var _rig: CharacterRig
@@ -343,12 +354,13 @@ func _build_contents() -> void:
 		node.transform = layout.slots[item.slot]
 		furniture_nodes[item.uid] = node
 		used_slots.append(item.slot)
-		_register(WorldInteractable.Kind.FURNITURE, item.uid, node, true)
+		var furniture_item: WorldInteractable = _register(WorldInteractable.Kind.FURNITURE, item.uid, node, true)
 		if item.slot == 0:
 			_publish_window_occluders(node, item.furniture_id)
 		if item.furniture_id == DeskSheet.FURNITURE_ID:
 			_add_view(node, DeskView.new())
 			_place_desk_lights(node)
+			_desk_area = furniture_item.footprint()
 
 	var spool_color: String = _first_spool_color(state)
 	var floor_index: int = 0
@@ -371,6 +383,7 @@ func _build_contents() -> void:
 			var spot: Node3D = furniture.get_node("PrinterSpot%d" % index)
 			node.transform = furniture.transform * spot.transform
 		_register(WorldInteractable.Kind.PRINTER, printer.uid, node, true)
+		_print_heads.append(_watched_part(node))
 		var view: PrinterView = PrinterView.new(printer.uid, printer.printer_id)
 		view.halos = halos
 		_add_view(node, view)
@@ -406,11 +419,103 @@ func _build_contents() -> void:
 	character.name = "CharacterController"
 	add_child(character)
 	character.setup(model, grid, layout.character_spot)
+	character.camera_yaw = deg_to_rad(CameraRig.YAW)
+	_setup_animator()
 	_rig = model.get_node("Rig")
 	_rig.follow()
 	_speech_anchor = model.get_node("Body/Head/SpeechAnchor")
 	_character_item = WorldInteractable.new(WorldInteractable.Kind.CHARACTER, 0, PropBounds.local_aabb(model), model.global_transform)
 	interactables.append(_character_item)
+
+
+## Si el personaje está a CharacterAnimator.NEAR metros o menos de ese
+## objeto (para las reacciones de cerca).
+func character_near(item: WorldInteractable) -> bool:
+	return character != null and item != null \
+		and WalkGrid.distance_to_rect(character.floor_position, item.footprint()) <= CharacterAnimator.NEAR
+
+
+## Le cuenta al animador del personaje lo que tiene alrededor y lo conecta a
+## lo que pasa en la partida. Su azar cambia en cada partida (las capturas
+## le ponen una semilla fija).
+func _setup_animator() -> void:
+	var animator: CharacterAnimator = character.animator
+	animator.reseed(randi())
+	animator.desk_area = _desk_area
+	animator.watch_points = _print_heads
+	Events.order_delivered.connect(_on_order_delivered)
+	Events.print_failed.connect(_on_print_failed)
+	Events.level_up.connect(_on_level_up.unbind(1))
+	Events.offer_arrived.connect(_on_offer_arrived.unbind(1))
+	Events.printer_changed.connect(_on_printer_changed)
+	Events.computer_changed.connect(_on_computer_changed)
+	Events.time_changed.connect(_on_time_changed)
+	Events.game_loaded.connect(_on_game_loaded)
+	_on_game_loaded()
+
+
+func _on_order_delivered(_order_uid: int, _order_id: String, _cents: int, _xp: int, late: bool) -> void:
+	character.animator.react(CharacterAnimator.Reaction.DELIVERED_LATE if late else CharacterAnimator.Reaction.DELIVERED)
+
+
+## Mira la impresora que falló (la cabeza y los ojos: el cuerpo no se da
+## vuelta, así la cara preocupada se sigue viendo).
+func _on_print_failed(printer_uid: int, _failure_type: String) -> void:
+	character.animator.react(CharacterAnimator.Reaction.PRINT_FAILED, _print_head_of(printer_uid))
+
+
+func _on_level_up() -> void:
+	character.animator.react(CharacterAnimator.Reaction.LEVEL_UP)
+
+
+func _on_offer_arrived() -> void:
+	character.animator.react(CharacterAnimator.Reaction.OFFER)
+
+
+## Una impresora que termina su pieza con el personaje cerca: pulgar arriba.
+func _on_printer_changed(printer_uid: int) -> void:
+	var printer: OwnedPrinter = Game.state.find_printer(printer_uid)
+	if printer == null:
+		return
+	var done: bool = OrderQueries.printer_status(Game.state, Game.rules, printer) == OrderQueries.PrinterStatus.DONE
+	var was_done: bool = _printers_done.get(printer_uid, false)
+	_printers_done[printer_uid] = done
+	if done and not was_done and character_near(item_for(WorldInteractable.Kind.PRINTER, printer_uid)):
+		character.animator.react(CharacterAnimator.Reaction.PRINTER_READY, _print_head_of(printer_uid))
+
+
+func _on_computer_changed() -> void:
+	character.animator.modeling = Game.state.designing_uid >= 0
+
+
+func _on_time_changed(game_minutes: float) -> void:
+	character.animator.game_minutes = game_minutes
+
+
+## Partida nueva o cargada: el animador sin reacciones pendientes y al día.
+func _on_game_loaded() -> void:
+	character.animator.reset()
+	_on_computer_changed()
+	_on_time_changed(Game.state.game_minutes)
+	_printers_done.clear()
+	for printer: OwnedPrinter in Game.state.printers:
+		_printers_done[printer.uid] = OrderQueries.printer_status(Game.state, Game.rules, printer) == OrderQueries.PrinterStatus.DONE
+
+
+## Lo que el personaje mira de una impresora: su cabezal o, en la de resina
+## (que no tiene), la placa.
+func _watched_part(printer: Node3D) -> Node3D:
+	for part: String in ["PrintHead", "PlateTop"]:
+		var node: Node3D = printer.get_node_or_null(part)
+		if node != null:
+			return node
+	return printer
+
+
+## Dónde está lo que se mira de una impresora (o el personaje, si ya no está).
+func _print_head_of(printer_uid: int) -> Vector3:
+	var printer: Node3D = get_node_or_null("Printer%d" % printer_uid)
+	return _watched_part(printer).global_position if printer != null else character.model.position
 
 
 ## Agrega un objeto que se puede tocar y, si ocupa lugar, lo marca como

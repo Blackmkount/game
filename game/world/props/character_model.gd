@@ -6,10 +6,13 @@ extends RefCounted
 ## cordones, bolsillo canguro y el logo de tres capas cian, jeans con la basta
 ## doblada y zapatillas blancas gorditas con franja cian. Mira hacia +Z.
 ##
-## Contrato (lo mueven CharacterController y el animador, lo leen las
-## pruebas): los pivotes Node3D "HipL"/"HipR" (con "KneeL"/"KneeR"), "Body",
+## Contrato (los mueve CharacterAnimator, lo leen las pruebas): los pivotes
+## Node3D "HipL"/"HipR" (con "KneeL"/"KneeR"), "Body",
 ## "Body/ShoulderL"/"ShoulderR" (con "ElbowL"/"ElbowR") y "Body/Head", y el
-## Marker3D "Body/Head/SpeechAnchor" donde se ancla el globo de diálogo.
+## Marker3D "Body/Head/SpeechAnchor" donde se ancla el globo de diálogo. El
+## pivote "Body/ShoulderR/ElbowR/Phone" lleva el celular en la mano derecha:
+## en reposo está achicado a nada (PHONE_HIDDEN) y el animador lo muestra
+## solo cuando lo mira.
 ##
 ## Se dibuja con 6 llamadas: el cuerpo es UNA malla con piel ("Rig/Mesh",
 ## CharacterRig copia la pose de los pivotes a sus huesos), la cabeza otra
@@ -18,12 +21,13 @@ extends RefCounted
 ## Las mallas y la piel se arman una vez y las comparten el cuarto, los
 ## retratos y las pruebas.
 
-enum Bone { BODY, HIP_L, KNEE_L, HIP_R, KNEE_R, SHOULDER_L, ELBOW_L, SHOULDER_R, ELBOW_R, HEAD }
+enum Bone { BODY, HIP_L, KNEE_L, HIP_R, KNEE_R, SHOULDER_L, ELBOW_L, SHOULDER_R, ELBOW_R, HEAD, PHONE }
 
 ## Ruta de cada pivote (en el orden de Bone).
 const PIVOT_PATHS: Array[String] = [
 	"Body", "HipL", "HipL/KneeL", "HipR", "HipR/KneeR",
 	"Body/ShoulderL", "Body/ShoulderL/ElbowL", "Body/ShoulderR", "Body/ShoulderR/ElbowR", "Body/Head",
+	"Body/ShoulderR/ElbowR/Phone",
 ]
 
 ## Proporciones (biblia §7.1). Alto total hasta la punta del pelo.
@@ -40,6 +44,26 @@ const KNEE_DROP: float = 0.23
 const SHOULDER: Vector2 = Vector2(0.195, 0.36)
 const SHOULDER_ROLL: float = 0.11
 const ELBOW_DROP: float = 0.16
+## Centro de la mano (el mitón), en el marco del hombro: lo que los gestos
+## llevan a su lugar (CharacterGestures.solve_arm).
+const HAND: Vector3 = Vector3(0.0, -0.385, 0.006)
+## Altura de la planta del pie bajo la rodilla (la suela toca el piso en
+## reposo): con KNEE_DROP, el largo de la pierna para apoyar los pies.
+const SHIN: float = 0.27
+## El celular: dónde va su centro (marco del codo: delante de la palma y
+## asomando por la punta del mitón, así se ve entero) y su tamaño (ancho,
+## alto, grosor; un poco grande, para que se lea de lejos). Escondido, su pivote se achica a
+## PHONE_HIDDEN (sus triángulos quedan en un punto: no se ven ni cuestan
+## otra llamada).
+const PHONE_GRIP: Vector3 = Vector3(-0.01, -0.262, 0.036)
+const PHONE_SIZE: Vector3 = Vector3(0.066, 0.124, 0.012)
+const PHONE_HIDDEN: float = 0.001
+## Lo que cuelga y se mueve con inercia (biblia §7.7, movimiento
+## secundario): los cordones, desde donde salen hasta la punta, y el bulto de
+## la capucha (con menos peso). El pelo lo marca HairKit.
+const STRING_TOP: float = 0.905
+const STRING_LENGTH: float = 0.12
+const HOOD_SWING: float = 0.35
 ## Pivote de la cabeza (el cuello) desde Body, y el mentón levantado 6° en
 ## reposo: la cámara alta ve la cara.
 const NECK_Y: float = 0.43
@@ -98,6 +122,8 @@ static func build(parent: Node3D, node_name: String) -> Node3D:
 		var pivot: Node3D = PropBuilder.group(holder, path.get_file())
 		pivot.transform = local_rest(bone as Bone)
 		pivots.append(pivot)
+	# El celular queda guardado (achicado a nada) hasta que lo saca.
+	pivots[Bone.PHONE].scale = Vector3.ONE * PHONE_HIDDEN
 	var head: Node3D = pivots[Bone.HEAD]
 	var anchor: Marker3D = Marker3D.new()
 	anchor.name = "SpeechAnchor"
@@ -138,6 +164,9 @@ static func local_rest(bone: Bone) -> Transform3D:
 			return Transform3D(Basis(Vector3.BACK, SHOULDER_ROLL * side), Vector3(SHOULDER.x * side, SHOULDER.y, 0.0))
 		Bone.ELBOW_L, Bone.ELBOW_R:
 			return Transform3D(Basis.IDENTITY, Vector3(0.0, -ELBOW_DROP, 0.0))
+		Bone.PHONE:
+			# De pie en la mano, con la pantalla hacia adelante (+Z).
+			return Transform3D(Basis.IDENTITY, PHONE_GRIP)
 	return Transform3D(Basis(Vector3.RIGHT, CHIN_UP), Vector3(0.0, NECK_Y, 0.0))
 
 
@@ -184,6 +213,7 @@ static func _body_mesh() -> ArrayMesh:
 		parts.append(CharacterRig.Part.new(_arm(side), PackedInt32Array([Bone.BODY, shoulder, elbow]), PackedFloat32Array([0.0, ELBOW_DROP]), model_rest(shoulder)))
 	parts.append(CharacterRig.Part.new(_torso(), PackedInt32Array([Bone.BODY])))
 	parts.append(CharacterRig.Part.new(_neck(), PackedInt32Array([Bone.BODY, Bone.HEAD]), PackedFloat32Array([0.0]), model_rest(Bone.HEAD), Vector3.UP))
+	parts.append(CharacterRig.Part.new(_phone(), PackedInt32Array([Bone.PHONE])))
 	return CharacterRig.skinned_mesh(parts)
 
 
@@ -236,7 +266,7 @@ static func _arm(side: float) -> KitMesh:
 	kit.paint(LookPalette.HOODIE_CUFF, WorldPalette.Surface.SMOOTH, 0.05)
 	kit.torus(Vector2(0.042, 0.042), 0.015, Vector3(0.0, -0.325, 0.0), Vector3.ZERO, TAU, Vector2i(LIMB_SIDES, 5))
 	kit.paint(LookPalette.SKIN, WorldPalette.Surface.SKIN, SKIN_GLOSS)
-	kit.blob(Vector3(0.038, 0.05, 0.032), Vector3(0.0, -0.385, 0.006), Vector3.ZERO, 0.8, 0.9, Vector2.ONE, Vector2i(14, 9))
+	kit.blob(Vector3(0.038, 0.05, 0.032), HAND, Vector3.ZERO, 0.8, 0.9, Vector2.ONE, Vector2i(14, 9))
 	kit.blob(Vector3(0.014, 0.026, 0.014), Vector3(-0.026 * side, -0.365, 0.026), Vector3(0.0, 0.0, -28.0 * side), 1.0, 1.0, Vector2.ONE, Vector2i(10, 6))
 	return kit
 
@@ -251,6 +281,8 @@ static func _torso() -> KitMesh:
 	kit.paint(LookPalette.HOODIE, WorldPalette.Surface.SMOOTH, 0.08)
 	kit.blob(Vector3(0.17, 0.222, 0.11), Vector3(0.0, 0.69, 0.0), Vector3.ZERO, 0.62, 0.56, Vector2(1.05, 1.0), Vector2i(18, 12))
 	kit.blob(Vector3(0.112, 0.058, 0.022), Vector3(0.0, 0.585, 0.098), Vector3.ZERO, 0.4, 0.5, Vector2.ONE, Vector2i(10, 5))
+	# El bulto de la capucha rebota un poco (movimiento secundario).
+	kit.hanging(HOOD_SWING, 0.97, 0.2)
 	kit.blob(Vector3(0.135, 0.105, 0.055), Vector3(0.0, 0.86, -0.115), Vector3(14.0, 0.0, 0.0), 0.7, 0.8, Vector2.ONE, Vector2i(12, 8))
 	# La capucha enrollada abre adelante (el cuello en V de los cordones).
 	kit.torus(Vector2(0.116, 0.104), 0.046, Vector3(0.0, 0.922, -0.008), Vector3(-12.0, 180.0, 0.0), deg_to_rad(280.0), Vector2i(26, 10), true)
@@ -261,11 +293,25 @@ static func _torso() -> KitMesh:
 	for i: int in LookPalette.LOGO.size():
 		kit.paint(LookPalette.LOGO[i], WorldPalette.Surface.SMOOTH, 0.3)
 		kit.blob(Vector3(0.024 - i * 0.004, 0.0055, 0.005), Vector3(0.068, 0.80 - i * 0.014, 0.104), Vector3.ZERO, 0.3, 0.6, Vector2.ONE, Vector2i(8, 4))
+	# Los cordones se balancean desde donde salen (movimiento secundario).
 	for side: float in [-1.0, 1.0]:
-		kit.paint(LookPalette.DRAWSTRINGS, WorldPalette.Surface.SMOOTH, 0.2)
+		kit.paint(LookPalette.DRAWSTRINGS, WorldPalette.Surface.SMOOTH, 0.2).hanging(1.0, STRING_TOP, STRING_LENGTH)
 		kit.tube(PackedVector3Array([Vector3(0.03 * side, 0.9, 0.098), Vector3(0.034 * side, 0.845, 0.106), Vector3(0.038 * side, 0.785, 0.11)]), 0.0065, 8, 3)
-		kit.paint(LookPalette.HOODIE_ACCENT, WorldPalette.Surface.SMOOTH, 0.3)
+		kit.paint(LookPalette.HOODIE_ACCENT, WorldPalette.Surface.SMOOTH, 0.3).hanging(1.0, STRING_TOP, STRING_LENGTH)
 		kit.blob(Vector3(0.008, 0.013, 0.008), Vector3(0.038 * side, 0.775, 0.11), Vector3.ZERO, 1.0, 1.0, Vector2.ONE, Vector2i(8, 5))
+	return kit
+
+
+## El celular (pivote Phone): una caja oscura con bisel y la pantalla
+## encendida hacia +Z, armada en el lugar del pivote en reposo.
+static func _phone() -> KitMesh:
+	var kit: KitMesh = _kit()
+	kit.origin = model_rest(Bone.PHONE)
+	kit.ao_enabled = false
+	kit.paint(LookPalette.PHONE, WorldPalette.Surface.SMOOTH, 0.5)
+	kit.box(PHONE_SIZE, Vector3.ZERO, 0.004)
+	kit.glowing(LookPalette.PHONE_SCREEN, 0.8)
+	kit.quad(Vector2(PHONE_SIZE.x - 0.01, PHONE_SIZE.y - 0.016), Vector3(0.0, 0.0, PHONE_SIZE.z / 2.0 + 0.0008))
 	return kit
 
 

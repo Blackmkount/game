@@ -6,8 +6,9 @@ extends PanelContainer
 ##
 ## El retrato (biblia de arte §7.9) cambia de cara en los momentos
 ## importantes: feliz al cobrar a tiempo, preocupado cuando falla una
-## impresión, sorpresa y después feliz al subir de nivel. Se vuelve a dibujar
-## solo entonces.
+## impresión, sorpresa y después feliz al subir de nivel, por lo mismo que
+## el personaje del cuarto (CharacterFace). Se vuelve a dibujar solo
+## entonces.
 
 const XP_FILL_TIME: float = 0.4
 ## Retrato: lado de la vista (px), ancho que muestra (m), punto que queda al
@@ -16,11 +17,6 @@ const PORTRAIT_SIZE: float = 76.0
 const PORTRAIT_FRAME: float = 0.62
 const PORTRAIT_TARGET: Vector3 = Vector3(0.0, 1.15, 0.0)
 const PORTRAIT_YAW: float = 20.0
-## Cuánto dura cada cara (segundos, biblia §7.8).
-const HAPPY_TIME: float = 2.6
-const WORRIED_TIME: float = 3.2
-const SURPRISE_TIME: float = 0.6
-const LEVEL_UP_TIME: float = 3.0
 
 var _level_label: Label
 var _xp_bar: ProgressBar
@@ -115,15 +111,15 @@ func shown_face() -> FacePainter.Face:
 func _on_order_delivered(_order_uid: int, _order_id: String, _cents: int, _xp: int, late: bool) -> void:
 	# Si llegó tarde no hay festejo.
 	if not late:
-		show_face(FacePainter.Face.HAPPY, HAPPY_TIME)
+		show_face(FacePainter.Face.HAPPY, CharacterFace.HAPPY_TIME)
 
 
 func _on_print_failed(_printer_uid: int, _failure_type: String) -> void:
-	show_face(FacePainter.Face.WORRIED, WORRIED_TIME)
+	show_face(FacePainter.Face.WORRIED, CharacterFace.WORRIED_TIME)
 
 
 func _on_level_up(_level: int) -> void:
-	show_face(FacePainter.Face.SURPRISE, SURPRISE_TIME, FacePainter.Face.HAPPY, LEVEL_UP_TIME - SURPRISE_TIME)
+	show_face(FacePainter.Face.SURPRISE, CharacterFace.SURPRISE_TIME, FacePainter.Face.HAPPY, CharacterFace.LEVEL_UP_TIME - CharacterFace.SURPRISE_TIME)
 
 
 func _on_face_timeout() -> void:

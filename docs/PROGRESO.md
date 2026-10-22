@@ -4,15 +4,15 @@
 
 - **Fase actual:** 1. Ciclo jugable, en curso (ruta aprobada por el dueño en `docs/RUTA.md`).
 - **Diseño:** GDD versión 2.3, guía de estilo en `docs/ESTILO.md` y ruta en `docs/RUTA.md`.
-- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 10 de 16: el personaje nuevo (1,40 m, una malla con piel que dobla rodillas y codos, la cara pintada con 8 expresiones, el pelo en una sola superficie, un contorno fino y los retratos con luz de estudio), con una ronda de arreglos (hombros sin cortes que giran desde su centro, brazos más delgados, capucha suave, ojos nítidos de lejos y el pelo de arriba sin remolino) (2026-10-22). Antes: paso 9, los muebles del kit.
-- **Siguiente paso sugerido:** Arte 2.0, paso 11: el personaje vivo (animación por capas, expresiones y reacciones a lo que pasa). Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
+- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 11 de 16: el personaje vivo (trota con rodillas y codos, respira, parpadea, mira, hace gestos sueltos, cambia de cara y reacciona a lo que pasa: cobrar, una falla, subir de nivel, un mensaje, una impresora que termina, tocarlo) (2026-10-22). Antes: paso 10, el personaje nuevo.
+- **Siguiente paso sugerido:** Arte 2.0, paso 12: la decoración del dormitorio que crece con el nivel. Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
 - **Diseño del ciclo:** aprobado por el dueño (GDD, versión 2.3 en la sección 16).
 
 | Fase | Estado |
 |---|---|
 | 0. Base | Completada (2026-10-21) |
 | 1. Ciclo jugable | En curso: tareas 1, 2, 6 y 7 terminadas; 4, 5 y 8 en parte |
-| 2. Personaje vivo y game feel | Sin empezar (el estilo visual ya se adelantó) |
+| 2. Personaje vivo y game feel | Sin empezar (se adelantaron el estilo visual y, con D8, la animación y las reacciones del personaje) |
 | 3. UX/UI y primera experiencia | Sin empezar |
 | 4. Contenido y MVP completo | Sin empezar |
 | 5. Móvil y rendimiento | Sin empezar |
@@ -507,3 +507,31 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 - Zoom "Cerca" junto a la impresora: los hombros redondos, sin cortes ni bultos; la capucha suave.
 - Zoom "Lejos" y "Normal": se le ven los dos ojos como puntos oscuros (no manchas).
 - Camina con el joystick: los brazos se balancean sin despegarse del buzo.
+
+
+### 2026-10-22 — Arte 2.0, paso 11: el personaje vivo
+
+**Qué se hizo** (decisión D8, aprobada: solo lo visual, el juego no cambia)
+- **Camina como un personaje de verdad:** a la velocidad del juego es un trote suave; las rodillas se doblan y el pie de atrás se levanta, los codos van doblados, la cadera se balancea y se inclina hacia adelante. Al arrancar se aplasta un instante y al frenar de golpe se va un poco hacia adelante y se asienta. Los pies ya no se hunden ni flotan. Si gira sin moverse, da pasitos.
+- **Quieto, está vivo:** respira, cambia el peso de lado, parpadea, mira lo que tiene cerca (la cabeza y los ojos) y, si no hay nada cerca, a los 2 segundos se gira de tres cuartos hacia ti. Si lo dejas quieto 8 segundos, hace cosas solo: mira el celular, se estira, se rasca la cabeza o mira la impresora con las manos en la cintura. De noche bosteza.
+- **Reacciona a lo que pasa:** al cobrar un pedido a tiempo levanta el puño feliz (atrasado, se rasca la cabeza); si falla una pieza se agarra la cabeza preocupado y mira la impresora; al subir de nivel salta (se aplasta y se estira como en los dibujos animados); cuando llega un mensaje saca el celular y lo mira; si una impresora termina a su lado, pulgar arriba; si lo tocas, se da vuelta y te saluda; si algo no se pudo, se encoge de hombros; al embalar junto al rincón, hace el gesto de embalar. Mientras habla (el globo), mueve la boca; modelando cerca del escritorio, pone cara de concentrado.
+- **El pelo, los cordones y la capucha se mecen** cuando arranca, frena, gira o salta.
+- Todo esto es adorno: nunca hace esperar al juego ni obliga a caminar, y caminar corta cualquier gesto.
+- Sigue costando lo mismo: 6 llamadas de dibujo; el celular es parte de su malla.
+
+**Verificado**
+- `check.sh` y `run_tests.sh` pasan: 659 pruebas (antes 634): 16 nuevas del animador y 9 de las reacciones en la escena principal. Una prueba adaptada (las constantes de la mirada se leen del animador; detalle en `docs/DECISIONES.md`).
+- `screenshots.sh` saca las 41 capturas (nuevas: 48, el puño arriba, y 49, las manos a la cabeza). Revisé 04 (trotando), 19 (pulgar arriba), 22 (puño arriba mientras vuela lo cobrado), 23 (manos a la cabeza junto a la impresora que falló), 48, 49, 32a–c, 33, 45 y las demás del ciclo, y aparte (laboratorio) los 12 gestos desde tres lados, el trote cuadro a cuadro y el freno.
+
+**Qué revisar en el teléfono** (versión web)
+- Camina con el joystick: rodillas y codos doblados, un trote suave; suelta de golpe y mira cómo se asienta.
+- Quédate quieto en medio del cuarto: a los 2 s se gira hacia ti; espera unos 10 s más y hace algo solo (el celular, estirarse...).
+- Tócalo: se da vuelta, te saluda y dice algo.
+- Acepta un pedido y quédate cerca del escritorio mientras modela: cara de concentrado. Cuando la impresora termine a su lado: pulgar arriba.
+- Despacha un pedido: puño arriba y cara feliz (también en la tarjeta de arriba a la izquierda).
+- Si falla una pieza: se agarra la cabeza.
+
+**Problemas conocidos**
+- Visto de espaldas (por ejemplo, con un panel abierto, cuando mira el objeto) algunos gestos se leen menos (el pulgar arriba).
+- "Reducir movimiento" todavía no existe en Ajustes (RUTA Fase 2); cuando exista, apagará el estirar y aplastar.
+

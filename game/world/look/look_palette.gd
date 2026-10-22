@@ -135,6 +135,10 @@ const BLUSH: String = "ff8599"
 const BLUSH_ALPHA: float = 0.4
 const OUTLINE: String = "1a1830"
 const OUTLINE_HAIR: String = "2e180c"
+## El celular que saca para leer un mensaje: funda mostaza (el acento del
+## buzo) y pantalla de la luz fría del monitor (no es cian: no se toca).
+const PHONE: String = "e09a34"
+const PHONE_SCREEN: String = "8fd0ff"
 
 # Luces y efectos (§4.7).
 const LAMP: String = "ffb05a"

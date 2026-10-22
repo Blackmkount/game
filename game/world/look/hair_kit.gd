@@ -10,7 +10,9 @@ extends RefCounted
 ## es un surco suave, no un borde.
 ##
 ## El color va por vértice: el café de base, el brillo pintado en lo alto de
-## cada mechón, los pliegues oscuros y el borde de abajo en sombra.
+## cada mechón, los pliegues oscuros y el borde de abajo en sombra. El peso
+## del balanceo (KitMesh.hanging) es 0 en la coronilla y crece hacia las
+## puntas: con él el pelo se mece con inercia (CharacterAnimator).
 ##
 ## Coordenadas de la cabeza: +Z es la cara, +Y arriba. `u` da la vuelta
 ## alrededor (0 es el frente, crece hacia +X) y `v` va del borde del pelo (0)
@@ -57,6 +59,8 @@ const ROWS: int = 14
 const FRONT_DENSITY: float = 0.36
 ## Brillo del pelo.
 const GLOSS: float = 0.3
+## Metros bajo la coronilla donde el balanceo llega a su peso entero.
+const SWING_LENGTH: float = 0.26
 
 
 ## Agrega el pelo a `kit` (con su `detail`): un casquete de centro `center`
@@ -90,7 +94,7 @@ static func add_to(kit: KitMesh, center: Vector3, radii: Vector3) -> void:
 			color = color.lerp(shine, smoothstep(0.82, 0.97, ridge) * band * 0.85)
 			color = color.lerp(fold, (1.0 - smoothstep(0.0, 0.2, v)) * 0.7)
 			colors.append(color)
-	kit.paint(LookPalette.HAIR, WorldPalette.Surface.HAIR, GLOSS)
+	kit.paint(LookPalette.HAIR, WorldPalette.Surface.HAIR, GLOSS).hanging(1.0, center.y + radii.y, SWING_LENGTH)
 	kit.sheet(points, _normals(points, nu, nv, center), colors, nu, nv)
 	_add_tufts(kit, center, radii)
 
@@ -169,7 +173,7 @@ const TUFT_SUNK: float = 0.3
 
 
 static func _add_tufts(kit: KitMesh, center: Vector3, radii: Vector3) -> void:
-	kit.paint(LookPalette.HAIR, WorldPalette.Surface.HAIR, GLOSS)
+	kit.paint(LookPalette.HAIR, WorldPalette.Surface.HAIR, GLOSS).hanging(1.0, center.y + radii.y, SWING_LENGTH)
 	var saved: Transform3D = kit.origin
 	for tuft: Vector3 in TUFTS:
 		var out: Vector3 = _direction(tuft.x, tuft.y)

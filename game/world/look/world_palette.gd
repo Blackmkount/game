@@ -90,6 +90,7 @@ static func kit_head() -> ShaderMaterial:
 		material.set_shader_parameter("face_span", FacePainter.SPAN)
 		material.set_shader_parameter("face_height", FacePainter.HEIGHT)
 		material.set_shader_parameter("eye_ink", Color(LookPalette.EYE_LINE))
+		material.set_shader_parameter("hair_pivot", CharacterModel.HAIR_CENTER)
 		_cache["kit_head"] = material
 	return _cache["kit_head"]
 
@@ -102,6 +103,7 @@ static func outline_character() -> ShaderMaterial:
 		material.shader = OUTLINE_SHADER
 		material.set_shader_parameter("ink", Color(LookPalette.OUTLINE))
 		material.set_shader_parameter("hair_ink", Color(LookPalette.OUTLINE_HAIR))
+		material.set_shader_parameter("hair_pivot", CharacterModel.HAIR_CENTER)
 		_cache["outline_character"] = material
 	return _cache["outline_character"]
 

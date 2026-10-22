@@ -108,6 +108,10 @@ func _process(delta: float) -> void:
 			# Caminar cierra el panel abierto.
 			if hud.has_sheet():
 				hud.close_sheet()
+		# Mueve la boca mientras se ve el globo; con un panel o una pantalla
+		# abierta no saca el celular ni hace gestos sueltos.
+		character.animator.talking = hud.speech.is_talking()
+		character.animator.panel_open = hud.has_sheet() or not playing
 	_update_pinch()
 	_wheel_cooldown = maxf(_wheel_cooldown - delta, 0.0)
 
@@ -186,6 +190,9 @@ func tap(ui_position: Vector2) -> void:
 			_hints.walked_by_tap()
 		return
 	if item.kind == WorldInteractable.Kind.CHARACTER:
+		# Se da vuelta, saluda y dice algo gracioso.
+		room.character.face_camera()
+		room.character.animator.react(CharacterAnimator.Reaction.TAPPED)
 		hud.speech.say(tr("CHARACTER_LINE_%d" % _rng.randi_range(1, CHARACTER_LINES)))
 		return
 	open_sheet(item)

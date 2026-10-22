@@ -10,7 +10,11 @@ extends Node
 ## El mundo avanza con paso fijo: el ejecutor apaga el _process de
 ## WorldControls y lo llama él mismo con 1/60 s en cada cuadro. Así lo que
 ## camina o se mueve no depende de lo rápido que dibuje la máquina (con
-## llvmpipe un cuadro tarda mucho más que en un teléfono).
+## llvmpipe un cuadro tarda mucho más que en un teléfono). El personaje
+## tiene una semilla fija y lo de adorno quieto (CharacterAnimator.freeze_idle:
+## sin respirar, parpadear ni gestos sueltos); sus reacciones sí se ven, y su
+## tiempo solo avanza con los cuadros: mientras se espera en tiempo real (los
+## avisos, el globo) queda en pausa.
 ##
 ## Antes de empezar escribe manifest.txt con los nombres de las capturas que
 ## va a sacar; después de cada una agrega una fila a budget.csv con lo que
@@ -79,7 +83,8 @@ const GAME_SHOTS: Array[String] = [
 	"24_zoom_lejos_taller", "23_fallo", "19_pieza_lista",
 ]
 const CHARACTER_SHOTS: Array[String] = [
-	"32a_personaje_frente", "32b_personaje_perfil", "32c_personaje_espalda", "33_personaje_retrato", "47_perfil",
+	"32a_personaje_frente", "32b_personaje_perfil", "32c_personaje_espalda", "33_personaje_retrato",
+	"48_personaje_celebra", "49_personaje_falla", "47_perfil",
 ]
 const ART_SHOTS: Array[String] = [
 	"00_calibracion", "30_heroe_sin_hud", "31_normal_sin_hud", "34_impresora_y_escritorio", "45_pieza_creciendo_lejos",
@@ -101,6 +106,11 @@ const PORTRAIT_FRAME: float = 1.15
 ## Giro del personaje (grados; 0 mira hacia +Z y la cámara mira desde +X +Z):
 ## de frente, de perfil y de espaldas a la cámara.
 const CHARACTER_TURNS: Array[float] = [45.0, 135.0, 225.0]
+## Los gestos en su punto alto: captura, gesto y cara.
+const PEAK_SHOTS: Array[Array] = [
+	["48_personaje_celebra", CharacterGestures.Gesture.CHEER, FacePainter.Face.HAPPY],
+	["49_personaje_falla", CharacterGestures.Gesture.HANDS_ON_HEAD, FacePainter.Face.WORRIED],
+]
 ## El cuarto entero: punto que queda al centro con el zoom lejos.
 const ROOM_CENTER: Vector3 = Vector3(0.0, 0.8, 0.0)
 ## La impresora del piso y el escritorio, de cerca (zoom normal).
@@ -137,6 +147,9 @@ var _room: RoomView
 ## Punto que sigue la cámara en las capturas de arte (null: la maneja
 ## WorldControls, como en el juego).
 var _camera_point: Variant = null
+## Hacia dónde gira el personaje quieto (CharacterController.camera_yaw),
+## guardado mientras está en pausa.
+var _camera_yaw: float = NAN
 
 
 func _init(out_dir: String, only: String, quality: String) -> void:
@@ -319,7 +332,9 @@ func _first_sale() -> void:
 	_press("pack")
 	await _frames(30)
 	await _capture("21_listo_despachar")
+	# El festejo (puño arriba) en su punto alto, con lo cobrado volando.
 	_press("dispatch")
+	_advance_character(CharacterGestures.Gesture.CHEER)
 	await _seconds(0.35)
 	await _capture("22_cobro")
 	_hud.close_sheet()
@@ -394,6 +409,8 @@ func _failed_piece() -> void:
 	# La partida avanzó sin que pasara tiempo real, así que el globo de alguna
 	# frase de recién seguiría ahí; en el juego ya se habría ido.
 	_hud.speech.hush()
+	# Junto a la impresora que terminó, el pulgar arriba.
+	_advance_character(CharacterGestures.Gesture.THUMBS_UP)
 	await _seconds(1.0)
 	await _capture("19_pieza_lista")
 	_zoom(CameraRig.DEFAULT_ZOOM_INDEX)
@@ -401,8 +418,10 @@ func _failed_piece() -> void:
 
 ## 32a, 32b, 32c y 33: el personaje sin interfaz, de cuerpo entero de frente,
 ## de perfil y de espaldas, y la cara de muy cerca. La cámara lo sigue a él y
-## no a WorldControls, así nada cercano le cambia la mirada. 47: la pantalla
-## de perfil, con su retrato de cuerpo entero.
+## no a WorldControls, así nada cercano le cambia la mirada. 48 y 49: de
+## frente, los gestos de cobrar (puño arriba y feliz) y de una falla (manos a
+## la cabeza y preocupado), quietos en su punto alto. 47: la pantalla de
+## perfil, con su retrato de cuerpo entero.
 func _character_shots() -> void:
 	await _new_game(ROOM_MIDDLE_SPOT)
 	_hud.visible = false
@@ -421,6 +440,13 @@ func _character_shots() -> void:
 	_camera_point = _head_center()
 	await _frames(40)
 	await _capture("33_personaje_retrato")
+	_room.camera.set_base_size(BODY_FRAME)
+	_camera_point = character.model.position + Vector3(0.0, CharacterModel.HEIGHT / 2.0, 0.0)
+	for shot: Array in PEAK_SHOTS:
+		character.animator.hold(shot[1], shot[2])
+		await _frames(20)
+		await _capture(shot[0])
+	character.animator.release()
 	await _back_to_game(base)
 	_hud.open_screen("profile")
 	await _frames(30)
@@ -548,6 +574,9 @@ func _load_main() -> void:
 	_controls = _main.get_node("WorldControls")
 	# Desde aquí lo mueve el ejecutor, con paso fijo (ver _process).
 	_controls.set_process(false)
+	if _room.character != null:
+		_room.character.animator.reseed(SEED)
+		_room.character.animator.freeze_idle = true
 	await _frames(30)
 
 
@@ -573,13 +602,17 @@ func _back_to_game(base_size: float) -> void:
 	await _frames(30)
 
 
-## Espera a que se vayan solos el globo de diálogo y los avisos.
+## Espera a que se vayan solos el globo de diálogo y los avisos (en tiempo
+## real: el personaje queda en pausa).
 func _wait_quiet() -> void:
 	var toast: Control = _hud.feedback.get_node("Toast")
+	_pause_character(true)
 	for i: int in MAX_QUIET_FRAMES:
 		if not toast.visible and not _hud.speech.is_talking():
+			_pause_character(false)
 			return
 		await _frames(1)
+	_pause_character(false)
 	push_error("Capturas: el globo o el aviso no se fueron")
 
 
@@ -686,8 +719,31 @@ func _frames(count: int) -> void:
 		await get_tree().process_frame
 
 
+## Espera en tiempo real, con el personaje en pausa.
 func _seconds(seconds: float) -> void:
+	_pause_character(true)
 	await get_tree().create_timer(seconds).timeout
+	_pause_character(false)
+
+
+## Adelanta la animación del personaje, sin dibujar, hasta el punto alto de
+## ese gesto (el que acaba de empezar una reacción): así se ve junto a lo que
+## pasa en tiempo real (lo cobrado que vuela, los avisos).
+func _advance_character(gesture: CharacterGestures.Gesture) -> void:
+	for i: int in ceili(CharacterGestures.peak_of(gesture) / FRAME_STEP):
+		_room.character.animator.step(FRAME_STEP)
+
+
+## Pausa (o no) el tiempo del personaje: su animación y su giro hacia la
+## cámara cuando está quieto.
+func _pause_character(paused: bool) -> void:
+	var character: CharacterController = _room.character
+	if character == null:
+		return
+	character.animator.paused = paused
+	if paused:
+		_camera_yaw = character.camera_yaw
+	character.camera_yaw = NAN if paused else _camera_yaw
 
 
 ## Guarda la captura (con la interfaz) y anota lo que costó dibujar el mundo.

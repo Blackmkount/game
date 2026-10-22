@@ -10,7 +10,12 @@ render_mode unshaded, cull_front, depth_draw_opaque, shadows_disabled, fog_disab
 
 uniform vec4 ink = vec4(0.102, 0.0941, 0.1882, 1.0);
 uniform vec4 hair_ink = vec4(0.1804, 0.0941, 0.0471, 1.0);
+// El movimiento secundario, igual que en kit_body.gdshaderinc: lo que
+// cuelga (UV.y) se corre `swing` metros; el pelo gira `swing` radianes
+// alrededor de hair_pivot.
+uniform vec3 hair_pivot = vec3(0.0, 0.24, -0.007);
 instance uniform float px_m_override = 0.0;
+instance uniform vec3 swing = vec3(0.0);
 
 const float OUTLINE_PX = 1.5;
 // La superficie del pelo (UV.x entero, ver kit_body.gdshaderinc).
@@ -19,10 +24,14 @@ const int CC_HAIR = 9;
 varying vec3 v_ink;
 
 void vertex() {
+	bool hair = int(floor(UV.x + 0.001)) == CC_HAIR;
+	if (UV.y > 0.0) {
+		VERTEX += hair ? cross(swing * UV.y, VERTEX - hair_pivot) : swing * UV.y;
+	}
 	float px_m = px_m_override > 0.0 ? px_m_override : cc_px_m;
 	float scale = max(length(MODEL_MATRIX[0].xyz), 0.001);
 	VERTEX += normalize(NORMAL) * (OUTLINE_PX * px_m / scale);
-	v_ink = int(floor(UV.x + 0.001)) == CC_HAIR ? hair_ink.rgb : ink.rgb;
+	v_ink = hair ? hair_ink.rgb : ink.rgb;
 }
 
 void fragment() {
