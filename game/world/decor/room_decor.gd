@@ -48,8 +48,8 @@ const FLOOR: Dictionary[String, Dictionary] = {
 	"monstera": {"rect": Rect2(-2.98, -2.625, 0.56, 0.465), "height": 1.4},
 	"fail_bin": {"rect": Rect2(-2.94, -0.39, 0.28, 0.28), "height": 0.5},
 	"filament_boxes": {"rect": Rect2(2.755, -2.965, 0.24, 0.25), "height": 0.45},
-	"bed": {"rect": Rect2(1.935, -1.885, 0.985, 2.055), "height": 0.95},
-	"pouf": {"rect": Rect2(2.17, 0.42, 0.66, 0.88), "height": 0.55},
+	"bed": {"rect": Rect2(1.935, -1.535, 0.985, 2.055), "height": 0.95},
+	"pouf": {"rect": Rect2(2.17, 0.67, 0.66, 0.88), "height": 0.55},
 }
 ## Lo del piso que cambia con el nivel (el basurero se llena, se apilan las
 ## cajas de filamento): va en las variantes; lo demás, en lo compartido.
@@ -57,7 +57,7 @@ const TIERED: Array[String] = ["fail_bin", "filament_boxes"]
 const OBSTACLE_MARGIN: float = 0.05
 ## La caja de la cama que tapa el parche de sol de la ventana (biblia §6.3,
 ## cc_occ_b): el colchón con la cobija.
-const BED_BOX: AABB = AABB(Vector3(1.95, 0.0, -1.85), Vector3(0.97, 0.5, 2.02))
+const BED_BOX: AABB = AABB(Vector3(1.95, 0.0, -1.5), Vector3(0.97, 0.5, 2.02))
 
 ## Nivel de decoración que se ve (0, 1 o 2).
 var tier: int = -1

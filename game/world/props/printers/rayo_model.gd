@@ -354,7 +354,9 @@ static func _arm(kind: Kind, detail: float) -> ArrayMesh:
 ## El cabezal, con la boquilla sobre el centro de la cama. La Rayo Mini: un
 ## cilindro con un aro verde que brilla; la X1 y la Prisma: una caja blanca
 ## redondeada con el ventilador y una franja del acento. El tubo PTFE sube
-## hacia el carrete.
+## del cabezal y se curva hacia atrás, hacia lo alto de la columna (en la
+## Mini también: hacia el carrete, que está al costado y abajo, terminaba en
+## el aire y se leía como una raya suelta).
 static func _head(kind: Kind, detail: float) -> ArrayMesh:
 	var kit: KitMesh = PrinterParts.kit(detail)
 	kit.ao_enabled = false
@@ -363,7 +365,6 @@ static func _head(kind: Kind, detail: float) -> ArrayMesh:
 	if kind == Kind.MINI:
 		kit.origin = Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * MINI_SCALE), Vector3.ZERO)
 		nozzle_z = MINI_BED_CENTER.y - MINI_HEAD_REST.z
-		tube_end = Vector3(0.13, 0.13, -0.03)
 	elif kind == Kind.PRISMA:
 		tube_end = Vector3(-0.07, 0.13, -0.04)
 	kit.paint(LookPalette.METAL_DARK, WorldPalette.Surface.METAL, 0.4)

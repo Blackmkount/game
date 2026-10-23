@@ -161,15 +161,17 @@ static func _normals(points: PackedVector3Array, nu: int, nv: int, center: Vecto
 	return normals
 
 
-## Tres mechoncitos sueltos en la coronilla: mechones finos que nacen
-## adentro del pelo, siguen el remolino hacia la nuca y levantan apenas la
-## punta (no una corona de puntas): (ángulo alrededor, latitud, tamaño).
+## Tres mechoncitos sueltos en la coronilla: mechones que nacen bien adentro
+## del pelo, siguen el remolino hacia la nuca y levantan apenas la punta (no
+## una corona de puntas): (ángulo alrededor, latitud, tamaño). Gruesos y
+## redondos: finos se veían, con el contorno, como cortes o como discos
+## planos que salían de la cabeza.
 const TUFTS: Array[Vector3] = [Vector3(PI - 1.15, 1.02, 0.75), Vector3(PI + 0.05, 1.32, 1.0), Vector3(PI + 0.95, 1.08, 0.62)]
-const TUFT_HALF: Vector3 = Vector3(0.027, 0.056, 0.013)
+const TUFT_HALF: Vector3 = Vector3(0.034, 0.06, 0.026)
 ## Cuánto se levanta la punta (0 = acostada sobre el pelo) y cuánto del
 ## mechón queda hundido en el pelo (fracción de su largo).
-const TUFT_LIFT: float = 0.24
-const TUFT_SUNK: float = 0.3
+const TUFT_LIFT: float = 0.1
+const TUFT_SUNK: float = 0.55
 
 
 static func _add_tufts(kit: KitMesh, center: Vector3, radii: Vector3) -> void:

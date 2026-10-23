@@ -160,7 +160,8 @@ const MOON: String = "9db4ff"
 const HOT_LAYER: String = "ff8a3d"
 const REVEAL_CUT: String = "ff8030"
 const REVEAL_PREVIEW: String = "38d0ff"
-## Destellos de "pieza lista" (§9.5): el dorado de la guirnalda.
+## Destellos de "pieza lista" (§9.5): el centro, del dorado de la guirnalda
+## (el borde es STATE_DONE).
 const READY_SPARKLE: String = STRING_LIGHTS
 ## Estado de cada impresora de noche (§9.2): el halo del piso y la luz de
 ## adentro de las cerradas. Imprimiendo, cálido (el halo de la lámpara);

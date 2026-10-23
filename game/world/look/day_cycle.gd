@@ -55,7 +55,7 @@ const MOMENTS: Dictionary[String, Dictionary] = {
 		},
 	},
 	"noon": {
-		"sun_direction": Vector3(0.22, -0.88, -0.42), "sun_color": "fff8ee", "sun_energy": 0.52,
+		"sun_direction": Vector3(0.22, -0.88, -0.42), "sun_color": "fff8ee", "sun_energy": 0.46,
 		"sky": "bccaea", "sky_energy": 0.68, "ground": "dcb594", "ground_energy": 0.52,
 		"window_direction": Vector3(0.55, -0.8, -0.24), "window_color": "fff6e6", "window_energy": 0.45,
 		"fill_color": "fff4ea", "fill_energy": 0.18, "fill_character": 0.25,
@@ -68,9 +68,11 @@ const MOMENTS: Dictionary[String, Dictionary] = {
 	},
 	# La tarde dorada del prototipo ganador, a propósito (§6.2): el sol tira
 	# las sombras de la planta en la pared del fondo y la ventana manda los
-	# rayos hacia la cámara.
+	# rayos hacia la cámara. Su sol (y el del mediodía) va a 0,46, no a 0,56
+	# (0,52) como en la biblia: con la cuenta de color de §2.4 la pared del
+	# fondo (y el piso al mediodía) se quemaban enteros.
 	"golden": {
-		"sun_direction": Vector3(0.6, -0.44, -0.66), "sun_color": "ffb874", "sun_energy": 0.56,
+		"sun_direction": Vector3(0.6, -0.44, -0.66), "sun_color": "ffb874", "sun_energy": 0.46,
 		"sky": "a597d0", "sky_energy": 0.58, "ground": "e8a070", "ground_energy": 0.52,
 		"window_direction": Vector3(0.86, -0.34, 0.38), "window_color": "ffad5c", "window_energy": 0.75,
 		"fill_color": "ffe0c8", "fill_energy": 0.16, "fill_character": 0.25,

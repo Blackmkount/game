@@ -35,6 +35,7 @@ const SCREEN_SHADER: Shader = preload("res://game/world/look/screen.gdshader")
 const WINDOW_VIEW_SHADER: Shader = preload("res://game/world/look/window_view.gdshader")
 const MARKER_SHADER: Shader = preload("res://game/world/look/marker.gdshader")
 const HALO_SHADER: Shader = preload("res://game/world/look/halo.gdshader")
+const SPARKLE_SHADER: Shader = preload("res://game/world/look/sparkle.gdshader")
 const WINDOW_SHAFT_SHADER: Shader = preload("res://game/world/look/window_shaft.gdshader")
 ## Lo que se compra mientras aparece imprimiéndose (PrintIn): la versión de
 ## kit y la de kit_tinted.
@@ -222,6 +223,19 @@ static func halo(hex: String, aspect: float = 1.0, intensity: float = 1.0) -> Sh
 		material.set_shader_parameter("color", Color(hex))
 		material.set_shader_parameter("aspect", aspect)
 		material.set_shader_parameter("intensity", intensity)
+		_cache[key] = material
+	return _cache[key]
+
+
+## Destellos que se mezclan (sparkle.gdshader): borde `edge_hex` y centro
+## `core_hex`. Uno por par de colores (en caché).
+static func sparkle(edge_hex: String, core_hex: String) -> ShaderMaterial:
+	var key: String = "sparkle:%s:%s" % [edge_hex, core_hex]
+	if not _cache.has(key):
+		var material: ShaderMaterial = ShaderMaterial.new()
+		material.shader = SPARKLE_SHADER
+		material.set_shader_parameter("edge_color", Color(edge_hex))
+		material.set_shader_parameter("core_color", Color(core_hex))
 		_cache[key] = material
 	return _cache[key]
 

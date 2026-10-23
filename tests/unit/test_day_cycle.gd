@@ -41,7 +41,10 @@ const LIGHT_NAMES: Array[String] = ["desk_lamp", "monitor", "bed_lamp", "led_str
 ## abajo, ventana (dirección, color, fuerza), relleno y su refuerzo para el
 ## personaje, factores de las luces (LIGHT_NAMES) y fondo (§4.1: centro,
 ## borde y resplandor; el resplandor del alba y del atardecer no lo dice la
-## biblia).
+## biblia). El sol del mediodía y el de la tarde dorada van a 0,46 y no a
+## 0,52 y 0,56 como en la biblia: con su cuenta de color el piso al mediodía
+## y la pared del fondo en la tarde se quemaban (revisión final del arte,
+## docs/DECISIONES.md; test_no_wall_or_floor_burns_at_any_hour).
 const MOMENTS: Dictionary[String, Dictionary] = {
 	"alba": {
 		"hours": [5.75], "sun": [Vector3(0.6, -0.4, -0.7), "ffc4a6", 0.28],
@@ -50,13 +53,13 @@ const MOMENTS: Dictionary[String, Dictionary] = {
 		"lights": [0.4, 0.3, 0.3, 0.0, 1.0, 0.3, 0.3], "background": ["202750", "11152b", ""],
 	},
 	"mediodía": {
-		"hours": [12.5], "sun": [Vector3(0.22, -0.88, -0.42), "fff8ee", 0.52],
+		"hours": [12.5], "sun": [Vector3(0.22, -0.88, -0.42), "fff8ee", 0.46],
 		"sky": ["bccaea", 0.68], "ground": ["dcb594", 0.52],
 		"window": [Vector3(0.55, -0.8, -0.24), "fff6e6", 0.45], "fill": ["fff4ea", 0.18, 0.25],
 		"lights": [0.0, 0.12, 0.0, 0.0, 1.0, 0.0, 0.6], "background": ["28365f", "151c30", "3a4a7a"],
 	},
 	"tarde dorada": {
-		"hours": [16.5, 17.25, 18.0], "sun": [Vector3(0.6, -0.44, -0.66), "ffb874", 0.56],
+		"hours": [16.5, 17.25, 18.0], "sun": [Vector3(0.6, -0.44, -0.66), "ffb874", 0.46],
 		"sky": ["a597d0", 0.58], "ground": ["e8a070", 0.52],
 		"window": [Vector3(0.86, -0.34, 0.38), "ffad5c", 0.75], "fill": ["ffe0c8", 0.16, 0.25],
 		"lights": [0.25, 0.3, 0.2, 0.0, 1.0, 0.2, 1.0], "background": ["2c2450", "17142e", "5a3d6a"],
@@ -85,6 +88,8 @@ const MAX_TURN_PER_MINUTE: float = 2.0
 ## noche, se ve con al menos esta luminancia en la pantalla.
 const NIGHT_FLOOR_MIN: float = 70.0 / 255.0
 const NIGHT_HOURS: Array[float] = [20.25, 22.0, 0.0, 3.0, 5.0]
+## Lo más claro que se ve una pared o el piso, en cualquier canal.
+const MAX_SURFACE: float = 250.0 / 255.0
 ## Los sombreadores de donde la cuenta del piso (_floor_luma) lee sus
 ## números: kit_body.gdshaderinc (light(): la envoltura y la mitad del ancho
 ## del terminador del sol, la luz de borde) y world_light.gdshaderinc
@@ -211,6 +216,32 @@ func test_the_night_floor_reads_on_a_dim_phone() -> void:
 	for minute: int in 24 * 60:
 		darkest = minf(darkest, _floor_luma(DayCycle.sample(minute / 60.0), tile, shading))
 	assert_gte(darkest, NIGHT_FLOOR_MIN, "La baldosa, a cualquier hora: %.1f/255" % (darkest * 255.0))
+
+
+## Biblia §2.4: solo se queman los brillos (el parche de sol, la capa
+## caliente), nunca una pared o el piso enteros. A ninguna hora la pared del
+## fondo, la de la ventana o el piso pasan de MAX_SURFACE en ningún canal (en
+## la tarde dorada, con el sol de la biblia, la pared del fondo se veía
+## entera en (255, 152, 98)).
+func test_no_wall_or_floor_burns_at_any_hour() -> void:
+	var shading: Dictionary[String, float] = _floor_shading()
+	var surfaces: Dictionary[String, Array] = {
+		"La pared del fondo": [LookPalette.WALL_BACK, Vector3.BACK],
+		"La pared de la ventana": [LookPalette.WALL_WINDOW, Vector3.RIGHT],
+		"El piso": [LookPalette.FLOOR_TILE, Vector3.UP],
+	}
+	for surface: String in surfaces:
+		var brightest: float = 0.0
+		var at: float = 0.0
+		for minute: int in 24 * 60:
+			var hour: float = minute / 60.0
+			var color: Vector3 = _lit(DayCycle.sample(hour), Color(surfaces[surface][0] as String), surfaces[surface][1], shading)
+			var peak: float = maxf(color.x, maxf(color.y, color.z))
+			if peak > brightest:
+				brightest = peak
+				at = hour
+		gut.p("%s: lo más claro, %.0f/255 a las %.2f" % [surface, brightest * 255.0, at])
+		assert_lte(brightest, MAX_SURFACE, "%s no se quema: %.0f/255 a las %.2f" % [surface, brightest * 255.0, at])
 
 
 func test_sample_is_pure() -> void:
@@ -419,8 +450,15 @@ func _difference(a: Dictionary, b: Dictionary) -> Vector2:
 ## en un punto del piso que mira hacia arriba, sin oclusión y sin brillo.
 ## `shading`: los números del sombreador (_floor_shading()).
 func _floor_luma(light: Dictionary, albedo: Color, shading: Dictionary[String, float]) -> float:
-	var n: Vector3 = Vector3.UP
-	var ambient: Vector3 = light["ambient_sky"]
+	return _lit(light, albedo, Vector3.UP, shading).clampf(0.0, 1.0).dot(LUMA)
+
+
+## El color que se ve (sin recortar a 1) de una superficie de `albedo` que
+## mira hacia `n`, con la misma cuenta que _floor_luma: ambiente (de arriba
+## o de abajo según hacia dónde mira) + relleno + sol, lejos de las luces y
+## fuera del parche de la ventana.
+func _lit(light: Dictionary, albedo: Color, n: Vector3, shading: Dictionary[String, float]) -> Vector3:
+	var ambient: Vector3 = (light["ambient_ground"] as Vector3).lerp(light["ambient_sky"], clampf(n.y * 0.5 + 0.5, 0.0, 1.0))
 	var f: float = clampf(n.dot(DayCycle.FILL_DIRECTION.normalized()) * shading["fill_spread"] + shading["fill_base"], 0.0, 1.0)
 	var fill: Vector3 = (light["fill"] as Vector3) * f * f
 	var to_sun: Vector3 = -(light["sun_direction"] as Vector3)
@@ -430,8 +468,7 @@ func _floor_luma(light: Dictionary, albedo: Color, shading: Dictionary[String, f
 	var edge: float = pow(1.0 - clampf(n.dot(to_camera), 0.0, 1.0), 4.0) * shading["rim"] * diffuse
 	var sun_color: Color = light["sun_color"]
 	var sun: Vector3 = Vector3(sun_color.r, sun_color.g, sun_color.b) * float(light["sun_energy"]) * (diffuse + edge)
-	var color: Vector3 = Vector3(albedo.r, albedo.g, albedo.b) * (ambient + fill + sun)
-	return color.clampf(0.0, 1.0).dot(LUMA)
+	return Vector3(albedo.r, albedo.g, albedo.b) * (ambient + fill + sun)
 
 
 ## Los números de los sombreadores que usa _floor_luma, leídos de los mismos

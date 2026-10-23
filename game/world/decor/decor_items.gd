@@ -13,8 +13,11 @@ extends RefCounted
 ## arma.
 
 ## Cama de una plaza contra el borde +X, con la cabecera hacia el fondo:
-## rincón (x, z) y medidas (ancho en x, largo en z).
-const BED_CORNER: Vector2 = Vector2(1.95, -1.85)
+## rincón (x, z) y medidas (ancho en x, largo en z). La cabecera queda a
+## 0,76 m del frente del lugar 4: así no tapa (desde la cámara) la impresora
+## de abajo de una estantería en ese lugar y entre las dos pasa el personaje
+## (≥ 0,5 m, ver test_room_decor).
+const BED_CORNER: Vector2 = Vector2(1.95, -1.5)
 const BED_SIZE: Vector2 = Vector2(0.95, 2.0)
 ## Alto de las patas, de la cama (arriba del marco), del colchón y de la
 ## cabecera (biblia: 0,45 y 0,75), y la repisa de arriba de la cabecera.
@@ -27,10 +30,10 @@ const BED_LEDGE: Vector2 = Vector2(0.03, 0.16)
 const BLANKET_COVER: float = 0.6
 ## Foco de la lámpara de la cama (biblia §6.2, cc_pl2): sobre la repisa de
 ## la cabecera. Al lado, el celular (su base).
-const BED_LAMP_BULB: Vector3 = Vector3(2.45, 0.85, -1.8)
-const PHONE_AT: Vector3 = Vector3(2.155, 0.78, -1.79)
+const BED_LAMP_BULB: Vector3 = Vector3(2.45, 0.85, -1.45)
+const PHONE_AT: Vector3 = Vector3(2.155, 0.78, -1.44)
 ## Puf con un control de videojuegos encima, y las zapatillas sueltas al lado.
-const POUF_CENTER: Vector2 = Vector2(2.5, 0.75)
+const POUF_CENTER: Vector2 = Vector2(2.5, 1.0)
 const POUF_HALF: Vector3 = Vector3(0.31, 0.215, 0.31)
 ## Librero alto del rincón del fondo (zona F1): centro de la base, ancho (x),
 ## alto y fondo (z).

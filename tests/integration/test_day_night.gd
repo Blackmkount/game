@@ -11,8 +11,9 @@ const SEED: int = 1234
 ## Uid del escritorio en una partida nueva.
 const DESK_UID: int = 1
 const NIGHT_HOUR: float = 22.0
-## Una hora en medio del paso de la mañana al mediodía (10:30–12:30).
-const MIDDAY_SHIFT_HOUR: float = 11.5
+## Una hora en medio del paso de la tarde dorada al atardecer (18:00–19:15),
+## donde el sol cambia mucho (de la mañana al mediodía casi no cambia).
+const SHIFT_HOUR: float = 18.5
 ## Lo mínimo que cambia la energía del sol entre la mañana y esa hora, para
 ## que la prueba vea la mezcla.
 const ENERGY_STEP: float = 0.01
@@ -68,7 +69,7 @@ func test_the_game_clock_moves_the_light_without_jumps() -> void:
 	var sun: DirectionalLight3D = _room.get_node("Sun")
 	var start: float = cycle.shown_hour()
 	var start_energy: float = sun.light_energy
-	var minutes: float = MIDDAY_SHIFT_HOUR * GameClock.MINUTES_PER_HOUR - Game.state.game_minutes
+	var minutes: float = SHIFT_HOUR * GameClock.MINUTES_PER_HOUR - Game.state.game_minutes
 	Game.advance(minutes * GameClock.SECONDS_PER_MINUTE / Game.rules.game_seconds_per_real_second)
 	var hour: float = Game.state.game_minutes / GameClock.MINUTES_PER_HOUR
 	var energy: float = float(DayCycle.sample(hour)["sun_energy"])

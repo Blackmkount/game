@@ -32,6 +32,7 @@ const SHADERS: Dictionary[String, Array] = {
 	"res://game/world/look/kit_head.gdshader": ["toon", "rim", "studio_key", "face_atlas", "face_cells", "face_axis", "face_span", "face_height", "eye_ink"],
 	"res://game/world/look/outline_character.gdshader": ["ink", "hair_ink"],
 	"res://game/world/look/display_field.gdshader": [],
+	"res://game/world/look/sparkle.gdshader": ["edge_color", "core_color", "core"],
 	"res://game/ui/components/preview_premultiplied.gdshader": [],
 }
 
@@ -64,6 +65,7 @@ func test_every_palette_material_can_be_drawn_on_a_mesh() -> void:
 		WorldPalette.glow("7fe0a0"), WorldPalette.glow("ffffff", "crt_modeling"),
 		WorldPalette.glow("ffffff", WorldPalette.WINDOW_VIEW), WorldPalette.glow_transparent(WorldPalette.SLOT_MARK, 0.6),
 		WorldPalette.halo(LookPalette.LAMP_HALO, 3.0), WorldPalette.window_shaft(),
+		WorldPalette.sparkle(LookPalette.STATE_DONE, LookPalette.READY_SPARKLE),
 		WorldPalette.kit_character(), WorldPalette.kit_head(), WorldPalette.outline_character(),
 		WorldPalette.reveal_of(WorldPalette.kit()), WorldPalette.reveal_of(WorldPalette.solid("e0453a")),
 	]

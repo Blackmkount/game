@@ -73,6 +73,55 @@ func test_floor_decor_keeps_clear_of_every_furniture_slot() -> void:
 			assert_gte(_rect_distance(rect, slots[i]), gap - 0.0001, "%s queda a %.2f m o más del lugar %d" % [id, gap, i])
 
 
+## Frente a cada lugar de muebles queda un pasillo por donde cabe el
+## personaje (su radio en la grilla y el margen de los dos obstáculos): así
+## llega cerca de cada impresora del mueble para resaltarla. La cabecera de
+## la cama dejaba 0,415 m frente al lugar 4 y la impresora de la derecha de
+## una mesa de trabajo ahí no se resaltaba nunca.
+func test_floor_decor_leaves_a_corridor_in_front_of_every_slot() -> void:
+	var corridor: float = 2.0 * (_room.grid.radius + RoomDecor.OBSTACLE_MARGIN)
+	var layout: RoomLayout = RoomLayout.for_space(Game.state.space_id)
+	var slots: Array[Rect2] = _slot_footprints()
+	for i: int in slots.size():
+		var front: Vector3 = layout.slots[i].basis.z
+		var slot: Rect2 = slots[i]
+		var strip: Rect2 = Rect2(slot.end.x, slot.position.y, corridor, slot.size.y) if absf(front.x) > absf(front.z) else Rect2(slot.position.x, slot.end.y, slot.size.x, corridor)
+		for id: String in RoomDecor.FLOOR:
+			assert_false((RoomDecor.FLOOR[id]["rect"] as Rect2).intersects(strip), "%s deja %.2f m libres frente al lugar %d" % [id, corridor, i])
+
+
+## Desde la cámara del juego, la decoración nunca tapa la pantallita ni la
+## pieza de una impresora en un mueble: con una estantería en cada lugar
+## libre (la impresora de abajo va casi en el piso), nada de la decoración
+## queda delante. La cabecera de la cama tapaba la de abajo del lugar 4.
+func test_the_decor_never_hides_a_printer_on_a_rack() -> void:
+	DebugTools.fill_workshop(Game.state, Game.rules)
+	_room.sync_models(false)
+	await wait_process_frames(2)
+	var toward_camera: Vector3 = _room.camera.global_basis.z
+	var meshes: Array[MeshInstance3D] = []
+	var triangles: Array[TriangleMesh] = []
+	for node: Node in _room.decor.find_children("*", "MeshInstance3D", true, false):
+		var mesh: MeshInstance3D = node
+		if mesh.is_visible_in_tree() and mesh.mesh != null:
+			meshes.append(mesh)
+			triangles.append(mesh.mesh.generate_triangle_mesh())
+	assert_gt(meshes.size(), 0)
+	var checked: int = 0
+	for printer: OwnedPrinter in Game.state.printers:
+		if printer.is_on_floor():
+			continue
+		var node: Node3D = _room.get_node("Printer%d" % printer.uid)
+		for part: String in ["Display", "PieceAnchor"]:
+			var point: Vector3 = (node.get_node(part) as Node3D).global_position
+			checked += 1
+			for i: int in meshes.size():
+				var inverse: Transform3D = meshes[i].global_transform.affine_inverse()
+				var hit: Dictionary = triangles[i].intersect_ray(inverse * (point + toward_camera * 0.01), inverse.basis * toward_camera)
+				assert_true(hit.is_empty(), "%s de la impresora %s (%s) a la vista: la tapa %s" % [part, printer.printer_id, point, meshes[i].name])
+	assert_eq(checked, 2 * 15, "Las 15 impresoras de las estanterías")
+
+
 func test_floor_decor_leaves_the_door_way_and_the_test_points_free() -> void:
 	var points: Array[Vector2] = TEST_POINTS.duplicate()
 	for k: int in 6:

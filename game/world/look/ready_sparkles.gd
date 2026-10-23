@@ -1,23 +1,23 @@
 class_name ReadySparkles
 extends MultiMeshInstance3D
-## Destellos de "pieza lista" (biblia de arte §9.5): tres estrellitas de luz
-## que se suman alrededor de la pieza recién terminada, una tras otra, y se
+## Destellos de "pieza lista" (biblia de arte §9.5): tres estrellitas que
+## aparecen alrededor de la pieza recién terminada, una tras otra, y se
 ## apagan en DURATION segundos. Un MultiMesh: una sola llamada de dibujo para
 ## las tres, y escondido el resto del tiempo (no cuesta nada).
 ##
-## Cada estrellita son dos rectángulos cruzados con un halo estirado
-## (halo.gdshader): un brillo de cuatro puntas. Miran a la cámara, que nunca
-## gira: se orientan una vez, al empezar.
+## Cada estrellita son dos rectángulos cruzados (sparkle.gdshader): una
+## estrella de cuatro puntas con el borde verde de "lista" y el centro
+## dorado, que se mezcla con lo de atrás. La biblia las pedía sumadas, pero
+## sumar luz no se veía sobre el piso al sol (ya es claro). Miran a la
+## cámara, que nunca gira: se orientan una vez, al empezar.
 
 const COUNT: int = 3
 const DURATION: float = 0.6
 ## Lo que dura cada una (empiezan escalonadas dentro de DURATION).
 const EACH: float = 0.36
-## Largo y ancho de cada brazo de la estrella (m) y cuánto brilla (suma a lo
-## que hay detrás: sobre el piso claro hace falta más de 1).
-const ARM_LENGTH: float = 0.2
-const ARM_WIDTH: float = 0.045
-const INTENSITY: float = 2.2
+## Largo y ancho de cada brazo de la estrella (m).
+const ARM_LENGTH: float = 0.3
+const ARM_WIDTH: float = 0.065
 ## Dónde aparece cada una respecto del centro de arriba de la pieza (m):
 ## encima y a los lados, para que no se hundan en la pieza.
 const OFFSETS: Array[Vector3] = [Vector3(-0.08, 0.07, 0.05), Vector3(0.075, 0.1, -0.02), Vector3(-0.01, 0.15, 0.06)]
@@ -35,7 +35,7 @@ func _init() -> void:
 	multimesh.transform_format = MultiMesh.TRANSFORM_3D
 	multimesh.mesh = star_mesh()
 	multimesh.instance_count = COUNT
-	material_override = WorldPalette.halo(LookPalette.READY_SPARKLE, 1.0, INTENSITY)
+	material_override = WorldPalette.sparkle(LookPalette.STATE_DONE, LookPalette.READY_SPARKLE)
 	cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	visible = false
 	_set_time(0.0)
