@@ -701,11 +701,7 @@ func _full_room() -> void:
 	# 43: el mismo taller, guardado de noche y ya en el nivel del taller, con
 	# impresoras en cada estado. Se carga como una partida (la luz de la hora,
 	# sin mezcla).
-	state = GameState.new_game(Game.rules, SEED)
-	DebugTools.fill_workshop(state, Game.rules)
-	state.game_seconds = roundi(NIGHT_HOUR * GameClock.SECONDS_PER_HOUR)
-	state.xp = Game.rules.levels.thresholds[DebugTools.WORKSHOP_LEVEL - 1]
-	DebugTools.give_jobs(state, Game.rules)
+	state = DebugTools.busy_workshop(Game.rules, SEED, roundi(NIGHT_HOUR * GameClock.SECONDS_PER_HOUR))
 	await _rebuild_main(state)
 	_hud.visible = false
 	_place_character(FULL_ROOM_SPOT)

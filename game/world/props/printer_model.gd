@@ -47,9 +47,10 @@ static func build(parent: Node3D, node_name: String, printer_id: String, spool_c
 
 
 ## La malla lejana de "Body" (con el zoom lejos, PrinterView.set_far): lo
-## fijo con el detalle PrinterParts.FAR_DETAIL y, adentro, lo que no se mueve
-## y en la versión normal va aparte (el bobinado del carrete del color
-## `spool_color`; en la de resina, la tapa opaca). En caché.
+## fijo con el detalle PrinterParts.FAR_DETAIL y, adentro, lo que en la
+## versión normal va aparte y con el zoom lejos queda quieto: el bobinado del
+## carrete (o la resina) del color `spool_color`, la cama de las cerradas
+## (abajo) y la placa de la de resina (arriba). En caché.
 static func far_body(printer_id: String, spool_color: String) -> ArrayMesh:
 	match printer_id:
 		"rayo_mini":
@@ -63,7 +64,7 @@ static func far_body(printer_id: String, spool_color: String) -> ArrayMesh:
 		"titan_pro":
 			return EnclosedPrinterModel.far_body(EnclosedPrinterModel.Kind.TITAN, spool_color)
 		"gota_r1":
-			return ResinPrinterModel.far_body()
+			return ResinPrinterModel.far_body(spool_color)
 	return CuboUnoModel.far_body(spool_color)
 
 

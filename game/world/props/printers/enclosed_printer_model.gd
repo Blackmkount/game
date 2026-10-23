@@ -41,6 +41,8 @@ const HEAD_PARK_X: Array[float] = [-0.11, -0.15]
 const BED_Z: float = 0.03
 const BED_SIZE: Array[float] = [0.27, 0.34]
 const PLATFORM_LOW_ABOVE_FLOOR: float = 0.02
+## Grosor de la cama en la malla lejana (la lámina y su placa juntas).
+const FAR_BED_THICKNESS: float = 0.012
 ## Pantallita (ancha en la Titán) en el zócalo, a la izquierda.
 const DISPLAY: Array[Vector3] = [Vector3(-0.11, 0.046, 0.2025), Vector3(-0.08, 0.056, 0.2525)]
 const DISPLAY_SIZE: Array[Vector2] = [Vector2(0.08, 0.036), Vector2(0.17, 0.05)]
@@ -85,7 +87,8 @@ static func build(printer: Node3D, kind: Kind, spool_color: String, detail: floa
 
 
 ## La malla lejana (PrinterParts.FAR_DETAIL): la misma caja con menos
-## detalle (su carrete ya va adentro, del color `spool_color`).
+## detalle (su carrete ya va adentro, del color `spool_color`) y la cama
+## quieta abajo.
 static func far_body(kind: Kind, spool_color: String) -> ArrayMesh:
 	return KitMesh.cached(PrinterParts.key(_family(kind), "body", PrinterParts.FAR_DETAIL, spool_color), _body.bind(kind, spool_color, PrinterParts.FAR_DETAIL))
 
@@ -171,14 +174,30 @@ static func _body(kind: Kind, spool_color: String, detail: float) -> ArrayMesh:
 	var screen: Vector3 = DISPLAY[kind]
 	var screen_size: Vector2 = DISPLAY_SIZE[kind]
 	kit.box(Vector3(screen_size.x + 0.01, screen_size.y + 0.008, 0.002), Vector3(screen.x, screen.y, half.z + 0.0005), 0.0)
-	# Adentro y oscuro: con el zoom lejos no se ve.
+	# Adentro y oscuro: con el zoom lejos no se ve. Ahí va la cama quieta,
+	# abajo (con el zoom lejos "Platform" se esconde y la pieza crece sobre
+	# esta).
 	if not PrinterParts.far(detail):
 		_inside_mechanics(kit, kind, floor_y, ceiling)
+	else:
+		_far_bed(kit, kind)
 	if kind == Kind.VAULT:
 		_vault_spool(kit, spool_color, half.z)
 	else:
 		_titan_color_box(kit, spool_color, top)
 	return kit.commit()
+
+
+## La cama de la malla lejana: solo la lámina dorada (con su placa, en un
+## bloque), con su cara de arriba en "PlatformLow", sin oclusión de contacto
+## (como "Platform").
+static func _far_bed(kit: KitMesh, kind: Kind) -> void:
+	var size: float = BED_SIZE[kind]
+	var low: float = _floor(kind) + PLATFORM_LOW_ABOVE_FLOOR
+	kit.ao_enabled = false
+	kit.paint(LookPalette.PEI_BED, WorldPalette.Surface.PEI, 0.35)
+	kit.box(Vector3(size, FAR_BED_THICKNESS, size), Vector3(0.0, low - FAR_BED_THICKNESS / 2.0, BED_Z), 0.0)
+	kit.ao_enabled = true
 
 
 ## Rieles de arriba (el cabezal corre en X sobre una barra) y los tornillos

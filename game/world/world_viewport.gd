@@ -21,6 +21,9 @@ extends SubViewportContainer
 
 ## Píxeles del dibujo del mundo por cada píxel de la interfaz (k).
 var view_per_ui: float = 1.0
+## Si hay pantalla: sin ella (pruebas y herramientas sin ventana) no hay
+## cuadros de verdad que medir para el modo automático.
+var has_screen: bool = DisplayServer.get_name() != "headless"
 
 var _view: SubViewport
 var _quality: GraphicsQuality
@@ -74,12 +77,11 @@ func view_to_ui(view_point: Vector2) -> Vector2:
 
 
 ## El nivel de calidad: el suavizado (el SubViewport no hereda el del
-## proyecto) y el tope del ancho. Sin pantalla no hay cuadros de verdad que
-## medir.
+## proyecto) y el tope del ancho; y, si el automático mide, los cuadros.
 func _apply_quality() -> void:
 	_view.msaa_3d = _quality.msaa()
 	_fit()
-	set_process(_quality.is_measuring() and DisplayServer.get_name() != "headless")
+	set_process(_quality.is_measuring() and has_screen)
 
 
 ## Tamaño y escala según la pantalla de ahora.

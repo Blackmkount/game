@@ -4,7 +4,7 @@
 
 - **Fase actual:** 1. Ciclo jugable, en curso (ruta aprobada por el dueño en `docs/RUTA.md`).
 - **Diseño:** GDD versión 2.3, guía de estilo en `docs/ESTILO.md` y ruta en `docs/RUTA.md`.
-- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 15 de 16: rendimiento. Calidad gráfica Alta y Baja con la opción "Calidad gráfica: Automática / Alta / Baja" en Ajustes, versión lejana de las impresoras con el zoom lejos (el taller lleno usa un 32 % menos de llamadas) y panel de depuración `#debug` para medir en el teléfono (2026-10-23). Antes: paso 14, la firma (lo que se compra se imprime en su lugar).
+- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 15 de 16: rendimiento. Calidad gráfica Alta y Baja con la opción "Calidad gráfica: Automática / Alta / Baja" en Ajustes, versión lejana de las impresoras con el zoom lejos (el taller lleno usa un 40 % menos de llamadas y en todas las impresoras se sigue viendo la pieza que crece) y panel de depuración `#debug` para medir en el teléfono (2026-10-23, con su ronda de arreglos). Antes: paso 14, la firma (lo que se compra se imprime en su lugar).
 - **Siguiente paso sugerido:** que el dueño mida en su teléfono con el panel `#debug` (lista en la entrada del paso 15, abajo). Después, Arte 2.0, paso 16: interfaz, documentos y cierre. Luego la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes; el panel de depuración ya existe) y la tarea 5 (tienda: su comando de compra solo tiene que agregar el mueble o la impresora al estado y pedir `RoomView.sync_models()`).
 - **Diseño del ciclo:** aprobado por el dueño (GDD, versión 2.3 en la sección 16).
 
@@ -693,7 +693,7 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 - Capturas: nueva `30_heroe_sin_hud_baja` (el cuarto en Baja). Las que tienen el zoom lejos muestran la versión lejana de las impresoras.
 
 **Verificado**
-- `check.sh` y `run_tests.sh` pasan: 740 pruebas (antes 709; 31 nuevas). Tres archivos de prueba se adaptaron sin debilitarlos (detalle en `docs/DECISIONES.md`). Comprobado rompiendo el código a propósito de 11 maneras: cada vez falla al menos una prueba.
+- `check.sh` y `run_tests.sh` pasan: 740 pruebas (antes 709; 31 nuevas). Cuatro archivos de prueba se adaptaron sin debilitarlos (detalle en `docs/DECISIONES.md`). Comprobado rompiendo el código a propósito de 11 maneras: cada vez falla al menos una prueba.
 - `screenshots.sh` saca las 50 capturas; las de zoom normal son iguales a las del paso 14 salvo lo que se mueve solo.
 
 **Qué revisar en el teléfono** (versión web) — **esto reemplaza a "el dueño reporta desde su teléfono"**
@@ -713,4 +713,28 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 - Nada medido todavía en un teléfono: los números de rendimiento son del computador sin tarjeta de video (llvmpipe), que no sirven para comparar con un teléfono.
 - El ahorro del zoom lejos con trabajos queda justo en el 30 % que pide el plan (una llamada más por impresora lo rompería; la prueba avisa).
 - Con el zoom lejos la impresora del piso no muestra la barra ni el cabezal moviéndose. Si se nota feo en el teléfono, se puede dejar completa (cuesta 6 llamadas).
+
+### 2026-10-23 — Arte 2.0, paso 15, ronda de arreglos 1: preferencias que no se pisan y la pieza a la vista con el zoom lejos
+
+**Qué se hizo** (lo que encontró la revisión del paso 15)
+- **Las preferencias ya no se borran entre sí.** La calidad gráfica y las pistas para jugadores nuevos se guardaban cada una por su lado y la última borraba lo de la otra: si elegías Baja y después abrías tu primer panel, al volver a abrir el juego la calidad volvía a Automática (o volvía la pista de "arrastra para caminar"). Ahora cada una guarda solo lo suyo sobre lo que ya hay en el archivo.
+- **Con el zoom lejos se ve la pieza en todas las impresoras.** La de resina (Gota R1) se veía como una caja naranja: ahora conserva su tapa ámbar transparente y, adentro, la pieza que cuelga de la placa y crece hacia abajo con su capa naranja (y si falla, cae a la tina). Las cerradas muestran la pieza sobre su cama dorada.
+- **La impresora del piso se ve siempre completa**, también con el zoom lejos (en el paso 15 perdía la barra y el cabezal y se veía un marco vacío en la imagen principal).
+- Para pagar eso sin perder el ahorro, **las pantallitas de todas las impresoras de las estanterías se dibujan juntas** con el zoom lejos (una sola llamada de dibujo en vez de una por impresora). El taller lleno con el zoom lejos baja de 133 a **80** llamadas (−40 %; antes −32 %), con trabajos de 148 a **95** (−36 %; antes −30 %, justo en el límite).
+- Con el zoom lejos se ve el primer bloquecito de la bandeja (un pedido de varias piezas se sigue notando). El cambio a la versión lejana llega cuando la cámara ya casi terminó de alejarse y espera a que termine lo que se está imprimiendo (una compra), en vez de cortarlo.
+- Arreglos chicos: en Ajustes "Ahora: Alta" va en su propia línea; empezar una partida nueva después de probar escenas en el panel vuelve a guardar; la línea "Armado del cuarto" del panel dice "el último" y se actualiza también al probar escenas; el cuarto ya no pinta dos veces las sombras del piso al armarse.
+
+**Verificado**
+- `check.sh`, `run_tests.sh` (748 pruebas, todas pasan; antes 740) y `screenshots.sh` (50 capturas) pasan. Tres pruebas se adaptaron sin debilitarlas (las tres quedaron más estrictas) y se sumaron 8 pruebas nuevas; detalle en `docs/DECISIONES.md`. Comprobado rompiendo el código a propósito de 9 maneras: cada vez falla al menos una prueba.
+- Capturas revisadas: 43 (de noche) y 37 (de día) muestran la Gota R1 con su tapa transparente y la pieza adentro, como de cerca; 30 y 45 muestran la impresora del piso completa con su cabezal sobre la pieza.
+
+**Qué revisar en el teléfono:** la misma lista del paso 15 (arriba). En el punto 6, ahora con el zoom lejos la impresora del piso se ve completa y en las de las estanterías se ve la pieza (también en la de resina, a través de su tapa naranja).
+
+**Problemas conocidos**
+- Con el zoom lejos el carrete de las impresoras de las estanterías se ve del color del primer carrete de la partida, no del que está usando el trabajo (el color del trabajo se ve en la pieza). Arreglarlo cuesta tiempo de armado; se decide después de medir en el teléfono.
+- Un taller muy ocupado con muchos colores usa más materiales (33 con 12 trabajos de colores distintos) que los 18 que pide la biblia para el taller lleno: cada pieza lleva el color de su filamento.
+- En Baja, los muebles tienen menos "contacto" con el piso (sin sombras); la oscuridad bajo ellos es la de la biblia (× 1,2). Si en tu teléfono se ven flotando, se sube con un número.
+- Sigue sin medirse nada en un teléfono.
+
+**Siguiente paso sugerido:** que el dueño mida con el panel `#debug` (lista del paso 15). Después, Arte 2.0, paso 16.
 

@@ -97,6 +97,27 @@ func test_new_furniture_prints_in_and_gets_its_normal_material_back() -> void:
 	assert_false((budget.get("materials") as Dictionary).has(WorldPalette.reveal_of(WorldPalette.kit())), "Al final nadie paga el corte")
 
 
+## Alejar el zoom mientras algo se imprime no corta el efecto (biblia
+## §12.2): las impresoras pasan a su versión lejana cuando termina. El panel
+## de depuración ve cuánto tardó en armarse lo nuevo.
+func test_zooming_out_while_printing_in_waits_for_the_effect() -> void:
+	await _load(GameState.new_game(Game.rules, SEED))
+	var furniture: OwnedFurniture = _add_furniture(CUBES_ID, BACK_SLOT)
+	_room.build_msec = -1.0
+	_room.sync_models()
+	assert_gte(_room.build_msec, 0.0, "Lo que tardó en armarse lo nuevo")
+	var effect: PrintIn = _room.print_in_of(_room.get_node("Furniture%d" % furniture.uid))
+	_room.camera.set_zoom_index(0)
+	_room.camera.snap_to_goal()
+	await wait_process_frames(2)
+	assert_true(effect.is_running(), "El zoom no corta lo que se imprime")
+	assert_false(_room.far_printers, "Todavía las impresoras de siempre")
+	await wait_seconds(PrintIn.FURNITURE_SECONDS + EFFECT_MARGIN)
+	await wait_process_frames(2)
+	assert_false(effect.is_running())
+	assert_true(_room.far_printers, "Al terminar, las lejanas")
+
+
 func test_the_cut_rises_from_below_the_base_to_above_the_top() -> void:
 	await _load(GameState.new_game(Game.rules, SEED))
 	var table: OwnedFurniture = _add_furniture(SIDE_TABLE_ID, BACK_SLOT)

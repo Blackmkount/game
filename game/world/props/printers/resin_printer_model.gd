@@ -36,16 +36,12 @@ const LID_TOP: float = 0.47
 const DISPLAY: Vector3 = Vector3(0.0, 0.085, 0.1625)
 const DISPLAY_SIZE: Vector2 = Vector2(0.09, 0.045)
 const TRAY_ANCHOR: Vector3 = Vector3(-0.11, 0.162, 0.135)
-## La tapa opaca de la malla lejana: cuánto de su color ámbar se ve sobre lo
-## oscuro de adentro (más que su transparencia: la de cerca suma además el
-## brillo del vidrio y lo claro de la tina).
-const FAR_LID_TINT: float = 0.85
 
 
 static func build(printer: Node3D, spool_color: String, detail: float) -> void:
 	PrinterParts.body(printer, KitMesh.cached(PrinterParts.key("gota_r1", "body", detail), _body.bind(detail)))
 	var anchor: Vector3 = Vector3(0.0, RESIN_TOP, VAT_Z)
-	var top: float = RESIN_TOP + PieceModel.SIZES["S"].y + PLATE_TOP_GAP
+	var top: float = _plate_top()
 	PrinterParts.marker(printer, "PieceAnchor", anchor)
 	PrinterParts.marker(printer, "PlateTop", Vector3(anchor.x, top, anchor.z))
 	PrinterParts.marker(printer, "VatFloor", Vector3(anchor.x, _base_top() + 0.004, anchor.z))
@@ -63,22 +59,36 @@ static func _base_top() -> float:
 	return FEET_HEIGHT + BASE_SIZE.y
 
 
-## La malla lejana (PrinterParts.FAR_DETAIL): la base con menos detalle y
-## la tapa ámbar opaca, del color que se ve a través de ella (con el zoom
-## lejos la tapa transparente, la placa y la resina van escondidas).
-static func far_body() -> ArrayMesh:
-	return KitMesh.cached(PrinterParts.key("gota_r1", "far", PrinterParts.FAR_DETAIL), _body.bind(PrinterParts.FAR_DETAIL, true))
+## Dónde está la placa arriba del todo (sin trabajo o con la pieza lista).
+static func _plate_top() -> float:
+	return RESIN_TOP + PieceModel.SIZES["S"].y + PLATE_TOP_GAP
 
 
-## Lo que se ve de la tapa ámbar con lo de adentro detrás (FAR_LID_TINT).
-static func far_lid_hex() -> String:
-	return Color(LookPalette.RESIN_BASE).lerp(Color(LookPalette.RESIN_LID), FAR_LID_TINT).to_html(false)
+## La malla lejana (PrinterParts.FAR_DETAIL): la base con menos detalle, con
+## la resina del color `resin_color` y la placa quieta arriba del todo (con
+## el zoom lejos "Plate" y "Resin" van escondidas; la tapa ámbar
+## transparente se sigue viendo: la pieza se ve a través).
+static func far_body(resin_color: String) -> ArrayMesh:
+	return KitMesh.cached(PrinterParts.key("gota_r1", "far", PrinterParts.FAR_DETAIL, resin_color), _far_body.bind(resin_color))
+
+
+static func _far_body(resin_color: String) -> ArrayMesh:
+	var kit: KitMesh = _body_kit(PrinterParts.FAR_DETAIL)
+	# Como sus partes de cerca: sin oclusión de contacto.
+	kit.ao_enabled = false
+	kit.paint(resin_color, WorldPalette.Surface.SMOOTH, WorldPalette.PRINTED_GLOSS)
+	_add_resin(kit)
+	_add_plate(kit, _plate_top(), true)
+	return kit.commit()
 
 
 ## La base con su zócalo de goma para la tapa, la pantalla LCD bajo la tina,
-## la tina con sus trabas, el riel Z con su tornillo y el motor (en la malla
-## lejana, `far_lid`, con la tapa opaca encima).
-static func _body(detail: float, far_lid: bool = false) -> ArrayMesh:
+## la tina con sus trabas, el riel Z con su tornillo y el motor.
+static func _body(detail: float) -> ArrayMesh:
+	return _body_kit(detail).commit()
+
+
+static func _body_kit(detail: float) -> KitMesh:
 	var kit: KitMesh = PrinterParts.kit(detail)
 	var top: float = _base_top()
 	var half: Vector3 = BASE_SIZE / 2.0
@@ -123,11 +133,7 @@ static func _body(detail: float, far_lid: bool = false) -> ArrayMesh:
 	kit.box(Vector3(0.045, 0.04, 0.04), Vector3(0.0, top + 0.02, RAIL_Z - 0.003), 0.005)
 	kit.paint(LookPalette.METAL_BRASS, WorldPalette.Surface.METAL, 0.7)
 	kit.cylinder(0.004, rail_height - 0.05, Vector3(0.025, top + rail_height / 2.0 + 0.02, RAIL_Z), Vector3.ZERO, 6)
-	if far_lid:
-		var bottom: float = top + 0.006
-		kit.paint(far_lid_hex(), WorldPalette.Surface.SMOOTH, 0.7)
-		kit.box(Vector3(LID_HALF_X * 2.0, LID_TOP - bottom, LID_Z.y - LID_Z.x), Vector3(0.0, (LID_TOP + bottom) / 2.0, (LID_Z.x + LID_Z.y) / 2.0), 0.0)
-	return kit.commit()
+	return kit
 
 
 ## La placa (su cara de abajo en el origen), el soporte con la perilla, el
@@ -135,27 +141,38 @@ static func _body(detail: float, far_lid: bool = false) -> ArrayMesh:
 static func _plate(detail: float) -> ArrayMesh:
 	var kit: KitMesh = PrinterParts.kit(detail)
 	kit.ao_enabled = false
+	_add_plate(kit, 0.0)
+	return kit.commit()
+
+
+## Lo de _plate con la cara de abajo de la placa a la altura `y` (en la
+## malla lejana, `far`, sin el soporte ni la perilla de arriba).
+static func _add_plate(kit: KitMesh, y: float, far: bool = false) -> void:
 	kit.paint(LookPalette.ALUMINIUM, WorldPalette.Surface.METAL, 0.65)
-	kit.box(PLATE_SIZE, Vector3(0.0, PLATE_SIZE.y / 2.0, VAT_Z), 0.003)
-	kit.paint(LookPalette.METAL_DARK, WorldPalette.Surface.METAL, 0.45)
-	kit.box(Vector3(0.05, 0.02, 0.05), Vector3(0.0, PLATE_SIZE.y + 0.01, VAT_Z), 0.004)
-	kit.paint(LookPalette.ALUMINIUM, WorldPalette.Surface.METAL, 0.6)
-	kit.cylinder(0.012, 0.014, Vector3(0.0, PLATE_SIZE.y + 0.027, VAT_Z), Vector3.ZERO, 12, 0.003)
+	kit.box(PLATE_SIZE, Vector3(0.0, y + PLATE_SIZE.y / 2.0, VAT_Z), 0.003)
+	if not far:
+		kit.paint(LookPalette.METAL_DARK, WorldPalette.Surface.METAL, 0.45)
+		kit.box(Vector3(0.05, 0.02, 0.05), Vector3(0.0, y + PLATE_SIZE.y + 0.01, VAT_Z), 0.004)
+		kit.paint(LookPalette.ALUMINIUM, WorldPalette.Surface.METAL, 0.6)
+		kit.cylinder(0.012, 0.014, Vector3(0.0, y + PLATE_SIZE.y + 0.027, VAT_Z), Vector3.ZERO, 12, 0.003)
 	var rail_front: float = RAIL_Z + 0.015
 	kit.paint(LookPalette.METAL_DARK, WorldPalette.Surface.METAL, 0.45)
-	kit.box(Vector3(0.036, 0.016, VAT_Z - rail_front), Vector3(0.0, PLATE_SIZE.y + 0.012, (VAT_Z + rail_front) / 2.0), 0.003)
-	kit.box(Vector3(0.06, 0.06, 0.024), Vector3(0.0, PLATE_SIZE.y + 0.02, rail_front + 0.012), 0.005)
-	return kit.commit()
+	kit.box(Vector3(0.036, 0.016, VAT_Z - rail_front), Vector3(0.0, y + PLATE_SIZE.y + 0.012, (VAT_Z + rail_front) / 2.0), 0.003)
+	kit.box(Vector3(0.06, 0.06, 0.024), Vector3(0.0, y + PLATE_SIZE.y + 0.02, rail_front + 0.012), 0.005)
 
 
 ## La resina en la tina (su cara de arriba en RESIN_TOP).
 static func _resin() -> ArrayMesh:
 	var kit: KitMesh = KitMesh.new()
 	kit.ao_enabled = false
+	_add_resin(kit)
+	return kit.commit()
+
+
+static func _add_resin(kit: KitMesh) -> void:
 	var inner: Vector3 = VAT_SIZE - Vector3(VAT_WALL * 2.0, 0.0, VAT_WALL * 2.0)
 	var bottom: float = _base_top() + 0.004
 	kit.box(Vector3(inner.x, RESIN_TOP - bottom, inner.z), Vector3(0.0, (RESIN_TOP + bottom) / 2.0, VAT_Z), 0.0)
-	return kit.commit()
 
 
 ## La tapa ámbar: cinco caras (sin fondo), un poco redondeadas arriba. Su

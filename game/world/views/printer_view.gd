@@ -20,13 +20,19 @@ extends Node
 ##   falla, queda a medias y oscura: con warping, despegada y torcida; con
 ##   espagueti, con el nido de hilos encima y el cabezal sobre él.
 ## - De noche, un halo en el piso del color del estado (HaloField).
-## - Con el zoom lejos (set_far, biblia §5.2 y §13), la versión lejana:
-##   "Body" con su malla de menos detalle (PrinterModel.far_body) y
-##   escondido lo que se mueve (barra y cabezal; en la de resina, la placa),
-##   el carrete (va dentro de esa malla) y la bandeja; en la de resina, la
-##   tapa (es opaca en esa malla) con lo de adentro. La pieza que crece, su
-##   capa caliente, el espagueti, la pantallita y, en las cerradas, la cama y
-##   la luz de adentro se siguen viendo. Los nodos siguen existiendo.
+## - Con el zoom lejos (set_far, biblia §5.2 y §13), las de los muebles
+##   pasan a su versión lejana: "Body" con su malla de menos detalle
+##   (PrinterModel.far_body) y escondido lo que va adentro de esa malla o se
+##   mueve: barra y cabezal; el carrete y la resina (en la malla, del color
+##   del primer carrete); la cama de las cerradas y la placa de la de resina,
+##   que van quietas en la malla (la de las cerradas abajo, la placa arriba:
+##   la pieza crece sobre la cama o cuelga de la placa y crece hacia abajo);
+##   y la pantallita, que se dibuja con las de todas en un solo MultiMesh
+##   (DisplayField, attach_display). La pieza que crece con su capa caliente,
+##   el espagueti, la tapa ámbar transparente de la de resina, la luz de
+##   adentro de las cerradas y el primer bloquecito de la bandeja se siguen
+##   viendo. Los nodos siguen existiendo. La del piso (la estrella, una
+##   sola) se ve siempre completa.
 ## - Como dice la biblia §2.6, en las impresoras de los muebles solo "Body"
 ##   da sombra: la pieza, el espagueti y la bandeja, no.
 ##
@@ -88,6 +94,8 @@ var printer_uid: int
 var _scale: float
 ## La pieza, el espagueti y la bandeja dan sombra (solo en la del piso).
 var _casts_shadow: bool
+## Si tiene versión lejana (las de los muebles; la del piso, no).
+var _goes_far: bool
 var _printer_id: String
 var _spool_color: String
 ## "Body" y sus dos mallas (la de siempre y la lejana); lo que se esconde
@@ -130,6 +138,10 @@ var _tray_count: int = 0
 ## halo; lo pone RoomView con attach_halo).
 var _halos: HaloField
 var _halo: int = -1
+## Las pantallitas de la versión lejana y el número de la de esta impresora
+## (-1: sin; lo pone RoomView con attach_display).
+var _displays: DisplayField
+var _display_slot: int = -1
 var _job: PrintJob
 ## Lo que se mostró la última vez; -1 = todavía nada (no da el saltito).
 var _shown: int = -1
@@ -147,6 +159,7 @@ func _init(p_printer_uid: int, printer_id: String, spool_color: String, detail: 
 	_printer_id = printer_id
 	_spool_color = spool_color
 	_casts_shadow = detail >= PrinterParts.FLOOR_DETAIL
+	_goes_far = detail < PrinterParts.FLOOR_DETAIL
 	_scale = PrinterModel.frame_scale(printer_id)
 	_lit_hex = PrinterModel.interior_hex(printer_id)
 
@@ -157,7 +170,8 @@ func _ready() -> void:
 	_body = model.get_node("Body")
 	_near_mesh = _body.mesh
 	# La malla lejana se arma ahora (en caché), nunca durante un cuadro.
-	_far_mesh = PrinterModel.far_body(_printer_id, _spool_color)
+	if _goes_far:
+		_far_mesh = PrinterModel.far_body(_printer_id, _spool_color)
 	_filament = model.get_node_or_null("Spool/Filament")
 	if _filament == null:
 		_filament = model.get_node_or_null("Resin")
@@ -209,18 +223,18 @@ func _build_piece_parts(model: Node3D) -> void:
 			part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
-## Lo que se esconde con el zoom lejos, según el modo: lo que se mueve, el
-## carrete (las abiertas) y, en la de resina, la tapa con lo de adentro.
+## Lo que se esconde con el zoom lejos, según el modo: lo que se mueve, lo
+## que va en la malla lejana (el carrete, la resina, la cama de las cerradas,
+## la placa) y la pantallita (va en DisplayField).
 func _far_parts(model: Node3D) -> Array[Node3D]:
 	var names: Array[String] = []
 	match _mode:
 		Mode.OPEN:
-			names = ["Gantry", "PrintHead", "Spool"]
+			names = ["Gantry", "PrintHead", "Spool", "Display"]
 		Mode.CLOSED:
-			# La cama dorada se queda: sin ella, de lejos, adentro se ve vacío.
-			names = ["PrintHead"]
+			names = ["PrintHead", "Platform", "Display"]
 		Mode.RESIN:
-			names = ["Plate", "Resin", "Lid", "PieceSpot"]
+			names = ["Plate", "Resin", "Display"]
 	var parts: Array[Node3D] = []
 	for part_name: String in names:
 		var part: Node3D = model.get_node_or_null(part_name)
@@ -230,8 +244,10 @@ func _far_parts(model: Node3D) -> Array[Node3D]:
 
 
 ## La versión lejana (zoom lejos) o la de siempre. Los nodos no cambian:
-## solo la malla de "Body" y lo que se ve.
+## solo la malla de "Body", lo que se ve y dónde va la pieza (sobre la cama o
+## bajo la placa quietas de la malla lejana). La del piso no cambia.
 func set_far(far: bool) -> void:
+	far = far and _goes_far
 	if far == _far:
 		return
 	_far = far
@@ -239,6 +255,7 @@ func set_far(far: bool) -> void:
 	for part: Node3D in _far_hidden:
 		part.visible = not far
 	_show_tray(_tray_count)
+	_place(_height if _job != null else 0.0)
 
 
 ## Si está en la versión lejana.
@@ -261,6 +278,24 @@ func attach_halo(field: HaloField) -> void:
 	_color_halo(_shown_for(_job))
 
 
+## Pone la pantallita de la versión lejana en `field` (en el espacio del
+## padre de las pantallitas), con lo que muestra ahora. La del piso no tiene
+## versión lejana. RoomView las vuelve a poner todas cada vez que cambia lo
+## que hay en el cuarto.
+func attach_display(field: DisplayField) -> void:
+	_displays = field
+	_display_slot = -1
+	if not _goes_far:
+		return
+	var at: Transform3D = field.get_parent_node_3d().global_transform.affine_inverse() * _display.global_transform
+	_display_slot = field.add(at, (_display.mesh as QuadMesh).size, _screen_mode(_shown_for(_job)))
+
+
+## El modo de screen.gdshader de la pantallita en cada caso.
+static func _screen_mode(shown: Shown) -> int:
+	return WorldPalette.SCREEN_MODES[DISPLAY_TEXTURES[shown]]
+
+
 ## El halo del color del estado (sin trabajo, apagado).
 func _color_halo(shown: Shown) -> void:
 	if _halo >= 0:
@@ -278,6 +313,8 @@ func _sync() -> void:
 	_job = printer.job if printer != null else null
 	var shown: Shown = _shown_for(_job)
 	_display.material_override = WorldPalette.glow("ffffff", DISPLAY_TEXTURES[shown])
+	if _display_slot >= 0:
+		_displays.set_mode(_display_slot, _screen_mode(shown))
 	if _filament != null:
 		_filament.material_override = _idle_filament if _job == null else WorldPalette.solid(PieceModel.filament_hex(Game.rules, _job.color_id))
 	if _interior != null:
@@ -359,9 +396,11 @@ func _place(height: float) -> void:
 			_place_head(height, _anchor.y + HEAD_CLEARANCE * _scale + height)
 		Mode.CLOSED:
 			# La cama baja para que la pieza (y el nido, si hay espagueti)
-			# termine justo bajo la boquilla, que no se mueve de altura.
+			# termine justo bajo la boquilla, que no se mueve de altura. Con
+			# el zoom lejos la cama queda abajo (en la malla lejana) y la
+			# pieza crece sobre ella.
 			var bed: float = _rest_y
-			if _job != null:
+			if _job != null and not _far:
 				bed = _anchor.y - height
 				if _is_spaghetti():
 					bed -= PieceModel.SPAGHETTI_RISE * _scale
@@ -398,10 +437,11 @@ func _tilt_onto(base: Vector3, degrees: Vector3) -> void:
 ## Resina: imprimiendo, la placa sube con la pieza colgando (su borde de
 ## arriba pegado a la placa, su base sobre la resina). Lista o sin trabajo,
 ## la placa arriba del todo (con la pieza colgando). Si falló, la placa
-## arriba y la pieza caída en la tina.
+## arriba y la pieza caída en la tina. Con el zoom lejos la placa queda
+## arriba (en la malla lejana) y la pieza cuelga de ella y crece hacia abajo.
 func _place_resin(height: float) -> void:
 	var plate: float = _rest_y
-	if _job != null and _job.status == PrintJob.Status.PRINTING:
+	if _job != null and _job.status == PrintJob.Status.PRINTING and not _far:
 		plate = _anchor.y + height
 	_plate.position.y = plate
 	if _job != null and _job.status == PrintJob.Status.FAILED:
@@ -450,11 +490,12 @@ func _set_swing(on: bool) -> void:
 	_swing.tween_property(_head, "position:x", middle - HEAD_SWING * _scale, HEAD_SWING_TIME)
 
 
-## Los primeros `count` bloquecitos de la bandeja (ninguno con el zoom lejos).
+## Los primeros `count` bloquecitos de la bandeja. Con el zoom lejos, solo
+## el primero: avisa que el pedido va por partes con una sola llamada.
 func _show_tray(count: int) -> void:
 	_tray_count = count
 	for i: int in _tray.size():
-		_tray[i].visible = i < count and not _far
+		_tray[i].visible = i < count and (i == 0 or not _far)
 
 
 ## La pieza recién terminada da un saltito (la de resina no: cuelga) y suelta

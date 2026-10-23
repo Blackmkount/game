@@ -182,7 +182,7 @@ SETTINGS_GRAPHICS,Calidad gráfica,Graphics quality
 SETTINGS_GRAPHICS_AUTO,Automática,Automatic
 SETTINGS_GRAPHICS_HIGH,Alta,High
 SETTINGS_GRAPHICS_LOW,Baja,Low
-SETTINGS_GRAPHICS_NOTE,"Automática empieza en Alta y pasa a Baja si tu teléfono va lento. Baja quita las sombras del sol y dibuja con menos detalle. Ahora: %s.","Automatic starts on High and switches to Low if your phone runs slow. Low removes the sun shadows and draws with less detail. Now: %s."
+SETTINGS_GRAPHICS_NOTE,"Automática empieza en Alta y pasa a Baja si tu teléfono va lento. Baja quita las sombras del sol y dibuja con menos detalle.\nAhora: %s.","Automatic starts on High and switches to Low if your phone runs slow. Low removes the sun shadows and draws with less detail.\nNow: %s."
 DEBUG_TITLE,Depuración,Debug
 DEBUG_CLOSE,Cerrar,Close
 DEBUG_LESS,Menos,Less
@@ -198,7 +198,7 @@ DEBUG_PROBE_OUT_OF_RANGE,fuera de rango (valores por defecto),out of range (defa
 DEBUG_PROBE_NO_SCREEN,sin pantalla,no screen
 DEBUG_FAR,Impresoras lejanas (zoom lejos): %s,Far printers (far zoom): %s
 DEBUG_HOUR,Hora del juego: %s,Game time: %s
-DEBUG_BUILD,Armado del cuarto: %s ms la primera vez · %s ms ahora,Room build: %s ms the first time · %s ms now
+DEBUG_BUILD,Armado del cuarto: %s ms la primera vez · %s ms el último,Room build: %s ms the first time · %s ms the last one
 DEBUG_YES,sí,yes
 DEBUG_NO,no,no
 DEBUG_TRY,"Probar (tu partida no cambia):","Try (your game does not change):"

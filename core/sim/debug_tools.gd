@@ -44,6 +44,20 @@ static func fill_workshop(state: GameState, rules: SimRules) -> void:
 			next += 1
 
 
+## El taller lleno con trabajos (la captura 43 y el panel de depuración):
+## una partida nueva con `seed` y fill_workshop (los lugares del comienzo),
+## ya en el nivel del taller (WORKSHOP_LEVEL) y con give_jobs. Con `game_seconds` >= 0, a esa hora del
+## juego (los trabajos van desde ahí).
+static func busy_workshop(rules: SimRules, seed: int, game_seconds: int = -1) -> GameState:
+	var state: GameState = GameState.new_game(rules, seed)
+	fill_workshop(state, rules)
+	if game_seconds >= 0:
+		state.game_seconds = game_seconds
+	state.xp = rules.levels.thresholds[WORKSHOP_LEVEL - 1]
+	give_jobs(state, rules)
+	return state
+
+
 ## Pone a trabajar las impresoras de `state` según WORKSHOP_JOBS, cada una
 ## con un pedido y un color distintos, como en una partida guardada.
 static func give_jobs(state: GameState, rules: SimRules) -> void:

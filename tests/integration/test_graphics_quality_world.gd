@@ -62,11 +62,13 @@ func after_each() -> void:
 
 
 func test_the_low_level_is_applied_to_the_world() -> void:
+	# Una pantalla de 1080 px: en Alta se dibujaría a 1080.
+	get_tree().root.size = Vector2i(1080, 1920)
 	_quality.set_mode(GraphicsQuality.Mode.LOW)
 	await _load()
 	var view: SubViewport = _main.get_node("WorldView/SubViewport")
 	assert_eq(view.msaa_3d, Viewport.MSAA_2X, "Menos suavizado")
-	assert_lte(view.size.x, int(GraphicsQuality.MAX_WIDTH[GraphicsQuality.Level.LOW]), "Hasta 720 px de ancho")
+	assert_eq(view.size.x, int(GraphicsQuality.MAX_WIDTH[GraphicsQuality.Level.LOW]), "Hasta 720 px de ancho")
 	assert_false(_sun().shadow_enabled, "El sol sin sombra")
 	assert_false(_room.decor.dust.enabled, "Sin polvo")
 	assert_false(_room.decor.dust.visible, "Ni a las 08:00, con el haz de la ventana")
@@ -218,6 +220,11 @@ func test_trying_scenes_never_touches_the_players_game() -> void:
 	await wait_process_frames(2)
 	assert_eq(Game.state.printers.size(), 1, "De vuelta el cuarto del comienzo")
 	assert_eq(SaveCodec.encode(player_state), saved, "La partida del jugador sigue igual")
+	# Una partida nueva (Ajustes) es de verdad: la prueba termina y se guarda.
+	Game.reset_game(SEED + 1)
+	assert_false(Game.trial, "La partida nueva termina la prueba")
+	assert_true(SaveManager.enabled, "Y se vuelve a guardar")
+	assert_true(SaveManager.save_now(), "Ajustes la puede guardar")
 
 
 func _load() -> void:

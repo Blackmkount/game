@@ -172,11 +172,7 @@ func _try_starting_room() -> void:
 ## Prueba con el taller lleno, en el nivel del taller y con trabajos en cada
 ## estado: lo más pesado que se puede dibujar hoy.
 func _try_full_workshop() -> void:
-	var state: GameState = GameState.new_game(Game.rules, randi())
-	DebugTools.fill_workshop(state, Game.rules)
-	state.xp = Game.rules.levels.thresholds[DebugTools.WORKSHOP_LEVEL - 1]
-	DebugTools.give_jobs(state, Game.rules)
-	Game.start_trial(state)
+	Game.start_trial(DebugTools.busy_workshop(Game.rules, randi()))
 
 
 ## Adelanta el reloj hasta la próxima vez que marque `hour` (en una copia de
@@ -186,7 +182,10 @@ func _try_hour(hour: float) -> void:
 		return
 	if not Game.trial:
 		var errors: Array[String] = []
-		Game.start_trial(SaveCodec.decode(SaveCodec.encode(Game.state), Game.rules, errors))
+		var copy: GameState = SaveCodec.decode(SaveCodec.encode(Game.state), Game.rules, errors)
+		if copy == null:
+			return
+		Game.start_trial(copy)
 	var minutes: float = fposmod(hour * GameClock.MINUTES_PER_HOUR - Game.state.game_minutes, GameClock.MINUTES_PER_DAY)
 	Game.advance(minutes * GameClock.SECONDS_PER_MINUTE / Game.rules.game_seconds_per_real_second)
 	refresh()

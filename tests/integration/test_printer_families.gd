@@ -19,13 +19,18 @@ const FLOOR_MAX_DRAW_CALLS: int = 9
 const FURNITURE_MAX_TRIANGLES: int = 1200
 const FURNITURE_MAX_DRAW_CALLS: int = 6
 ## La versión lejana (§5.2): triángulos de su malla y llamadas con la sombra
-## (sin trabajo; las cerradas, dos más: la cama y la luz de adentro).
+## (sin trabajo; todas las familias, también las cerradas con su luz de
+## adentro y la de resina con su tapa transparente). Las pantallitas van
+## aparte, todas en una llamada (DisplayField).
 const FAR_MAX_TRIANGLES: int = 450
 const FAR_MAX_DRAW_CALLS: int = 3
 ## Lo que se esconde con el zoom lejos, por modo (PrinterView.set_far).
-const FAR_HIDDEN_OPEN: Array[String] = ["Gantry", "PrintHead", "Spool"]
-const FAR_HIDDEN_CLOSED: Array[String] = ["PrintHead"]
-const FAR_HIDDEN_RESIN: Array[String] = ["Plate", "Resin", "Lid", "PieceSpot"]
+const FAR_HIDDEN_OPEN: Array[String] = ["Gantry", "PrintHead", "Spool", "Display"]
+const FAR_HIDDEN_CLOSED: Array[String] = ["PrintHead", "Platform", "Display"]
+const FAR_HIDDEN_RESIN: Array[String] = ["Plate", "Resin", "Display"]
+## Lo fijo que se sigue viendo con el zoom lejos fuera de la malla lejana
+## (la tapa ámbar transparente: a través se ve la pieza).
+const FAR_KEPT: Dictionary[String, Array] = {"gota_r1": ["Lid"]}
 ## Dos familias se distinguen por la silueta: su caja difiere al menos esto
 ## en alguna medida (m).
 const SILHOUETTE_GAP: float = 0.02
@@ -170,9 +175,9 @@ func test_on_furniture_only_the_body_casts_a_shadow() -> void:
 
 ## Cada familia tiene su malla lejana: lo fijo con menos detalle (≤ 450
 ## triángulos, menos que la de mueble), del tamaño de la impresora entera
-## (con lo que va aparte), y cuesta ≤ 3
-## llamadas con la sombra (las cerradas, dos más: la cama y la luz de
-## adentro).
+## (con lo que va aparte y se sigue viendo), y cuesta ≤ 3 llamadas con la
+## sombra (biblia §5.2: las cerradas con su luz de adentro, la de resina con
+## su tapa). La del piso no tiene versión lejana.
 func test_every_family_has_a_cheap_far_version_of_the_same_size() -> void:
 	var sun: DirectionalLight3D = DirectionalLight3D.new()
 	sun.shadow_enabled = true
@@ -188,6 +193,9 @@ func test_every_family_has_a_cheap_far_version_of_the_same_size() -> void:
 		assert_lt(far_triangles, body.mesh.get_faces().size() / 3, "%s lejana: menos que la de mueble" % id)
 		var near_box: AABB = PropBounds.local_aabb(printer)
 		var far_box: AABB = far.get_aabb()
+		for part: String in FAR_KEPT.get(id, []):
+			var kept: MeshInstance3D = printer.get_node(part)
+			far_box = far_box.merge(kept.transform * kept.mesh.get_aabb())
 		assert_almost_eq(far_box.size.x, near_box.size.x, 0.03, "%s lejana: mismo ancho" % id)
 		assert_almost_eq(far_box.size.z, near_box.size.z, 0.03, "%s lejana: mismo fondo" % id)
 		assert_almost_eq(far_box.end.y, near_box.end.y, 0.03, "%s lejana: mismo alto" % id)
@@ -199,16 +207,23 @@ func test_every_family_has_a_cheap_far_version_of_the_same_size() -> void:
 	await _set_zoom(0)
 	assert_true(_room.far_printers, "Con el zoom lejos")
 	for printer: OwnedPrinter in state.printers:
+		if printer.is_on_floor():
+			continue
 		var node: Node3D = _room.get_node("Printer%d" % printer.uid)
 		var calls: int = SceneBudget.measure(node).get("draw_calls")
-		var extra: int = 2 if printer.printer_id in CLOSED else 0
-		assert_lte(calls, FAR_MAX_DRAW_CALLS + extra, "%s lejana: llamadas" % printer.printer_id)
+		assert_lte(calls, FAR_MAX_DRAW_CALLS, "%s lejana: llamadas" % printer.printer_id)
+	assert_eq(SceneBudget.measure(_room.far_displays).get("draw_calls"), 1, "Todas las pantallitas lejanas: una llamada")
 
 
-## Con el zoom lejos cada impresora del cuarto usa su malla lejana y esconde
-## lo que se mueve (los nodos siguen ahí); la pieza que crece, su capa
-## caliente, el espagueti, la pantallita y la luz de adentro se siguen
-## viendo; la zona que se toca no cambia. Con el zoom normal todo vuelve.
+## Con el zoom lejos cada impresora de los muebles usa su malla lejana y
+## esconde lo que se mueve o va dentro de esa malla (los nodos siguen ahí);
+## su pantallita se dibuja con las de todas (DisplayField), en su lugar y con
+## lo que muestra la de siempre. En TODAS las familias la pieza que crece con
+## su capa caliente se sigue viendo (biblia §3.5 y §12.1): en las cerradas,
+## sobre la cama quieta de la malla lejana; en la de resina, colgando de la
+## placa quieta, detrás de la tapa transparente. La luz de adentro se sigue
+## viendo y la zona que se toca no cambia. La del piso se queda completa. Con
+## el zoom normal todo vuelve.
 func test_at_far_zoom_every_printer_switches_to_its_far_version() -> void:
 	var state: GameState = GameState.new_game(Game.rules, SEED)
 	DebugTools.fill_workshop(state, Game.rules)
@@ -222,26 +237,42 @@ func test_at_far_zoom_every_printer_switches_to_its_far_version() -> void:
 		near_bodies[printer.uid] = (node.get_node("Body") as MeshInstance3D).mesh
 		touch[printer.uid] = _room.item_for(WorldInteractable.Kind.PRINTER, printer.uid).bounds
 		pieces[printer.uid] = (node.get_node("PieceSpot/Piece") as Node3D).visible
+	assert_false(_room.far_displays.visible, "Con el zoom normal, las pantallitas de siempre")
 	await _set_zoom(0)
 	assert_true(_room.far_printers)
+	assert_true(_room.far_displays.visible, "Con el zoom lejos, las pantallitas lejanas")
+	assert_eq(_room.far_displays.count(), state.printers.size() - 1, "Una por cada impresora de los muebles")
 	for printer: OwnedPrinter in state.printers:
 		var node: Node3D = _room.get_node("Printer%d" % printer.uid)
 		var what: String = "%s %d" % [printer.printer_id, printer.uid]
 		var view: PrinterView = node.get_node("View")
+		assert_eq((node.get_node("PieceSpot/Piece") as Node3D).is_visible_in_tree(), pieces[printer.uid], what + ": la pieza se sigue viendo")
+		assert_eq(_room.item_for(WorldInteractable.Kind.PRINTER, printer.uid).bounds, touch[printer.uid], what + ": se toca igual")
+		if printer.is_on_floor():
+			assert_false(view.is_far(), what + ": la del piso se queda completa")
+			assert_eq((node.get_node("Body") as MeshInstance3D).mesh, near_bodies[printer.uid], what + ": con su malla")
+			for part: String in _far_hidden(printer.printer_id):
+				assert_true((node.get_node(part) as Node3D).visible, what + ": con %s" % part)
+			continue
 		assert_true(view.is_far(), what + ": lejana")
 		assert_eq((node.get_node("Body") as MeshInstance3D).mesh, PrinterModel.far_body(printer.printer_id, WorldPalette.PLASTIC_BEIGE if state.spools.is_empty() else _spool_hex(state)), what + ": su malla lejana")
 		for part: String in _far_hidden(printer.printer_id):
 			assert_not_null(node.get_node_or_null(part), what + ": %s sigue existiendo" % part)
 			assert_false((node.get_node(part) as Node3D).visible, what + ": %s escondido" % part)
 		for i: int in PrinterView.TRAY_BLOCKS:
-			assert_false((node.get_node("Tray%d" % i) as Node3D).visible, what + ": sin bandeja")
-		assert_true((node.get_node("Display") as Node3D).visible, what + ": la pantallita se ve")
+			assert_false((node.get_node("Tray%d" % i) as Node3D).visible, what + ": sin bandeja (el pedido es de una pieza)")
+		_assert_far_display(node, what)
 		if printer.printer_id in CLOSED:
 			assert_true((node.get_node("Interior") as Node3D).visible, what + ": la luz de adentro se ve")
-			assert_true((node.get_node("Platform") as Node3D).visible, what + ": y la cama")
-		if printer.printer_id != "gota_r1":
-			assert_eq((node.get_node("PieceSpot/Piece") as Node3D).is_visible_in_tree(), pieces[printer.uid], what + ": la pieza se sigue viendo")
-		assert_eq(_room.item_for(WorldInteractable.Kind.PRINTER, printer.uid).bounds, touch[printer.uid], what + ": se toca igual")
+			if pieces[printer.uid] and printer.job.failure_type != FailureRules.WARPING:
+				assert_almost_eq((node.get_node("PieceSpot") as Node3D).position.y, (node.get_node("PlatformLow") as Node3D).position.y, 0.0001, what + ": la pieza, sobre la cama quieta de abajo")
+		if printer.printer_id == "gota_r1":
+			assert_true((node.get_node("Lid") as Node3D).visible, what + ": la tapa transparente se ve")
+			assert_true(SceneBudget.is_transparent((node.get_node("Lid") as MeshInstance3D).material_override), what + ": y es transparente")
+			if pieces[printer.uid] and printer.job.status != PrintJob.Status.FAILED:
+				var piece: MeshInstance3D = node.get_node("PieceSpot/Piece")
+				var top: float = (node.get_node("PieceSpot") as Node3D).position.y + PieceModel.shown_height(piece)
+				assert_almost_eq(top, (node.get_node("PlateTop") as Node3D).position.y, 0.0001, what + ": la pieza cuelga de la placa quieta de arriba")
 	# Quieto con el zoom lejos, cada cuadro no pide memoria.
 	var before: int = OS.get_static_memory_usage()
 	for i: int in 60:
@@ -249,11 +280,62 @@ func test_at_far_zoom_every_printer_switches_to_its_far_version() -> void:
 	assert_eq(OS.get_static_memory_usage(), before, "Con el zoom lejos, los cuadros no piden memoria")
 	await _set_zoom(CameraRig.DEFAULT_ZOOM_INDEX)
 	assert_false(_room.far_printers)
+	assert_false(_room.far_displays.visible, "De vuelta las pantallitas de siempre")
 	for printer: OwnedPrinter in state.printers:
 		var node: Node3D = _room.get_node("Printer%d" % printer.uid)
 		assert_eq((node.get_node("Body") as MeshInstance3D).mesh, near_bodies[printer.uid], "%s: de vuelta su malla" % printer.printer_id)
 		for part: String in _far_hidden(printer.printer_id):
 			assert_true((node.get_node(part) as Node3D).visible, "%s: de vuelta %s" % [printer.printer_id, part])
+
+
+## Con el zoom lejos, la pantallita lejana de una impresora cambia con su
+## estado, y un pedido de varias piezas deja ver el primer bloquecito de la
+## bandeja (con el zoom normal, todos).
+func test_at_far_zoom_the_display_follows_the_state_and_the_tray_shows() -> void:
+	var state: GameState = GameState.new_game(Game.rules, SEED)
+	DebugTools.fill_workshop(state, Game.rules)
+	DebugTools.give_jobs(state, Game.rules)
+	var printer: OwnedPrinter = state.printers[1]
+	assert_eq(printer.job.status, PrintJob.Status.DONE, "La segunda tiene la pieza lista")
+	var order: Order = state.find_order(printer.job.order_uid)
+	order.pieces_done = 3
+	printer.job.pieces_total = 4
+	await _load(state)
+	await _set_zoom(0)
+	var node: Node3D = _room.get_node("Printer%d" % printer.uid)
+	var what: String = "%s %d" % [printer.printer_id, printer.uid]
+	_assert_far_display(node, what + " lista")
+	assert_true((node.get_node("Tray0") as Node3D).visible, what + ": el primer bloquecito de la bandeja se ve")
+	assert_false((node.get_node("Tray1") as Node3D).visible, what + ": los demás no (una llamada)")
+	printer.job.status = PrintJob.Status.FAILED
+	printer.job.failure_type = FailureRules.WARPING
+	Events.printer_changed.emit(printer.uid)
+	_assert_far_display(node, what + " con falla")
+	await _set_zoom(CameraRig.DEFAULT_ZOOM_INDEX)
+	assert_true((node.get_node("Tray1") as Node3D).visible, what + ": con el zoom normal, toda la bandeja")
+
+
+## La pantallita lejana de la impresora `node`: una copia de DisplayField en
+## el lugar y del tamaño de su "Display" (escondida), con lo que esta
+## muestra.
+func _assert_far_display(node: Node3D, what: String) -> void:
+	var display: MeshInstance3D = node.get_node("Display")
+	assert_false(display.visible, what + ": la pantallita de siempre, escondida")
+	var field: DisplayField = _room.far_displays
+	var expected: Transform3D = field.get_parent_node_3d().global_transform.affine_inverse() * display.global_transform
+	var size: Vector2 = (display.mesh as QuadMesh).size
+	var found: int = -1
+	for i: int in field.count():
+		if field.transform_of(i).origin.is_equal_approx(expected.origin):
+			found = i
+	assert_gte(found, 0, what + ": su pantallita lejana")
+	if found < 0:
+		return
+	var placed: Transform3D = field.transform_of(found)
+	assert_almost_eq(placed.basis.x.length(), size.x, 0.0001, what + ": del ancho de la suya")
+	assert_almost_eq(placed.basis.y.length(), size.y, 0.0001, what + ": y del alto")
+	assert_almost_eq(placed.basis.z.normalized().dot(expected.basis.z.normalized()), 1.0, 0.0001, what + ": mirando para el mismo lado")
+	assert_eq(field.mode_of(found), (display.material_override as ShaderMaterial).get_shader_parameter("mode"), what + ": muestra lo mismo")
 
 
 ## Una impresora que se compra con el zoom lejos llega ya en su versión

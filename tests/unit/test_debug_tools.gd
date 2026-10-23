@@ -67,3 +67,18 @@ func test_the_jobs_cycle_through_every_state_with_different_colors() -> void:
 	assert_has(failures, FailureRules.SPAGHETTI, "Una falla con espagueti")
 	assert_has(failures, FailureRules.WARPING, "Y otra con warping")
 	assert_eq(DebugTools.WORKSHOP_LEVEL, 5, "El taller lleno se muestra en el nivel del taller")
+
+
+## El taller lleno con trabajos de la captura 43 y del panel de depuración:
+## en el nivel del taller, lleno y con sus trabajos, a la hora pedida.
+func test_the_busy_workshop_is_the_full_workshop_at_its_level_with_jobs() -> void:
+	var expected: GameState = GameState.new_game(_rules, SEED)
+	DebugTools.fill_workshop(expected, _rules)
+	expected.game_seconds = 22 * GameClock.SECONDS_PER_HOUR
+	expected.xp = _rules.levels.thresholds[DebugTools.WORKSHOP_LEVEL - 1]
+	DebugTools.give_jobs(expected, _rules)
+	var state: GameState = DebugTools.busy_workshop(_rules, SEED, 22 * GameClock.SECONDS_PER_HOUR)
+	assert_eq(OrderQueries.level(state, _rules), DebugTools.WORKSHOP_LEVEL, "En el nivel del taller")
+	assert_eq(SaveCodec.encode(state), SaveCodec.encode(expected), "El taller lleno con sus trabajos, a esa hora")
+	var start: GameState = GameState.new_game(_rules, SEED)
+	assert_eq(DebugTools.busy_workshop(_rules, SEED).game_seconds, start.game_seconds, "Sin hora, la del comienzo")

@@ -113,6 +113,30 @@ func test_the_low_level_draws_at_most_720_pixels_with_less_msaa() -> void:
 		assert_eq(_sub.msaa_3d, GraphicsQuality.MSAA[HIGH], "De vuelta el suavizado de Alta")
 
 
+## Con pantalla, mientras el automático mide, cada cuadro de verdad le llega
+## (WorldViewport._process): un teléfono lento pasa a Baja, el dibujo se
+## ajusta y deja de contar cuadros. Los cuadros los da la prueba.
+func test_while_automatic_measures_each_frame_reaches_it() -> void:
+	await _set_window(WINDOWS[2])
+	_view.has_screen = true
+	_quality.set_mode(GraphicsQuality.Mode.AUTO)
+	assert_true(_quality.is_measuring())
+	assert_true(_view.is_processing(), "Con pantalla y midiendo, cuenta cuadros")
+	_view.set_process(false)
+	var slow_frame: float = 0.030
+	for i: int in ceili((GraphicsQuality.AUTO_WARMUP_SECONDS + GraphicsQuality.AUTO_WINDOW_SECONDS + 0.1) / slow_frame):
+		_view._process(slow_frame)
+	assert_eq(_quality.level, LOW, "Los cuadros lentos llegaron al automático")
+	assert_false(_view.is_processing(), "Terminó de medir: no cuenta más")
+	assert_eq(_sub.msaa_3d, GraphicsQuality.MSAA[LOW])
+	await wait_process_frames(2)
+	assert_eq(_sub.size.x, int(GraphicsQuality.MAX_WIDTH[LOW]), "El dibujo bajó al ancho de Baja")
+	_view.has_screen = false
+	_quality.set_mode(GraphicsQuality.Mode.AUTO)
+	assert_true(_quality.is_measuring())
+	assert_false(_view.is_processing(), "Sin pantalla no hay cuadros de verdad que medir")
+
+
 func test_ui_and_view_points_round_trip() -> void:
 	for window: Array in WINDOWS:
 		await _set_window(window)

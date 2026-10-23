@@ -9,10 +9,12 @@ extends RefCounted
 ## contratos con PrinterView. En los muebles (detalle < FLOOR_DETAIL) solo
 ## "Body" da sombra: así una impresora de mueble cuesta 6 llamadas.
 ##
-## Con el zoom lejos (PrinterView.set_far) "Body" cambia a su malla lejana
-## (PrinterModel.far_body, detalle FAR_DETAIL): lo fijo con menos detalle y,
-## dentro, lo que en la versión normal va aparte y no se mueve (el bobinado
-## del carrete, en su color de siempre); lo que se mueve se esconde.
+## Con el zoom lejos (PrinterView.set_far) "Body" de las impresoras de los
+## muebles cambia a su malla lejana (PrinterModel.far_body, detalle
+## FAR_DETAIL): lo fijo con menos detalle y, dentro, lo que en la versión
+## normal va aparte y ahí queda quieto (el bobinado del carrete o la resina,
+## en su color de siempre; la cama de las cerradas y la placa de la de
+## resina); lo que se mueve se esconde.
 
 ## Detalle de la impresora del piso y de las de los muebles (biblia §5.1).
 const FLOOR_DETAIL: float = 1.0

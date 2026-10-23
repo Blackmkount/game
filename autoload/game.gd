@@ -25,9 +25,12 @@ var state: GameState
 var sim: Simulation
 var commands: GameCommands
 ## Se está probando una escena del panel de depuración (start_trial): nada
-## se guarda hasta que se vuelva a abrir el juego.
+## se guarda hasta que se vuelva a abrir el juego o se empiece una partida
+## nueva (reset_game).
 var trial: bool = false
 
+## Si se guardaba antes de empezar a probar (lo vuelve a poner reset_game).
+var _saving_before_trial: bool = false
 ## Último minuto de juego y último segundo real avisados; -1 = avisar en el
 ## próximo avance (partida recién empezada o cargada).
 var _last_minute: int = -1
@@ -55,10 +58,15 @@ func _process(delta: float) -> void:
 
 
 ## Empieza una partida nueva con esa semilla. No guarda: quien la pide decide
-## (Ajustes guarda enseguida; las pruebas corren con el guardado apagado).
+## (Ajustes guarda enseguida; las pruebas corren con el guardado apagado). Si
+## se estaba probando una escena del panel de depuración, la prueba termina:
+## la partida nueva es de verdad y el guardado vuelve a estar como antes.
 func reset_game(p_seed: int) -> void:
 	if rules == null:
 		return
+	if trial:
+		trial = false
+		SaveManager.enabled = _saving_before_trial
 	_start(GameState.new_game(rules, p_seed))
 
 
@@ -68,6 +76,7 @@ func reset_game(p_seed: int) -> void:
 func start_trial(p_state: GameState) -> void:
 	if not trial:
 		SaveManager.save_now()
+		_saving_before_trial = SaveManager.enabled
 	trial = true
 	SaveManager.enabled = false
 	_start(p_state)
