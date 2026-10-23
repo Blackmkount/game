@@ -144,7 +144,7 @@ func _ready() -> void:
 	# Manchas de oclusión bajo los muebles, las impresoras y el rincón (sin
 	# partida, un piso limpio).
 	floor_ao = FloorAO.publish(grid.bounds, grid.obstacles())
-	day_cycle.set_hour(Game.state.game_minutes / 60.0 if Game.state != null else NO_GAME_HOUR)
+	day_cycle.set_hour(Game.state.game_minutes / GameClock.MINUTES_PER_HOUR if Game.state != null else NO_GAME_HOUR)
 	camera.snap_to_goal()
 	_publish_character()
 	_update_markers()
@@ -529,14 +529,14 @@ func _on_computer_changed() -> void:
 ## Avanzó el reloj (un minuto de juego): la luz va hacia la hora nueva
 ## mezclándose y el personaje sabe qué hora es (bosteza de noche).
 func _on_time_changed(game_minutes: float) -> void:
-	day_cycle.go_to_hour(game_minutes / 60.0)
+	day_cycle.go_to_hour(game_minutes / GameClock.MINUTES_PER_HOUR)
 	character.animator.game_minutes = game_minutes
 
 
 ## Partida nueva o cargada: la luz de su hora de una vez (sin mezcla), el
 ## animador sin reacciones pendientes y al día, y la decoración de su nivel.
 func _on_game_loaded() -> void:
-	day_cycle.set_hour(Game.state.game_minutes / 60.0)
+	day_cycle.set_hour(Game.state.game_minutes / GameClock.MINUTES_PER_HOUR)
 	_show_decor_level(_level())
 	character.animator.reset()
 	_on_computer_changed()

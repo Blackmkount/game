@@ -63,10 +63,14 @@ func test_the_dispatch_corner_measures_the_same_with_its_hidden_boxes() -> void:
 func test_the_desk_lamp_and_monitor_light_from_the_desk_markers() -> void:
 	var room: RoomView = _room
 	var desk: Node3D = _room.get_node("Furniture%d" % Game.state.furniture[0].uid)
-	var lights: Dictionary[String, Vector3] = room.day_cycle._light_positions
-	assert_true(lights.has("desk_lamp"), "La lámpara del escritorio tiene lugar (cc_pl0)")
-	assert_almost_eq(lights.get("desk_lamp", Vector3.ZERO), (desk.get_node("LampBulb") as Node3D).global_position, Vector3.ONE * 0.0001, "En la ampolleta")
-	assert_almost_eq(lights.get("monitor", Vector3.ZERO), (desk.get_node("ScreenGlow") as Node3D).global_position, Vector3.ONE * 0.0001, "Delante de la pantalla (cc_pl1)")
+	# Lo que se publica en cc_pl0 y cc_pl1: el lugar y el alcance (0 = no alumbra).
+	var bulb: Vector3 = (desk.get_node("LampBulb") as Node3D).global_position
+	var screen: Vector3 = (desk.get_node("ScreenGlow") as Node3D).global_position
+	var lamp_reach: float = DayCycle.LIGHTS["desk_lamp"]["range"]
+	var monitor_reach: float = DayCycle.LIGHTS["monitor"]["range"]
+	assert_almost_eq(room.day_cycle.light_place("desk_lamp").w, lamp_reach, 0.0001, "La lámpara del escritorio tiene lugar y alumbra (cc_pl0)")
+	assert_almost_eq(room.day_cycle.light_place("desk_lamp"), Vector4(bulb.x, bulb.y, bulb.z, lamp_reach), Vector4.ONE * 0.0001, "En la ampolleta")
+	assert_almost_eq(room.day_cycle.light_place("monitor"), Vector4(screen.x, screen.y, screen.z, monitor_reach), Vector4.ONE * 0.0001, "Delante de la pantalla (cc_pl1)")
 
 
 func test_the_floor_darkens_under_the_desk_the_printer_and_the_dispatch_corner() -> void:

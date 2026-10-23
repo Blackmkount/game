@@ -637,3 +637,15 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 **Problemas conocidos**
 - El atardecer (19:15) es el momento más oscuro del día (así lo dice la biblia). Si se ve muy oscuro en el teléfono, se puede subir su ambiente.
 - Para mirar la noche sin esperar hace falta el menú de pruebas (tarea 4 de la Fase 1) o el panel `#debug` del paso 15.
+
+### 2026-10-22 — Arte 2.0, paso 13, ronda de arreglos 1
+
+**Qué se hizo** (lo pidió la revisión; no cambia nada de lo que se ve)
+- **Las luces de noche, comprobadas donde de verdad alumbran:** el ciclo del día guardaba dónde estaba cada lámpara en dos lugares y uno ya no se usaba (se borró). Las pruebas que miran dónde está la lámpara del escritorio, el monitor, la lámpara de la cama y el LED de la impresora ahora miran lo mismo que recibe el sombreador (lugar y alcance), así un error en eso ya no pasaría sin que nadie lo note.
+- La prueba del presupuesto de noche también mide los triángulos; la de los sombreadores suma dos que faltaban.
+
+**Verificado**
+- `check.sh` y `run_tests.sh` pasan: 693 pruebas (una nueva y tres adaptadas, detalle en `docs/DECISIONES.md`). `screenshots.sh` saca las 48 capturas, iguales a las de antes del arreglo.
+
+**Qué revisar en el teléfono:** lo mismo del paso 13 (nada visible cambió).
+

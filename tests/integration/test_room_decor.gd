@@ -210,7 +210,8 @@ func test_the_bed_shades_the_window_patch_and_holds_the_bed_lamp() -> void:
 	assert_true(bed.grow(0.001).encloses(shade), "La caja va dentro de la cama")
 	assert_almost_eq(RoomDecor.BED_BOX.end.y, DecorItems.BED_MATTRESS_TOP + 0.06, 0.03, "Del alto del colchón con la cobija")
 	var lamp: Vector3 = DecorItems.BED_LAMP_BULB
-	assert_eq(_room.day_cycle._light_positions.get("bed_lamp", Vector3.INF), lamp, "cc_pl2 sale de la lámpara de la cama")
+	var published: Vector4 = Vector4(lamp.x, lamp.y, lamp.z, DayCycle.LIGHTS["bed_lamp"]["range"])
+	assert_eq(_room.day_cycle.light_place("bed_lamp"), published, "cc_pl2 sale de la lámpara de la cama")
 	assert_true(bed.has_point(Vector2(lamp.x, lamp.z)), "La lámpara está en la cama")
 	assert_gt(lamp.y, DecorItems.BED_HEADBOARD + DecorItems.BED_LEDGE.x, "Sobre la repisa de la cabecera")
 

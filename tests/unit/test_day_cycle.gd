@@ -324,6 +324,24 @@ func test_every_shader_light_has_a_slot_of_its_own() -> void:
 		assert_true(light_name in LIGHT_FACTORS, "La mañana dice cuánto alumbra " + light_name)
 
 
+## Lo que va a cada global cc_plN: el lugar donde se puso la luz y su
+## alcance; sin lugar, alcance 0 (el sombreador no la suma).
+func test_each_shader_light_publishes_its_own_place_and_reach() -> void:
+	var cycle: DayCycle = _cycle()
+	for light_name: String in DayCycle.LIGHTS:
+		assert_eq(cycle.light_place(light_name).w, 0.0, "Sin lugar no alumbra: " + light_name)
+	var places: Dictionary[String, Vector3] = {}
+	for light_name: String in DayCycle.LIGHTS:
+		places[light_name] = Vector3(places.size() + 1, 0.5 * places.size(), -places.size())
+		cycle.place_light(light_name, places[light_name])
+	for light_name: String in DayCycle.LIGHTS:
+		var place: Vector3 = places[light_name]
+		var reach: float = DayCycle.LIGHTS[light_name]["range"]
+		assert_gt(reach, 0.0, light_name)
+		assert_eq(cycle.light_place(light_name), Vector4(place.x, place.y, place.z, reach), "Cada una en su lugar, sin pisar a otra: " + light_name)
+	assert_eq(cycle.light_place("ventilador"), Vector4.ZERO, "Lo que no es una luz no alumbra")
+
+
 func test_the_dust_of_the_window_shaft_follows_the_hour() -> void:
 	var cycle: DayCycle = DayCycle.new()
 	var dust: DustField = DustField.new(1)

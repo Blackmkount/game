@@ -68,7 +68,7 @@ const FULL_MAX_TRANSPARENT: int = 12
 const BUILD_RUNS: int = 5
 const BUILD_MAX_MSEC: float = 120.0
 const BUILD_GOAL_MSEC: float = 40.0
-## La hora de la medida de noche (las 22:00, en segundos de juego).
+## La hora de la medida de noche (las 22:00; en horas de juego).
 const NIGHT_HOUR: int = 22
 
 var _main: Control
@@ -136,6 +136,8 @@ func test_the_night_fits_the_same_budget() -> void:
 	gut.p("Cuarto inicial de noche: " + String(start.call("report")))
 	assert_true((_main.get_node("WorldView/SubViewport/Room/Halos") as Node3D).visible, "Es de noche: los halos se ven")
 	assert_lte(start.get("draw_calls"), START_MAX_DRAW_CALLS, "Llamadas de dibujo de noche")
+	assert_lte(start.get("visible_triangles"), START_MAX_VISIBLE_TRIANGLES, "Triángulos en la pasada de color de noche")
+	assert_lte(start.call("total_triangles"), START_MAX_TOTAL_TRIANGLES, "Triángulos con la pasada de sombra de noche")
 	assert_lte(start.get("transparent_surfaces"), START_MAX_TRANSPARENT, "Superficies transparentes de noche")
 	assert_lte((start.get("materials") as Dictionary).size(), START_MAX_MATERIALS, "Materiales de noche")
 	_assert_one_sun_and_everything_measured(start)
@@ -147,6 +149,8 @@ func test_the_night_fits_the_same_budget() -> void:
 	var full: RefCounted = await _measure()
 	gut.p("Cuarto lleno de noche: " + String(full.call("report")))
 	assert_lte(full.get("draw_calls"), FULL_MAX_DRAW_CALLS, "Llamadas de dibujo de noche")
+	assert_lte(full.get("visible_triangles"), FULL_MAX_VISIBLE_TRIANGLES, "Triángulos en la pasada de color de noche")
+	assert_lte(full.call("total_triangles"), FULL_MAX_TOTAL_TRIANGLES, "Triángulos con la pasada de sombra de noche")
 	assert_lte(full.get("transparent_surfaces"), FULL_MAX_TRANSPARENT, "Superficies transparentes de noche")
 	assert_lte((full.get("materials") as Dictionary).size(), FULL_MAX_MATERIALS, "Materiales de noche")
 	_assert_one_sun_and_everything_measured(full)

@@ -236,8 +236,10 @@ func test_the_floor_printer_is_placed_by_its_markers() -> void:
 	for i: int in PrinterView.TRAY_BLOCKS:
 		var expected: Vector3 = tray + Vector3(i * PrinterView.TRAY_GAP, PrinterView.TRAY_BLOCK / 2.0, 0.0)
 		assert_almost_eq((printer.get_node("Tray%d" % i) as Node3D).position, expected, Vector3.ONE * 0.0001, "Tray%d" % i)
-	var led: Vector3 = _room.day_cycle._light_positions.get("printer_led", Vector3.ZERO)
-	assert_almost_eq(led, (printer.get_node("BedLight") as Node3D).global_position, Vector3.ONE * 0.0001, "La luz de la cama sale de su barra LED")
+	# Lo que se publica en cc_pl3: el lugar de la barra LED y su alcance.
+	var bar: Vector3 = (printer.get_node("BedLight") as Node3D).global_position
+	var led: Vector4 = Vector4(bar.x, bar.y, bar.z, DayCycle.LIGHTS["printer_led"]["range"])
+	assert_almost_eq(_room.day_cycle.light_place("printer_led"), led, Vector4.ONE * 0.0001, "La luz de la cama sale de su barra LED")
 
 
 func test_the_dispatch_corner_shows_a_box_then_a_package_that_leaves() -> void:

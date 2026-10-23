@@ -254,17 +254,14 @@ var _target: Light = Light.new()
 var _from_hour: float = 0.0
 var _to_hour: float = 0.0
 var _progress: float = 1.0
-## Dónde está cada luz del sombreador (nombre de LIGHTS → posición). Las que
-## no tienen lugar no alumbran.
-var _light_positions: Dictionary[String, Vector3] = {}
-## Lo mismo, listo para cada cuadro, en el orden de LIGHTS: el índice de su
-## factor en FACTORS, su global, su color × intensidad, su lugar y su
-## alcance (0 mientras no tiene lugar).
+## Las luces del sombreador, listas para cada cuadro, en el orden de LIGHTS:
+## el índice de su factor en FACTORS, su global, su color × intensidad y lo
+## que se publica en su global cc_plN: su lugar (x, y, z) y su alcance (w; 0
+## mientras no tiene lugar: no alumbra).
 var _lamp_factor: PackedInt32Array = PackedInt32Array()
 var _lamp_slot: PackedInt32Array = PackedInt32Array()
 var _lamp_color: PackedVector3Array = PackedVector3Array()
-var _lamp_place: PackedVector3Array = PackedVector3Array()
-var _lamp_reach: PackedFloat32Array = PackedFloat32Array()
+var _lamp_place: PackedVector4Array = PackedVector4Array()
 var _strip_color: Vector3 = _scaled(LED_STRIP_COLOR, LED_STRIP_INTENSITY)
 var _night_index: int = FACTORS.find(NIGHT_FACTOR)
 var _shaft_index: int = FACTORS.find("window_shaft")
@@ -281,8 +278,7 @@ func _init() -> void:
 		_lamp_factor.append(FACTORS.find(light_name))
 		_lamp_slot.append(light["slot"])
 		_lamp_color.append(_scaled(light["color"], light["intensity"]))
-		_lamp_place.append(Vector3.ZERO)
-		_lamp_reach.append(0.0)
+		_lamp_place.append(Vector4.ZERO)
 
 
 ## Los valores de luz de la hora `hour` (horas; se cuentan desde la
@@ -331,10 +327,16 @@ static func mix_at(hour: float, out: Light) -> void:
 ## Pone una luz del sombreador (nombre de LIGHTS) en su lugar del cuarto.
 ## Después, refresh().
 func place_light(light_name: String, position: Vector3) -> void:
-	_light_positions[light_name] = position
+	var reach: float = LIGHTS[light_name]["range"]
+	_lamp_place[LIGHTS.keys().find(light_name)] = Vector4(position.x, position.y, position.z, reach)
+
+
+## Lo que la luz `light_name` (nombre de LIGHTS) publica en su global cc_plN:
+## su lugar (x, y, z) y su alcance (w; 0 = sin lugar o no es una luz: no
+## alumbra).
+func light_place(light_name: String) -> Vector4:
 	var index: int = LIGHTS.keys().find(light_name)
-	_lamp_place[index] = position
-	_lamp_reach[index] = LIGHTS[light_name]["range"]
+	return _lamp_place[index] if index >= 0 else Vector4.ZERO
 
 
 ## Pone la luz de la hora `hour` de una vez, sin mezcla: al armar el cuarto,
@@ -419,9 +421,8 @@ func _show(hour: float) -> void:
 	if dust != null:
 		dust.set_strength(shaft)
 	for i: int in _lamp_slot.size():
-		var place: Vector3 = _lamp_place[i]
 		var color: Vector3 = _lamp_color[i] * light.factors[_lamp_factor[i]]
-		_publish(LIGHT_GLOBALS[_lamp_slot[i]], Vector4(place.x, place.y, place.z, _lamp_reach[i]))
+		_publish(LIGHT_GLOBALS[_lamp_slot[i]], _lamp_place[i])
 		_publish(LIGHT_COLOR_GLOBALS[_lamp_slot[i]], Vector4(color.x, color.y, color.z, 1.0))
 	var strip: Vector3 = _strip_color * (light.factors[_strip_index] if led_strip_on else 0.0)
 	_publish(&"cc_strip_a", LED_STRIP_FROM)

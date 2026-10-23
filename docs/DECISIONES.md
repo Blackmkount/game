@@ -943,3 +943,24 @@ Personaje: **7.831 triángulos** (cuerpo 4.288, cabeza 3.543; antes 6.775; tope 
 - `tests/integration/test_day_night.gd` (5): una partida guardada a las 22:00 se ve de noche al cargar, sin mezcla (halos, sin polvo, la luna, la noche por la ventana) y una nueva vuelve a la mañana de una vez; el reloj del juego mueve la luz mezclándose hasta llegar a su hora; la mancha de la lámpara cae sobre la mesa bajo la ampolleta y el resplandor del monitor queda delante de la pantalla, mirando hacia donde mira ella; solo los focos de la guirnalda parpadean (un halo por foco, y en la malla de la pared solo los focos tienen la marca, como luz de noche); el borde de la base tiene luz propia solo de noche.
 - `tests/integration/test_scene_budget.gd`, `test_the_night_fits_the_same_budget`: el cuarto inicial y el lleno a las 22:00 caben en los mismos topes (medido: 38 y 133 llamadas, como de día: los halos suman una y el polvo se apaga), con un solo sol y nada sin medir.
 - `tests/unit/test_kit_mesh.gd`: el foco que parpadea lleva la marca y `paint()` la quita.
+
+
+## 2026-10-22 — Arte 2.0, paso 13, ronda de arreglos 1: lo que se publica en cc_plN, a la vista
+
+### Un solo lugar para cada luz del sombreador (arregla un defecto que bloqueaba)
+**Decisión:** se borró `DayCycle._light_positions`: desde el paso 13 nadie lo leía (la luz que se publica sale de los arreglos preparados para cada cuadro), solo tres pruebas viejas. `_lamp_place` y `_lamp_reach` se juntaron en un solo `PackedVector4Array` (`_lamp_place`: lugar en x, y, z y alcance en w; 0 = sin lugar), que es justo lo que `_show()` publica en cada global `cc_plN`. Lo lee `DayCycle.light_place(nombre) -> Vector4` (una luz que no existe da `Vector4.ZERO`: no alumbra). `place_light()` lee primero el alcance de `LIGHTS`, así un nombre que no es una luz da error antes de escribir.
+**Motivo:** nota de la revisión: había estado que nadie usaba (CLAUDE.md: "sin código muerto") y las tres pruebas que miraban dónde está cada luz comprobaban ese estado y no lo que de verdad alumbra el cuarto: si un índice de los arreglos se rompía, pasaban igual. No se pueden leer los globales del sombreador en las pruebas (sin pantalla, `RenderingServer.global_shader_parameter_get` devuelve `null`): por eso el acceso es al mismo valor que se publica, sin copiarlo.
+
+### Pruebas adaptadas (misma intención, ahora sobre lo que se publica)
+- `tests/integration/test_main_scene.gd`, `test_the_desk_lamp_and_monitor_light_from_the_desk_markers`: la lámpara y el monitor se comprueban con `light_place()` (lugar en la ampolleta y delante de la pantalla, como antes) y además con su alcance (el de `LIGHTS`): "tiene lugar" ahora es "tiene lugar y alumbra".
+- `tests/integration/test_world_views.gd`, `test_the_floor_printer_is_placed_by_its_markers`: el LED de la cama de la impresora del piso, con `light_place("printer_led")` (lugar de la barra LED y su alcance).
+- `tests/integration/test_room_decor.gd`, `test_the_bed_shades_the_window_patch_and_holds_the_bed_lamp`: la lámpara de la cama, con `light_place("bed_lamp")` (lugar exacto y alcance).
+Las tres fallan si `place_light()` escribe en el lugar de otra luz (probado rompiéndolo a propósito: fallan las tres y la prueba nueva).
+
+### Pruebas nuevas y más estrictas
+- `tests/unit/test_day_cycle.gd`, `test_each_shader_light_publishes_its_own_place_and_reach`: sin lugar, cada luz tiene alcance 0; puestas las cuatro en lugares distintos, cada una publica el suyo con su alcance sin pisar a otra; lo que no es una luz no alumbra.
+- `tests/integration/test_scene_budget.gd`, `test_the_night_fits_the_same_budget`: también los topes de triángulos (en color y con la sombra) del cuarto inicial y del lleno a las 22:00, como las medidas de día (antes solo llamadas, transparentes y materiales).
+- `tests/integration/test_look_shaders.gd`: la lista de sombreadores que deben compilar suma `halo_field.gdshader` (con su parpadeo nuevo) y `kit_glass.gdshader` (la tapa de la resina), que faltaban desde el paso 8.
+
+### Detalles
+- `RoomView` pasa los minutos a horas con `GameClock.MINUTES_PER_HOUR` (como las herramientas), no con un `60.0` escrito.
