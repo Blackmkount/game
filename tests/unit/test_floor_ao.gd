@@ -26,6 +26,16 @@ func test_a_texel_under_an_obstacle_is_darker_than_a_free_one() -> void:
 	assert_almost_eq(free, 1.0, BYTE, "Lejos de todo, nada")
 
 
+## La calidad gráfica Baja (sin sombras) oscurece un 20 % más: la fuerza
+## multiplica cuánto se oscurece; lo libre sigue sin nada.
+func test_the_strength_multiplies_the_darkening() -> void:
+	var image: Image = FloorAO.paint(ROOM, [DESK] as Array[Rect2], GraphicsQuality.FLOOR_AO[GraphicsQuality.Level.LOW])
+	assert_almost_eq(_light(image, DESK.get_center()), 1.0 - FloorAO.STRENGTH * 1.2, BYTE, "Bajo el mueble, 1,2 veces más oscuro")
+	assert_almost_eq(_light(image, Vector2(1.5, 1.5)), 1.0, BYTE, "Lejos de todo, nada")
+	var normal: Image = FloorAO.paint(ROOM, [DESK] as Array[Rect2], GraphicsQuality.FLOOR_AO[GraphicsQuality.Level.HIGH])
+	assert_eq(normal.get_data(), FloorAO.paint(ROOM, [DESK] as Array[Rect2]).get_data(), "En Alta, el de siempre")
+
+
 func test_the_edge_is_soft_and_centered_on_the_obstacle_border() -> void:
 	var image: Image = FloorAO.paint(ROOM, [DESK] as Array[Rect2])
 	var half_edge: float = FloorAO.SOFT_EDGE / 2.0

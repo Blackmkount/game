@@ -41,6 +41,8 @@ const TWINKLE: float = -1.0
 ## de MIN_BEVEL la caja sale sin bisel.
 const MAX_BEVEL: float = 0.9
 const MIN_BEVEL: float = 0.0005
+## Lo corto, para min_feature: menos de estas veces min_feature de largo.
+const MIN_FEATURE_LENGTH: float = 8.0
 ## Lados mínimos con cualquier `detail`: alrededor de una forma redonda y en
 ## su otra dirección (filas de una esfera, lados de un tubo).
 const MIN_AROUND: int = 6
@@ -86,6 +88,13 @@ var detail: float = 1.0
 ## chicas (impresoras de mueble, versiones lejanas) ahorran sus triángulos
 ## (una caja con bisel tiene 44; sin él, 12). 0 = todos.
 var bevel_cutoff: float = 0.0
+## Lo más chico que se arma (m): una caja cuya segunda medida (de menor a
+## mayor) es más chica y que además es corta (su medida mayor, menos de
+## MIN_FEATURE_LENGTH veces esto), o un cilindro así de delgado y corto, no
+## se agrega (botones, reflejos, restos sueltos: en las versiones lejanas
+## miden un píxel). Lo largo y fino (una franja de color, una barra de luz)
+## se sigue viendo como una línea y queda. 0 = todo.
+var min_feature: float = 0.0
 ## Transformación de todo lo que se agrega (para armar grupos girados).
 var origin: Transform3D = Transform3D.IDENTITY
 
@@ -180,6 +189,8 @@ func night_glow(hex: String, energy: float = 1.0, twinkle: bool = false) -> KitM
 ## Caja centrada en `pos` con las aristas biseladas (atrapan la luz). Sin
 ## bisel es una caja de 12 triángulos.
 func box(size: Vector3, pos: Vector3, bevel: float = 0.01, rot_deg: Vector3 = Vector3.ZERO) -> KitMesh:
+	if min_feature > 0.0 and _middle(size) < min_feature and maxf(size.x, maxf(size.y, size.z)) < min_feature * MIN_FEATURE_LENGTH:
+		return self
 	_place(pos, rot_deg)
 	var h: Vector3 = size * 0.5
 	var b: float = clampf(bevel, 0.0, minf(h.x, minf(h.y, h.z)) * MAX_BEVEL)
@@ -246,6 +257,8 @@ func box(size: Vector3, pos: Vector3, bevel: float = 0.01, rot_deg: Vector3 = Ve
 func cylinder(radius: float, height: float, pos: Vector3, rot_deg: Vector3 = Vector3.ZERO, sides: int = 16, bevel: float = 0.0, top_radius: float = -1.0, caps: bool = true) -> KitMesh:
 	var r0: float = radius
 	var r1: float = radius if top_radius < 0.0 else top_radius
+	if maxf(r0, r1) * 2.0 < min_feature and height < min_feature * MIN_FEATURE_LENGTH:
+		return self
 	var hh: float = height * 0.5
 	var b: float = clampf(bevel, 0.0, minf(minf(r0, r1) * 0.5, hh * MAX_BEVEL))
 	if b < maxf(MIN_BEVEL, bevel_cutoff):
@@ -511,6 +524,7 @@ func copy() -> KitMesh:
 	other.ao_enabled = ao_enabled
 	other.detail = detail
 	other.bevel_cutoff = bevel_cutoff
+	other.min_feature = min_feature
 	other.origin = origin
 	return other
 
@@ -566,6 +580,11 @@ static func smooth_path(points: PackedVector3Array, steps: int) -> PackedVector3
 
 
 # --- Interno ---------------------------------------------------------------------
+
+## La medida del medio de una caja (de menor a mayor).
+static func _middle(size: Vector3) -> float:
+	return size.x + size.y + size.z - minf(size.x, minf(size.y, size.z)) - maxf(size.x, maxf(size.y, size.z))
+
 
 func _place(pos: Vector3, rot_deg: Vector3) -> void:
 	var rotation: Basis = Basis.from_euler(Vector3(deg_to_rad(rot_deg.x), deg_to_rad(rot_deg.y), deg_to_rad(rot_deg.z)))

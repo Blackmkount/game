@@ -38,6 +38,17 @@ func test_the_tolerance_is_six_hundredths() -> void:
 	assert_false(ColorProbe.decide(0.25, 0.7354 - 0.061)["valid"])
 
 
+## En la calidad Baja el sol no da sombra y se suma en lineal dentro de la
+## pasada base: su cuadrito solo vale convertido a sRGB (lo que supone
+## cc_sun_out para ese caso); sin convertir, queda fuera de rango.
+func test_without_sun_shadow_the_sun_must_read_converted() -> void:
+	assert_eq(ColorProbe.decide(0.251, 0.737, false), {"valid": true, "base_fix": 0, "sun_fix": 1})
+	assert_eq(ColorProbe.decide(137.0 / 255.0, 0.735, false), {"valid": true, "base_fix": 1, "sun_fix": 1})
+	var fallback: Dictionary = {"valid": false, "base_fix": ColorProbe.DEFAULT_BASE_FIX, "sun_fix": ColorProbe.DEFAULT_SUN_FIX}
+	assert_eq(ColorProbe.decide(0.25, 0.5, false), fallback, "Sin convertir no vale sin sombra")
+	assert_eq(ColorProbe.decide(0.25, 0.5, true), {"valid": true, "base_fix": 0, "sun_fix": 0}, "Con sombra sí")
+
+
 func test_without_a_screen_nothing_is_measured() -> void:
 	# Las pruebas corren sin pantalla: la escena del cuarto ya pidió medir y
 	# quedaron los valores por defecto.

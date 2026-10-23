@@ -15,6 +15,13 @@ extends Node
 ##
 ## Si la lectura falla o sale fuera de rango, quedan los valores de
 ## llvmpipe. Sin pantalla (las pruebas) no se mide nada.
+##
+## Mide con el suavizado y la sombra del sol del nivel de calidad gráfica
+## (GraphicsQuality): si el nivel cambia, RoomView lo pide otra vez y vuelve
+## a medir. Sin sombra (nivel Bajo) el sol se suma dentro de la pasada base,
+## en lineal: su cuadrito tiene que leerse convertido a sRGB, que es lo que
+## supone cc_sun_out() para ese caso; si no, queda fuera de rango (y el
+## panel de depuración lo muestra).
 
 enum Status { PENDING, MEASURED, OUT_OF_RANGE, NO_SCREEN }
 
@@ -38,16 +45,29 @@ static var sun_fix: int = DEFAULT_SUN_FIX
 ## Lo que se leyó en cada cuadrito (0–1); -1 si no se leyó.
 static var base_reading: float = -1.0
 static var sun_reading: float = -1.0
+## Con qué se midió (o se está midiendo): el suavizado y si el sol tenía
+## sombra.
+static var measured_msaa: Viewport.MSAA = Viewport.MSAA_DISABLED
+static var measured_shadow: bool = true
+## Hay una medida en curso; lo que se pidió mientras tanto se mide al
+## terminar.
+static var _running: bool = false
+static var _queued: bool = false
+static var _queued_msaa: Viewport.MSAA = Viewport.MSAA_DISABLED
+static var _queued_shadow: bool = true
+static var _queued_host: Node
 
 var _viewport: SubViewport
+var _sun_shadowed: bool = true
 
 
 ## Decide, con lo leído en el cuadrito de la pasada base y en el del sol, si
-## cada pasada se convierte a sRGB. Pura: no toca nada.
-static func decide(base_value: float, sun_value: float) -> Dictionary:
+## cada pasada se convierte a sRGB. Pura: no toca nada. Con el sol sin
+## sombra (`sun_shadowed` falso) el sol solo vale convertido (ver arriba).
+static func decide(base_value: float, sun_value: float, sun_shadowed: bool = true) -> Dictionary:
 	var base: int = _pass_fix(base_value, BASE_LEVEL)
 	var sun: int = _pass_fix(sun_value, SUN_LEVEL)
-	var valid: bool = base >= 0 and sun >= 0
+	var valid: bool = base >= 0 and sun >= 0 and (sun_shadowed or sun == 1)
 	return {
 		"valid": valid,
 		"base_fix": base if valid else DEFAULT_BASE_FIX,
@@ -55,16 +75,30 @@ static func decide(base_value: float, sun_value: float) -> Dictionary:
 	}
 
 
-## Mide una sola vez en todo el juego. `msaa`: el del dibujo del mundo.
-static func run(host: Node, msaa: Viewport.MSAA) -> void:
-	if status != Status.PENDING:
-		return
+## Mide con el suavizado `msaa` del dibujo del mundo y el sol con o sin
+## sombra (`sun_shadowed`), como el nivel de calidad. Si ya se midió así, no
+## hace nada; si hay una medida en curso, esta va después.
+static func run(host: Node, msaa: Viewport.MSAA, sun_shadowed: bool = true) -> void:
 	if DisplayServer.get_name() == "headless":
 		status = Status.NO_SCREEN
 		return
+	if _running:
+		_queued = true
+		_queued_msaa = msaa
+		_queued_shadow = sun_shadowed
+		_queued_host = host
+		return
+	if status != Status.PENDING and msaa == measured_msaa and sun_shadowed == measured_shadow:
+		return
+	_running = true
+	status = Status.PENDING
+	measured_msaa = msaa
+	measured_shadow = sun_shadowed
+	base_reading = -1.0
+	sun_reading = -1.0
 	var probe: ColorProbe = ColorProbe.new()
 	probe.name = "ColorProbe"
-	probe._build(msaa)
+	probe._build(msaa, sun_shadowed)
 	host.get_tree().root.add_child.call_deferred(probe)
 
 
@@ -92,16 +126,23 @@ func _ready() -> void:
 	if image != null and image.get_width() >= SQUARE_PX * 2:
 		base_reading = image.get_pixel(CENTER_PX, CENTER_PX).r
 		sun_reading = image.get_pixel(SQUARE_PX + CENTER_PX, CENTER_PX).r
-	var result: Dictionary = decide(base_reading, sun_reading)
+	var result: Dictionary = decide(base_reading, sun_reading, _sun_shadowed)
 	status = Status.MEASURED if result["valid"] else Status.OUT_OF_RANGE
 	_apply(result)
 	queue_free()
+	_running = false
+	if _queued:
+		_queued = false
+		if is_instance_valid(_queued_host) and _queued_host.is_inside_tree():
+			run(_queued_host, _queued_msaa, _queued_shadow)
+		_queued_host = null
 
 
-## Un mundo aparte: una cámara, un sol con sombra y dos cuadritos que miran
-## a la cámara y al sol (el de la izquierda solo la pasada base, el de la
-## derecha solo el sol).
-func _build(msaa: Viewport.MSAA) -> void:
+## Un mundo aparte: una cámara, un sol (con sombra o sin ella) y dos
+## cuadritos que miran a la cámara y al sol (el de la izquierda solo la
+## pasada base, el de la derecha solo el sol).
+func _build(msaa: Viewport.MSAA, sun_shadowed: bool) -> void:
+	_sun_shadowed = sun_shadowed
 	_viewport = SubViewport.new()
 	_viewport.size = Vector2i(SQUARE_PX * 2, SQUARE_PX)
 	_viewport.own_world_3d = true
@@ -121,7 +162,7 @@ func _build(msaa: Viewport.MSAA) -> void:
 	_viewport.add_child(world_environment)
 
 	var sun: DirectionalLight3D = DirectionalLight3D.new()
-	sun.shadow_enabled = true
+	sun.shadow_enabled = sun_shadowed
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 	_viewport.add_child(sun)
 

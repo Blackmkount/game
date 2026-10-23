@@ -60,9 +60,16 @@ static func build(printer: Node3D, spool_color: String, detail: float) -> void:
 	PrinterParts.spool(printer, SPOOL, spool_color, SPOOL_RADIUS, detail)
 
 
+## La malla lejana (PrinterParts.FAR_DETAIL): lo fijo y el bobinado del
+## carrete del color `spool_color`.
+static func far_body(spool_color: String) -> ArrayMesh:
+	return KitMesh.cached(PrinterParts.key("cubo_uno", "far", PrinterParts.FAR_DETAIL, spool_color), _body.bind(PrinterParts.FAR_DETAIL, spool_color))
+
+
 ## Lo fijo de la Cubo Uno: base, cama, postes, barra LED, portacarrete y las
-## tapas del carrete.
-static func _body(detail: float) -> ArrayMesh:
+## tapas del carrete (en la malla lejana, con el bobinado del color
+## `far_spool`).
+static func _body(detail: float, far_spool: String = "") -> ArrayMesh:
 	var kit: KitMesh = PrinterParts.kit(detail)
 	var frame: String = LookPalette.CUBE_FRAME
 	var ink: String = LookPalette.OUTLINE
@@ -89,7 +96,12 @@ static func _body(detail: float) -> ArrayMesh:
 	kit.paint(LookPalette.KNOBS, WorldPalette.Surface.SMOOTH, 0.5)
 	for x: float in KitMesh.SIGNS:
 		for z: float in KitMesh.SIGNS:
-			kit.cylinder(0.017, 0.01, Vector3(0.105 * x, 0.093, BED_Z + 0.105 * z), Vector3.ZERO, 10)
+			var knob: Vector3 = Vector3(0.105 * x, 0.093, BED_Z + 0.105 * z)
+			# De lejos, un punto amarillo: un cubito alcanza.
+			if PrinterParts.far(detail):
+				kit.box(Vector3(0.03, 0.01, 0.03), knob, 0.0)
+			else:
+				kit.cylinder(0.017, 0.01, knob, Vector3.ZERO, 10)
 	kit.paint(LookPalette.ALUMINIUM, WorldPalette.Surface.METAL, 0.55)
 	kit.box(Vector3(BED_SIZE, 0.008, BED_SIZE), Vector3(0.0, BED_TOP - 0.008, BED_Z), 0.002)
 	kit.paint(LookPalette.PEI_BED, WorldPalette.Surface.PEI, 0.35)
@@ -126,7 +138,7 @@ static func _body(detail: float) -> ArrayMesh:
 	kit.box(Vector3(0.02, SPOOL.y + 0.012 - arm_bottom, 0.03), Vector3(-0.05, (SPOOL.y + 0.012 + arm_bottom) / 2.0, POST_Z), 0.004)
 	kit.paint(LookPalette.ALUMINIUM, WorldPalette.Surface.METAL, 0.6)
 	kit.cylinder(0.006, 0.095, Vector3(-0.0075, SPOOL.y, POST_Z), Vector3(0.0, 0.0, 90.0), 8)
-	SpoolModel.add_flanges(kit, SPOOL, SPOOL_RADIUS, PrinterParts.lean(detail))
+	PrinterParts.spool_flanges(kit, SPOOL, SPOOL_RADIUS, far_spool)
 	return kit.commit()
 
 

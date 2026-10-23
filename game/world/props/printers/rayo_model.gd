@@ -139,19 +139,28 @@ static func _ams_spool(slot: int) -> Vector3:
 	return Vector3(right - slot * AMS_PITCH, AMS_SPOOL_Y, AMS_CENTER.z)
 
 
-static func _body(kind: Kind, detail: float) -> ArrayMesh:
+## La malla lejana (PrinterParts.FAR_DETAIL): lo fijo y el bobinado del
+## carrete del trabajo del color `spool_color`.
+static func far_body(kind: Kind, spool_color: String) -> ArrayMesh:
+	return KitMesh.cached(PrinterParts.key(_family(kind), "far", PrinterParts.FAR_DETAIL, spool_color), _body.bind(kind, PrinterParts.FAR_DETAIL, spool_color))
+
+
+## Lo fijo de cada una (en la malla lejana, con el bobinado del carrete del
+## trabajo del color `far_spool`).
+static func _body(kind: Kind, detail: float, far_spool: String = "") -> ArrayMesh:
 	var kit: KitMesh = PrinterParts.kit(detail)
 	if kind == Kind.MINI:
 		kit.origin = Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * MINI_SCALE), Vector3.ZERO)
-		_mini_body(kit)
+		_mini_body(kit, far_spool)
 	else:
-		_x1_body(kit, kind)
+		_x1_body(kit, kind, far_spool)
 	return kit.commit()
 
 
 ## Base, cama, columna con su barra LED y la pantalla (Rayo X1 y Prisma MC),
-## y arriba el carrete (X1) o la caja de color (Prisma).
-static func _x1_body(kit: KitMesh, kind: Kind) -> void:
+## y arriba el carrete (X1) o la caja de color (Prisma). `far_spool`: el
+## bobinado del carrete del trabajo, en la malla lejana.
+static func _x1_body(kit: KitMesh, kind: Kind, far_spool: String) -> void:
 	var white: String = LookPalette.PRINTER_WHITE
 	var accent: String = _accent(kind)
 	PrinterParts.feet(kit, Vector2(0.16, 0.18), Vector3(BASE_CENTER.x - 0.02, 0.0, 0.0))
@@ -180,7 +189,7 @@ static func _x1_body(kit: KitMesh, kind: Kind) -> void:
 	kit.paint(white, WorldPalette.Surface.SMOOTH, 0.35)
 	kit.box(Vector3(SCREEN_SIZE.x + 0.014, SCREEN_SIZE.y + 0.014, 0.012), SCREEN - screen_basis.z * 0.0065, 0.004, SCREEN_ROT)
 	if kind == Kind.PRISMA:
-		_ams(kit)
+		_ams(kit, far_spool)
 		_purge(kit)
 	else:
 		# Soporte del carrete arriba de la columna, su eje y las tapas.
@@ -190,13 +199,13 @@ static func _x1_body(kit: KitMesh, kind: Kind) -> void:
 			kit.box(Vector3(0.012, SPOOL.y - cap_top + 0.012, 0.03), Vector3(x, (SPOOL.y + 0.012 + cap_top) / 2.0, SPOOL.z), 0.004)
 		kit.paint(LookPalette.ALUMINIUM, WorldPalette.Surface.METAL, 0.6)
 		kit.cylinder(0.006, 0.1, SPOOL, Vector3(0.0, 0.0, 90.0), 8)
-		SpoolModel.add_flanges(kit, SPOOL, SPOOL_RADIUS, PrinterParts.lean(kit.detail))
+		PrinterParts.spool_flanges(kit, SPOOL, SPOOL_RADIUS, far_spool)
 
 
 ## La Rayo Mini (sus medidas antes de MINI_SCALE, que pone `kit.origin`):
 ## base, cama chica, columna corta con una ventanita LED y el soporte del
-## carrete aparte, a la derecha.
-static func _mini_body(kit: KitMesh) -> void:
+## carrete aparte, a la derecha. `far_spool`: como en _x1_body.
+static func _mini_body(kit: KitMesh, far_spool: String) -> void:
 	var white: String = LookPalette.PRINTER_WHITE
 	var accent: String = LookPalette.PRINTER_GREEN
 	PrinterParts.feet(kit, Vector2(0.13, 0.14), Vector3(0.0, 0.0, 0.0))
@@ -222,7 +231,7 @@ static func _mini_body(kit: KitMesh) -> void:
 		kit.box(Vector3(0.012, spool.y, 0.028), Vector3(spool.x + side * half_gap, spool.y / 2.0 + 0.006, spool.z), 0.004)
 	kit.paint(LookPalette.ALUMINIUM, WorldPalette.Surface.METAL, 0.6)
 	kit.cylinder(0.006, half_gap * 2.0 + 0.012, spool, Vector3(0.0, 0.0, 90.0), 8)
-	SpoolModel.add_flanges(kit, spool, MINI_SPOOL_RADIUS, PrinterParts.lean(kit.detail))
+	PrinterParts.spool_flanges(kit, spool, MINI_SPOOL_RADIUS, far_spool)
 
 
 ## Riel, carro y cama con la lámina PEI dorada (sin perillas: se nivela sola),
@@ -259,8 +268,9 @@ static func _tilt_toward(direction: Vector3) -> Vector3:
 
 ## Caja de color de la Prisma MC (4 carretes a la vista bajo el marco de su
 ## tapa) sobre la columna, con su soporte a la izquierda y los 4 tubos que se
-## juntan en un repartidor.
-static func _ams(kit: KitMesh) -> void:
+## juntan en un repartidor. En la malla lejana, el carrete del trabajo (el de
+## más a la derecha) va adentro, del color `far_spool`.
+static func _ams(kit: KitMesh, far_spool: String) -> void:
 	var c: Vector3 = AMS_CENTER
 	var half: Vector3 = AMS_SIZE / 2.0
 	var white: String = LookPalette.PRINTER_WHITE
@@ -284,7 +294,7 @@ static func _ams(kit: KitMesh) -> void:
 	# Los carretes chicos: tapas de todos (en las copias chicas, sin tapas) y
 	# el bobinado fijo de los otros tres (el del trabajo es "Spool/Filament").
 	for slot: int in 4:
-		SpoolModel.add_small(kit, _ams_spool(slot), AMS_SPOOL_RADIUS, AMS_COLORS[slot - 1] if slot > 0 else "", not PrinterParts.lean(kit.detail))
+		SpoolModel.add_small(kit, _ams_spool(slot), AMS_SPOOL_RADIUS, AMS_COLORS[slot - 1] if slot > 0 else far_spool, not PrinterParts.lean(kit.detail))
 	# Los 4 tubos que salen del frente de la caja y se juntan (en las copias
 	# chicas no se verían: solo el repartidor).
 	var hub: Vector3 = Vector3(c.x + half.x - 0.035, c.y - 0.012, c.z + half.z - 0.012)

@@ -9,6 +9,10 @@ extends SubViewportContainer
 ## §11): las del personaje cambian la luz del cuarto por una luz de estudio
 ## fija (la cara nunca queda oscura), y "px_m_override", los metros por píxel
 ## de esta vista, para que su contorno mida lo mismo que en el mundo.
+##
+## Su sol da sombra o no según el nivel de calidad gráfica del mundo
+## (GraphicsQuality, biblia §11): así vale la misma cuenta de color
+## (cc_sun_shadowed es un global de todos los sombreadores).
 
 ## Color y fuerza del sol de la vista (sobre el ambiente de la mañana del
 ## mundo): el del sol de la mañana, un poco más fuerte.
@@ -21,6 +25,7 @@ var _camera_size: float
 var _camera_target: Vector3
 var _yaw: float
 var _viewport: SubViewport
+var _light: DirectionalLight3D
 
 
 func _init(build_model: Callable, size: float, camera_size: float = 0.0, camera_target: Vector3 = Vector3.ZERO, yaw: float = 45.0) -> void:
@@ -58,12 +63,13 @@ func _ready() -> void:
 	var world_environment: WorldEnvironment = WorldEnvironment.new()
 	world_environment.environment = environment
 	world.add_child(world_environment)
-	var light: DirectionalLight3D = DirectionalLight3D.new()
-	light.rotation_degrees = Vector3(-40.0, 20.0, 0.0)
-	light.light_color = Color(LIGHT_COLOR)
-	light.light_energy = LIGHT_ENERGY
-	light.shadow_enabled = true
-	world.add_child(light)
+	_light = DirectionalLight3D.new()
+	_light.rotation_degrees = Vector3(-40.0, 20.0, 0.0)
+	_light.light_color = Color(LIGHT_COLOR)
+	_light.light_energy = LIGHT_ENERGY
+	_light.shadow_enabled = GraphicsQuality.current.sun_shadow()
+	world.add_child(_light)
+	GraphicsQuality.current.changed.connect(_on_quality_changed)
 
 	_build_model.call(world)
 	var camera: Camera3D = Camera3D.new()
@@ -90,6 +96,14 @@ func _ready() -> void:
 func redraw() -> void:
 	if _viewport != null:
 		_viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+
+
+## El nivel de calidad cambió: el sol con o sin sombra, como el del mundo.
+func _on_quality_changed() -> void:
+	var shadow: bool = GraphicsQuality.current.sun_shadow()
+	if _light.shadow_enabled != shadow:
+		_light.shadow_enabled = shadow
+		redraw()
 
 
 func _bounds(root: Node3D) -> AABB:

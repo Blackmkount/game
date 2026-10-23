@@ -16,19 +16,21 @@ const STRENGTH: float = 0.45
 
 ## Pinta el mapa del piso `room` (rectángulo en x, z) con los obstáculos
 ## `obstacles` y lo publica para los sombreadores. Devuelve la textura.
-static func publish(room: Rect2, obstacles: Array[Rect2]) -> ImageTexture:
+## `strength` multiplica cuánto oscurece (la calidad gráfica Baja, sin
+## sombras, lo sube: GraphicsQuality.FLOOR_AO).
+static func publish(room: Rect2, obstacles: Array[Rect2], strength: float = 1.0) -> ImageTexture:
 	# Una textura nueva cada vez (9 KB, una vez por distribución): la anterior
 	# se libera cuando ya nadie la usa.
-	var texture: ImageTexture = ImageTexture.create_from_image(paint(room, obstacles))
+	var texture: ImageTexture = ImageTexture.create_from_image(paint(room, obstacles, strength))
 	RenderingServer.global_shader_parameter_set(&"cc_floor_ao", texture)
 	return texture
 
 
 ## El mapa: TEXELS × TEXELS en escala de grises, la columna i es x y la fila
-## j es z (como lo lee el sombreador). 1 = nada; 1 − STRENGTH bajo un
-## obstáculo. Cada obstáculo pinta solo los texeles que alcanza su mancha;
-## donde dos se tocan queda la más oscura (no se suman).
-static func paint(room: Rect2, obstacles: Array[Rect2]) -> Image:
+## j es z (como lo lee el sombreador). 1 = nada; 1 − STRENGTH × `strength`
+## bajo un obstáculo. Cada obstáculo pinta solo los texeles que alcanza su
+## mancha; donde dos se tocan queda la más oscura (no se suman).
+static func paint(room: Rect2, obstacles: Array[Rect2], strength: float = 1.0) -> Image:
 	var light: PackedByteArray = PackedByteArray()
 	light.resize(TEXELS * TEXELS)
 	light.fill(255)
@@ -45,7 +47,7 @@ static func paint(room: Rect2, obstacles: Array[Rect2]) -> Image:
 				var point: Vector2 = room.position + (Vector2(i, j) + Vector2(0.5, 0.5)) * texel
 				var q: Vector2 = (point - center).abs() - half_size
 				var outside: float = q.max(Vector2.ZERO).length() + minf(maxf(q.x, q.y), 0.0)
-				var dark: float = STRENGTH * (1.0 - smoothstep(-half_edge, half_edge, outside))
+				var dark: float = minf(STRENGTH * strength, 1.0) * (1.0 - smoothstep(-half_edge, half_edge, outside))
 				var index: int = j * TEXELS + i
 				light[index] = mini(light[index], roundi((1.0 - dark) * 255.0))
 	return Image.create_from_data(TEXELS, TEXELS, false, Image.FORMAT_L8, light)

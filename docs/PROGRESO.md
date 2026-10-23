@@ -4,8 +4,8 @@
 
 - **Fase actual:** 1. Ciclo jugable, en curso (ruta aprobada por el dueño en `docs/RUTA.md`).
 - **Diseño:** GDD versión 2.3, guía de estilo en `docs/ESTILO.md` y ruta en `docs/RUTA.md`.
-- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 14 de 16: la firma. Lo que aparece en el cuarto se imprime en su lugar, capa a capa (corte con la línea caliente naranja y, encima, la vista previa en cian de las capas que faltan), y el cuarto sigue al estado: al cargar otra partida se arma lo que falta y se quita lo que sobra (2026-10-22). Antes: paso 13, el día y la noche completos.
-- **Siguiente paso sugerido:** Arte 2.0, paso 15: rendimiento (niveles de calidad Alta y Baja con la opción en Ajustes, versión lejana de las impresoras, panel `#debug` para medir en el teléfono). Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda: su comando de compra solo tiene que agregar el mueble o la impresora al estado y pedir `RoomView.sync_models()`).
+- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 15 de 16: rendimiento. Calidad gráfica Alta y Baja con la opción "Calidad gráfica: Automática / Alta / Baja" en Ajustes, versión lejana de las impresoras con el zoom lejos (el taller lleno usa un 32 % menos de llamadas) y panel de depuración `#debug` para medir en el teléfono (2026-10-23). Antes: paso 14, la firma (lo que se compra se imprime en su lugar).
+- **Siguiente paso sugerido:** que el dueño mida en su teléfono con el panel `#debug` (lista en la entrada del paso 15, abajo). Después, Arte 2.0, paso 16: interfaz, documentos y cierre. Luego la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes; el panel de depuración ya existe) y la tarea 5 (tienda: su comando de compra solo tiene que agregar el mueble o la impresora al estado y pedir `RoomView.sync_models()`).
 - **Diseño del ciclo:** aprobado por el dueño (GDD, versión 2.3 en la sección 16).
 
 | Fase | Estado |
@@ -28,7 +28,7 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 | 1 | Datos de balance y su validación | Terminada |
 | 2 | Controles del mundo con joystick: caminar, tocar objetos, paneles, cercanía, cámara y zoom | Terminada |
 | 3 | Navegación y HUD despejado | Pendiente |
-| 4 | Guardado, azar reproducible y menú de pruebas (con la versión visible en Ajustes) | En parte: guardado automático y azar guardado hechos; faltan la versión en Ajustes y el menú de pruebas |
+| 4 | Guardado, azar reproducible y menú de pruebas (con la versión visible en Ajustes) | En parte: guardado automático y azar guardado hechos; el panel de depuración (`#debug`, Arte 2.0 paso 15) ya prueba escenas sin tocar la partida; falta la versión en Ajustes y lo que el menú de pruebas sume para el balance |
 | 5 | Tienda y envíos | En parte: ferretería hecha; el cuarto ya muestra lo que se agregue imprimiéndose (Arte 2.0, paso 14), falta el comando de compra |
 | 6 | Pedidos tipo chat | Terminada |
 | 7 | Modelar, imprimir, retirar, embalar y despachar | Terminada |
@@ -682,4 +682,35 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 **Problemas conocidos**
 - Los destellos de "pieza lista" se leen poco sobre el piso al sol (se ven mejor a la sombra o de noche); se revisa con la interfaz en el paso 16.
 - Si la compra llega con la tienda abierta, el efecto pasaría detrás de la tienda: la tarea 5 debería pedir `sync_models()` al volver al cuarto.
+
+### 2026-10-23 — Arte 2.0, paso 15: rendimiento (calidad gráfica, zoom lejos y panel de depuración)
+
+**Qué se hizo**
+- **Calidad gráfica** (decisión D7 del dueño): en Ajustes, "Calidad gráfica: Automática / Alta / Baja". **Alta** es lo de siempre (el mundo hasta 1.080 px de ancho, bordes suavizados 4×, sombras del sol, polvo en el haz). **Baja** dibuja el mundo hasta 720 px con suavizado 2×, sin las sombras del sol ni el polvo, y oscurece un poco más el piso bajo las cosas para que no se vean flotando; los colores, la luz de la ventana, las lámparas, los halos y el contorno del personaje son iguales. **Automática** (la de un jugador nuevo) empieza en Alta, mide los primeros segundos de juego y, si el teléfono va lento (más de 24 ms por cuadro, o sea menos de unos 40 cuadros por segundo), pasa a Baja una vez y lo recuerda. Debajo de las opciones dice en qué nivel se ve ahora. Las vistas 3D de la interfaz (el retrato, la tienda) siguen al nivel.
+- **Zoom lejos más liviano:** con el zoom lejos cada impresora pasa a una versión lejana: menos detalle y sin lo que se mueve (la barra y el cabezal; en la de resina, la placa), pero con la pieza que crece y su capa naranja, el espagueti de las fallas, la pantallita y la luz de adentro de las cerradas. El taller lleno pasa de 133 a 90 llamadas de dibujo (−32 %); con trabajos, de 148 a 103.
+- **Sombras como dice la biblia:** en las impresoras de las estanterías solo el cuerpo da sombra (las piezas, los espaguetis y las bandejas ya no): el taller lleno con trabajos bajó de 161 a 148 llamadas con el zoom normal.
+- **Panel de depuración** para medir en el teléfono (ver abajo). Además deja probar el cuarto inicial, el taller lleno y la mañana, la tarde o la noche **sin tocar tu partida**: guarda la tuya antes y después no guarda nada hasta que vuelvas a abrir el juego.
+- Capturas: nueva `30_heroe_sin_hud_baja` (el cuarto en Baja). Las que tienen el zoom lejos muestran la versión lejana de las impresoras.
+
+**Verificado**
+- `check.sh` y `run_tests.sh` pasan: 740 pruebas (antes 709; 31 nuevas). Tres archivos de prueba se adaptaron sin debilitarlos (detalle en `docs/DECISIONES.md`). Comprobado rompiendo el código a propósito de 11 maneras: cada vez falla al menos una prueba.
+- `screenshots.sh` saca las 50 capturas; las de zoom normal son iguales a las del paso 14 salvo lo que se mueve solo.
+
+**Qué revisar en el teléfono** (versión web) — **esto reemplaza a "el dueño reporta desde su teléfono"**
+1. Abre la versión web con `#debug` al final de la dirección (por ejemplo `.../index.html#debug`) o, dentro del juego, toca **cinco veces seguidas** la tarjeta de arriba a la izquierda (tu retrato y el nivel). Se abre el panel de depuración.
+2. Anota, con el juego quieto unos segundos en cada caso, los **cuadros por segundo** y las **llamadas de dibujo** (el botón **Menos** deja el panel solo con los números para ver el cuarto; **Más** devuelve los botones):
+   - cuarto inicial de día (botones "Cuarto inicial" y "Mañana");
+   - cuarto inicial de noche ("Noche");
+   - taller lleno de día y de noche ("Taller lleno", "Mañana", "Noche"), con el zoom normal y con el zoom lejos;
+   - todo lo anterior en **Alta** y en **Baja** (los botones de calidad del panel).
+3. Anota la línea **ColorProbe** (debe decir "medido"; si dice "fuera de rango", mándame los números) y compara tu pantalla con la captura `00_calibracion`.
+4. Anota la línea **Armado del cuarto** ("la primera vez"): si pasa de 1.000 ms, el juego tarda en arrancar y lo arreglamos (decisión D4: armar durante una pantalla de carga).
+5. Prueba **Automática** en Ajustes: si en tu teléfono Alta va a menos de unos 40 cuadros por segundo, la automática debería pasar sola a Baja a los pocos segundos (en Ajustes dice "Ahora: Baja"). Elegir Automática otra vez la hace medir de nuevo. Si Alta va entre 40 y 60 se queda en Alta (es el umbral de la biblia, 24 ms por cuadro): si así se siente trabado, dímelo y bajamos el umbral para que pase a Baja por debajo de 60 (es un solo número).
+6. Mira si **Baja** se ve bien (debería verse igual que Alta pero sin sombras) y si con el **zoom lejos** las impresoras se ven bien (no deberían faltar cosas importantes; la impresora del piso pierde la barra y el cabezal, se sigue viendo la pieza con su capa naranja).
+7. Para volver a tu partida después de probar escenas, vuelve a abrir el juego (o recarga la página).
+
+**Problemas conocidos**
+- Nada medido todavía en un teléfono: los números de rendimiento son del computador sin tarjeta de video (llvmpipe), que no sirven para comparar con un teléfono.
+- El ahorro del zoom lejos con trabajos queda justo en el 30 % que pide el plan (una llamada más por impresora lo rompería; la prueba avisa).
+- Con el zoom lejos la impresora del piso no muestra la barra ni el cabezal moviéndose. Si se nota feo en el teléfono, se puede dejar completa (cuesta 6 llamadas).
 

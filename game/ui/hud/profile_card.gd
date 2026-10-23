@@ -9,8 +9,18 @@ extends PanelContainer
 ## impresión, sorpresa y después feliz al subir de nivel, por lo mismo que
 ## el personaje del cuarto (CharacterFace). Se vuelve a dibujar solo
 ## entonces.
+##
+## Cinco toques seguidos sobre la tarjeta piden el panel de depuración
+## (PerfOverlay): así se abre también en el teléfono.
+
+## Se tocó la tarjeta DEBUG_TAPS veces seguidas.
+signal debug_requested
 
 const XP_FILL_TIME: float = 0.4
+## Toques seguidos que piden el panel de depuración, todos dentro de esta
+## ventana de tiempo (ms).
+const DEBUG_TAPS: int = 5
+const DEBUG_TAP_WINDOW_MSEC: int = 2500
 ## Retrato: lado de la vista (px), ancho que muestra (m), punto que queda al
 ## centro (la cabeza) y giro (grados).
 const PORTRAIT_SIZE: float = 76.0
@@ -32,12 +42,18 @@ var _face_timer: Timer
 var _next_face: FacePainter.Face = FacePainter.Face.NEUTRAL
 var _next_face_time: float = 0.0
 var _shown_face: FacePainter.Face = FacePainter.Face.NEUTRAL
+## Toques seguidos y cuándo empezó la serie (ms desde que arrancó el juego).
+var _taps: int = 0
+var _taps_started: int = 0
 
 
 func _ready() -> void:
 	var row: HBoxContainer = UiKit.hbox(12)
+	# Los toques llegan a la tarjeta, no a lo que tiene adentro.
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(row)
 	var frame: PanelContainer = UiKit.panel("IconTile")
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	frame.custom_minimum_size = Vector2(84, 84)
 	_portrait = ModelPreview.new(func(world: Node3D) -> void: _character = CharacterModel.build(world, "Character"), PORTRAIT_SIZE, PORTRAIT_FRAME, PORTRAIT_TARGET, PORTRAIT_YAW)
 	frame.add_child(_portrait)
@@ -50,6 +66,7 @@ func _ready() -> void:
 	Events.print_failed.connect(_on_print_failed)
 	Events.level_up.connect(_on_level_up)
 	var info: VBoxContainer = UiKit.vbox(4)
+	info.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_child(info)
@@ -66,6 +83,25 @@ func _ready() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSLATION_CHANGED and _level_label != null:
 		refresh()
+
+
+## Cuenta los toques seguidos (con el dedo o el mouse). El clic que el
+## motor inventa a partir de un toque no cuenta otra vez.
+func _gui_input(event: InputEvent) -> void:
+	var touch: InputEventScreenTouch = event as InputEventScreenTouch
+	var click: InputEventMouseButton = event as InputEventMouseButton
+	var tapped: bool = (touch != null and touch.pressed) \
+		or (click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT and click.device != InputEvent.DEVICE_ID_EMULATION)
+	if not tapped:
+		return
+	var now: int = Time.get_ticks_msec()
+	if _taps == 0 or now - _taps_started > DEBUG_TAP_WINDOW_MSEC:
+		_taps = 0
+		_taps_started = now
+	_taps += 1
+	if _taps >= DEBUG_TAPS:
+		_taps = 0
+		debug_requested.emit()
 
 
 func refresh() -> void:

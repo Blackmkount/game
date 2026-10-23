@@ -3,8 +3,8 @@ extends SceneTree
 ## tools/screenshots.sh; no se ejecuta solo.
 ##
 ## Argumentos (después de --): --out=carpeta y, opcionales, --locale=en,
-## --only=all|art|char (qué capturas) y --quality=auto|high|low (nivel de
-## calidad gráfica pedido; queda anotado en budget.csv).
+## --only=all|art|char (qué capturas) y --quality=auto|high|low (calidad
+## gráfica, Alta por defecto; el nivel que se vio queda en budget.csv).
 ##
 ## Este guion se compila antes de que existan los autoloads (Game, Events),
 ## así que no usa clases del juego: carga el ejecutor cuando ya está todo.
@@ -16,7 +16,7 @@ func _initialize() -> void:
 	var out_dir: String = ""
 	var locale: String = "es"
 	var only: String = "all"
-	var quality: String = "auto"
+	var quality: String = "high"
 	for argument: String in OS.get_cmdline_user_args():
 		if argument.begins_with("--out="):
 			out_dir = argument.trim_prefix("--out=")

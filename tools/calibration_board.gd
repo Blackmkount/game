@@ -77,14 +77,14 @@ func render_all() -> void:
 		shown.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 		_rows.add_child(shown)
 		_check(i, image)
-	RenderingServer.global_shader_parameter_set(&"cc_sun_shadowed", 1.0)
+	RenderingServer.global_shader_parameter_set(&"cc_sun_shadowed", 1.0 if GraphicsQuality.current.sun_shadow() else 0.0)
 
 
 func _build_world() -> void:
 	_viewport = SubViewport.new()
 	_viewport.size = RENDER_SIZE
 	_viewport.own_world_3d = true
-	_viewport.msaa_3d = WorldViewport.MSAA_HIGH
+	_viewport.msaa_3d = GraphicsQuality.current.msaa()
 	_viewport.positional_shadow_atlas_size = 0
 	_viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	add_child(_viewport)

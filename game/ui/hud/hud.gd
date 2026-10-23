@@ -26,6 +26,8 @@ signal sheet_command(action_id: String)
 signal order_card_action(verb: String, uid: int)
 ## Comprar un carrete en la ferretería (desde Pedidos o Inventario).
 signal local_store_requested(material_id: String)
+## Se pidió el panel de depuración (cinco toques en la tarjeta de nivel).
+signal debug_requested
 
 const MARGIN: float = 16.0
 const TOP: float = 20.0
@@ -224,6 +226,18 @@ func set_zoom_label(zoom_index: int) -> void:
 		_zoom_button.text = tr(ZOOM_LABELS[clampi(zoom_index, 0, ZOOM_LABELS.size() - 1)])
 
 
+## Abre el panel de depuración (PerfOverlay) arriba de todo, o lo cierra si
+## ya estaba abierto. Necesita el cuarto y la vista del mundo para medir.
+func toggle_debug(room: RoomView, world_view: WorldViewport) -> void:
+	var open: PerfOverlay = get_node_or_null("PerfOverlay")
+	if open != null:
+		open.queue_free()
+		return
+	var overlay: PerfOverlay = PerfOverlay.new(room, world_view)
+	overlay.position = Vector2(MARGIN, CONTENT_TOP)
+	add_child(overlay)
+
+
 ## Número rojo del botón "Pedidos": cuántas cosas esperan al jugador.
 func set_orders_badge(count: int) -> void:
 	_orders_button.set_badge(count)
@@ -343,6 +357,7 @@ func _build_top_bar() -> void:
 	add_child(bar)
 	_profile = ProfileCard.new()
 	_profile.name = "ProfileCard"
+	_profile.debug_requested.connect(debug_requested.emit)
 	_profile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bar.add_child(_profile)
 	var pills: VBoxContainer = UiKit.vbox(8)

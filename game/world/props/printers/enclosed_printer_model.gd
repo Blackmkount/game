@@ -67,7 +67,7 @@ const TITAN_NOZZLES: Array[float] = [-0.02, 0.02]
 
 
 static func build(printer: Node3D, kind: Kind, spool_color: String, detail: float) -> void:
-	var family: String = "titan_pro" if kind == Kind.TITAN else "boveda_p1"
+	var family: String = _family(kind)
 	PrinterParts.body(printer, KitMesh.cached(PrinterParts.key(family, "body", detail, spool_color), _body.bind(kind, spool_color, detail)))
 	var rest: Vector3 = HEAD_REST[kind]
 	var anchor: Vector3 = Vector3(0.0, rest.y - PrinterView.HEAD_CLEARANCE, BED_Z)
@@ -82,6 +82,16 @@ static func build(printer: Node3D, kind: Kind, spool_color: String, detail: floa
 	PrinterParts.moving(printer, "Platform", KitMesh.cached(PrinterParts.key(family, "platform", detail), _platform.bind(kind, detail)), detail, Vector3(0.0, anchor.y, 0.0), false)
 	PrinterParts.moving(printer, "Interior", KitMesh.cached(PrinterParts.key(family, "interior", detail), _interior.bind(kind, detail)), detail, Vector3.ZERO, false)
 	PrinterParts.display(printer, DISPLAY_SIZE[kind], DISPLAY[kind])
+
+
+## La malla lejana (PrinterParts.FAR_DETAIL): la misma caja con menos
+## detalle (su carrete ya va adentro, del color `spool_color`).
+static func far_body(kind: Kind, spool_color: String) -> ArrayMesh:
+	return KitMesh.cached(PrinterParts.key(_family(kind), "body", PrinterParts.FAR_DETAIL, spool_color), _body.bind(kind, spool_color, PrinterParts.FAR_DETAIL))
+
+
+static func _family(kind: Kind) -> String:
+	return "titan_pro" if kind == Kind.TITAN else "boveda_p1"
 
 
 ## El piso de adentro (arriba del zócalo) y el techo de adentro.
@@ -161,7 +171,9 @@ static func _body(kind: Kind, spool_color: String, detail: float) -> ArrayMesh:
 	var screen: Vector3 = DISPLAY[kind]
 	var screen_size: Vector2 = DISPLAY_SIZE[kind]
 	kit.box(Vector3(screen_size.x + 0.01, screen_size.y + 0.008, 0.002), Vector3(screen.x, screen.y, half.z + 0.0005), 0.0)
-	_inside_mechanics(kit, kind, floor_y, ceiling)
+	# Adentro y oscuro: con el zoom lejos no se ve.
+	if not PrinterParts.far(detail):
+		_inside_mechanics(kit, kind, floor_y, ceiling)
 	if kind == Kind.VAULT:
 		_vault_spool(kit, spool_color, half.z)
 	else:

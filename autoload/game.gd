@@ -24,6 +24,9 @@ var levels: LevelTable
 var state: GameState
 var sim: Simulation
 var commands: GameCommands
+## Se está probando una escena del panel de depuración (start_trial): nada
+## se guarda hasta que se vuelva a abrir el juego.
+var trial: bool = false
 
 ## Último minuto de juego y último segundo real avisados; -1 = avisar en el
 ## próximo avance (partida recién empezada o cargada).
@@ -57,6 +60,17 @@ func reset_game(p_seed: int) -> void:
 	if rules == null:
 		return
 	_start(GameState.new_game(rules, p_seed))
+
+
+## Panel de depuración: juega con `p_state` (el taller lleno, otra hora)
+## sin tocar la partida del jugador: primero guarda la de verdad y después
+## apaga el guardado hasta que se vuelva a abrir el juego.
+func start_trial(p_state: GameState) -> void:
+	if not trial:
+		SaveManager.save_now()
+	trial = true
+	SaveManager.enabled = false
+	_start(p_state)
 
 
 ## Avanza la partida `real_seconds` segundos reales. _process lo llama con el

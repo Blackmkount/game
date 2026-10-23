@@ -22,6 +22,11 @@ extends Node3D
 ## cargar otra partida (Events.game_loaded) se arma lo que falta y se quita
 ## lo que sobra; lo que se compre (Fase 1, tarea 5) aparecerá imprimiéndose
 ## en su lugar (PrintIn).
+##
+## Rendimiento (biblia §2.2 y §13): aplica el nivel de calidad gráfica
+## (GraphicsQuality: la sombra del sol, el polvo, la fuerza de la oclusión
+## del piso y ColorProbe) y, con el zoom lejos, pone las impresoras en su
+## versión lejana (PrinterView.set_far: menos detalle y sin lo que se mueve).
 
 ## Cambió lo que hay en el cuarto (sync_models): muebles, impresoras o
 ## lugares libres. Lo escuchan WorldControls y las burbujas de estado, que
@@ -51,6 +56,11 @@ const WINDOW_SLOT: int = 0
 const CHARACTER_FOCUS_HEIGHT: float = 0.7
 ## Hora de la luz cuando no hay partida (la mañana del inicio).
 const NO_GAME_HOUR: float = 8.0
+## Con el zoom por debajo de FAR_ZOOM_ENTER las impresoras pasan a su
+## versión lejana, y vuelven por encima de FAR_ZOOM_LEAVE (el escalón lejos
+## es 0,68 y el normal 1: entre los dos, sin ir y venir con el pellizco).
+const FAR_ZOOM_ENTER: float = 0.8
+const FAR_ZOOM_LEAVE: float = 0.86
 ## Radio de la mancha de sombra suave bajo el personaje (biblia de arte §3.5).
 const CHARACTER_SHADOW_RADIUS: float = 0.36
 ## Las marcas de lugares libres (biblia §8.7) laten suave entre estos dos
@@ -107,9 +117,18 @@ var decor: RoomDecor
 ## Los halos de noche de las impresoras, del color de su estado (biblia
 ## §9.2): un MultiMesh para todos, que DayCycle muestra solo de noche.
 var halos: HaloField
+## Si las impresoras están en su versión lejana (zoom lejos).
+var far_printers: bool = false
+## Cuánto tardó en armarse este cuarto (ms) y el primero desde que se abrió
+## el juego, con las cachés de mallas y materiales vacías (panel de
+## depuración: si en el teléfono pasa de 1 s, decisión D4 de la biblia).
+var build_msec: float = 0.0
+static var first_build_msec: float = -1.0
 
 var _character_item: WorldInteractable
 var _door_item: WorldInteractable
+## El nivel de calidad gráfica que se aplica (GraphicsQuality.current).
+var _quality: GraphicsQuality
 ## Los muebles y las impresoras del cuarto (por uid) y las marcas de los
 ## lugares libres (por lugar), con lo que se toca de cada uno.
 var _furniture: Dictionary[int, Placed] = {}
@@ -163,7 +182,8 @@ class Placed:
 
 
 func _ready() -> void:
-	ColorProbe.run(self, WorldViewport.MSAA_HIGH)
+	var started: int = Time.get_ticks_usec()
+	_quality = GraphicsQuality.current
 	_build_environment()
 	_build_camera()
 	RoomShell.build(self)
@@ -188,11 +208,16 @@ func _ready() -> void:
 	else:
 		# Sin partida: los halos de la decoración y un piso limpio.
 		decor.add_night_lights(halos)
-		floor_ao = FloorAO.publish(grid.bounds, grid.obstacles())
+		_paint_floor_ao()
 	day_cycle.set_hour(Game.state.game_minutes / GameClock.MINUTES_PER_HOUR if Game.state != null else NO_GAME_HOUR)
+	_quality.changed.connect(_apply_quality)
+	_apply_quality()
 	camera.snap_to_goal()
 	_publish_character()
 	_update_markers()
+	build_msec = (Time.get_ticks_usec() - started) / 1000.0
+	if first_build_msec < 0.0:
+		first_build_msec = build_msec
 
 
 ## Avanza un cuadro: mueve al personaje y después la cámara, lleva la luz
@@ -205,6 +230,7 @@ func step(delta: float) -> void:
 		_rig.follow()
 		camera.follow_velocity = character.velocity
 	camera.step(delta)
+	_update_far()
 	day_cycle.step(delta)
 	anim_time += delta
 	RenderingServer.global_shader_parameter_set(&"cc_anim_time", anim_time)
@@ -568,8 +594,12 @@ func _sync_printers(state: GameState, layout: RoomLayout, new_furniture: Diction
 			var detail: float = PrinterParts.FLOOR_DETAIL if printer.is_on_floor() else PrinterParts.FURNITURE_DETAIL
 			var node: Node3D = PrinterModel.build(self, "Printer%d" % printer.uid, printer.printer_id, spool_color, detail)
 			node.transform = places[printer.uid]
-			_add_view(node, PrinterView.new(printer.uid, printer.printer_id))
+			var view: PrinterView = PrinterView.new(printer.uid, printer.printer_id, spool_color, detail)
+			_add_view(node, view)
 			_printers[printer.uid] = Placed.new(node, keys[printer.uid], _make_item(WorldInteractable.Kind.PRINTER, printer.uid, node))
+			# Después de medir lo que se toca: la zona es la de la versión de
+			# siempre, con cualquier zoom.
+			view.set_far(far_printers)
 			appeared[node] = PrintIn.FURNITURE_SECONDS if new_furniture.has(printer.furniture_uid) else 0.0
 			changed = true
 		if _floor_printer == null and printer.is_on_floor():
@@ -619,8 +649,7 @@ func _rebuild_room(state: GameState) -> void:
 		if item.kind in BLOCKING:
 			grid.add_obstacle(item.footprint().grow(OBSTACLE_MARGIN))
 	grid.build()
-	# Manchas de oclusión bajo los muebles, las impresoras y el rincón.
-	floor_ao = FloorAO.publish(grid.bounds, grid.obstacles())
+	_paint_floor_ao()
 	_place_lights(state)
 	# Los halos de noche en orden: impresoras, escritorio y decoración.
 	halos.clear()
@@ -713,6 +742,40 @@ func _drop(node: Node3D) -> void:
 		if effect.is_running() and effect.node == node:
 			effect.finish()
 	node.free()
+
+
+## El nivel de calidad gráfica (biblia §2.2): la sombra del sol y el modelo
+## de color que va con ella (cc_sun_shadowed), las motas de polvo y la
+## fuerza del mapa de oclusión del piso. ColorProbe vuelve a medir si el
+## nivel cambió el suavizado o la sombra.
+func _apply_quality() -> void:
+	var shadow: bool = _quality.sun_shadow()
+	day_cycle.sun.shadow_enabled = shadow
+	RenderingServer.global_shader_parameter_set(&"cc_sun_shadowed", 1.0 if shadow else 0.0)
+	decor.dust.enabled = _quality.dust()
+	day_cycle.refresh()
+	_paint_floor_ao()
+	ColorProbe.run(self, _quality.msaa(), shadow)
+
+
+## Manchas de oclusión bajo los muebles, las impresoras, el rincón y la
+## decoración (los obstáculos de la grilla), con la fuerza del nivel de
+## calidad.
+func _paint_floor_ao() -> void:
+	floor_ao = FloorAO.publish(grid.bounds, grid.obstacles(), _quality.floor_ao())
+
+
+## Con el zoom lejos, las impresoras en su versión lejana (y de vuelta). Si
+## algo se estaba imprimiendo, termina (las partes que se esconden no deben
+## aparecer a mitad del efecto). Solo hace algo al cruzar el umbral.
+func _update_far() -> void:
+	var far: bool = camera.zoom < (FAR_ZOOM_LEAVE if far_printers else FAR_ZOOM_ENTER)
+	if far == far_printers:
+		return
+	far_printers = far
+	finish_print_ins()
+	for uid: int in _printers:
+		(_printers[uid].node.get_node(^"View") as PrinterView).set_far(far)
 
 
 ## Si el personaje está a CharacterAnimator.NEAR metros o menos de ese

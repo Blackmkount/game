@@ -79,6 +79,10 @@ func _setup() -> void:
 	hud.zoom_pressed.connect(_cycle_zoom)
 	hud.set_zoom_label(room.camera.zoom_index)
 	room.models_changed.connect(_on_models_changed)
+	hud.debug_requested.connect(func() -> void: hud.toggle_debug(room, world_view))
+	# "#debug" en la dirección de la versión web abre el panel de depuración.
+	if PerfOverlay.requested_by_url():
+		hud.toggle_debug(room, world_view)
 	_hints = HintFlow.new(UserSettings.load_settings())
 	hud.move_hint.set_mode(_hints.mode())
 	loop = OrderLoopController.new(self)

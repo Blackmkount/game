@@ -8,13 +8,18 @@ extends MultiMeshInstance3D
 ## no se mueve nada por cuadro.
 ##
 ## DayCycle le pone la fuerza de la hora (set_strength); en 0 (de noche) el
-## nodo se esconde y no cuesta nada.
+## nodo se esconde y no cuesta nada. En la calidad gráfica Baja no se ve
+## nunca (`enabled`, lo pone RoomView).
 
 const SHADER: Shader = preload("res://game/world/look/dust.gdshader")
 const COUNT: int = 40
 ## Lo que el motor tiene que saber que ocupa (el sombreador mueve las motas
 ## por todo el cuarto): la caja del cuarto.
 const BOUNDS: AABB = AABB(Vector3(-3.2, 0.0, -3.2), Vector3(6.4, 2.8, 6.4))
+
+## Si el nivel de calidad tiene polvo. Después de cambiarlo, la fuerza de
+## nuevo (DayCycle.refresh()).
+var enabled: bool = true
 
 
 func _init(seed_value: int) -> void:
@@ -50,7 +55,8 @@ static func motes(seed_value: int, count: int = COUNT) -> PackedColorArray:
 	return data
 
 
-## Cuánto brilla el polvo con la luz de esta hora (0 = se esconde).
+## Cuánto brilla el polvo con la luz de esta hora (0 = se esconde; sin
+## `enabled`, también).
 func set_strength(strength: float) -> void:
 	(material_override as ShaderMaterial).set_shader_parameter(&"strength", strength)
-	visible = strength > 0.0
+	visible = enabled and strength > 0.0

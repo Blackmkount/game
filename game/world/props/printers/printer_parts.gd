@@ -8,13 +8,24 @@ extends RefCounted
 ## partes que se mueven o cambian de material, que van aparte porque son
 ## contratos con PrinterView. En los muebles (detalle < FLOOR_DETAIL) solo
 ## "Body" da sombra: así una impresora de mueble cuesta 6 llamadas.
+##
+## Con el zoom lejos (PrinterView.set_far) "Body" cambia a su malla lejana
+## (PrinterModel.far_body, detalle FAR_DETAIL): lo fijo con menos detalle y,
+## dentro, lo que en la versión normal va aparte y no se mueve (el bobinado
+## del carrete, en su color de siempre); lo que se mueve se esconde.
 
 ## Detalle de la impresora del piso y de las de los muebles (biblia §5.1).
 const FLOOR_DETAIL: float = 1.0
 const FURNITURE_DETAIL: float = 0.6
+## Detalle de la versión lejana (biblia §5.1 y §5.2: ≤ 450 triángulos).
+const FAR_DETAIL: float = 0.35
 ## Con menos detalle que el del piso, los biseles más chicos que esto (m) no
 ## se hacen (KitMesh.bevel_cutoff): de lejos no se ven y cuestan triángulos.
+## En la versión lejana, tampoco los de hasta FAR_BEVEL_CUTOFF, ni lo más
+## fino que FAR_MIN_FEATURE (ranuras, tornillos, franjas: KitMesh.min_feature).
 const LOW_DETAIL_BEVEL_CUTOFF: float = 0.009
+const FAR_BEVEL_CUTOFF: float = 0.025
+const FAR_MIN_FEATURE: float = 0.016
 ## La punta de la boquilla queda esto bajo el origen del cabezal (escala 1):
 ## con PrinterView.HEAD_CLEARANCE, a 2 mm de la capa de arriba.
 const NOZZLE_TIP: float = -0.043
@@ -26,7 +37,13 @@ const FEET_HEIGHT: float = 0.012
 static func kit(detail: float) -> KitMesh:
 	var mesh: KitMesh = KitMesh.new()
 	mesh.detail = detail
-	mesh.bevel_cutoff = 0.0 if detail >= FLOOR_DETAIL else LOW_DETAIL_BEVEL_CUTOFF
+	if detail >= FLOOR_DETAIL:
+		mesh.bevel_cutoff = 0.0
+	elif detail > FAR_DETAIL:
+		mesh.bevel_cutoff = LOW_DETAIL_BEVEL_CUTOFF
+	else:
+		mesh.bevel_cutoff = FAR_BEVEL_CUTOFF
+		mesh.min_feature = FAR_MIN_FEATURE
 	return mesh
 
 
@@ -34,6 +51,23 @@ static func kit(detail: float) -> KitMesh:
 ## tapas simples, sin patas y curvas con menos tramos.
 static func lean(detail: float) -> bool:
 	return detail < FLOOR_DETAIL
+
+
+## La versión lejana (detalle FAR_DETAIL o menos): además, sin patas y con
+## las tapas del carrete llenas.
+static func far(detail: float) -> bool:
+	return detail <= FAR_DETAIL
+
+
+## Las tapas del carrete de las abiertas (dentro de "Body"; el bobinado es
+## "Spool/Filament"): abiertas, más simples en las copias chicas y, en la
+## versión lejana, llenas y con el bobinado del color `far_spool` (ahí
+## "Spool" va escondido).
+static func spool_flanges(kit: KitMesh, center: Vector3, radius: float, far_spool: String = "") -> void:
+	if far(kit.detail):
+		SpoolModel.add_small(kit, center, radius, far_spool)
+	else:
+		SpoolModel.add_flanges(kit, center, radius, lean(kit.detail))
 
 
 ## Tramos entre cada par de puntos de un tubo (KitMesh.tube) según el detalle.
@@ -90,8 +124,11 @@ static func spool(printer: Node3D, position: Vector3, color_hex: String, radius:
 
 ## Patas de goma en las cuatro esquinas de un rectángulo de medias medidas
 ## `half` (x, z) alrededor de `center` (en el piso), de FEET_HEIGHT de alto.
-## Las copias chicas llevan cubitos (no se ven y cuestan menos).
+## Las copias chicas llevan cubitos (no se ven y cuestan menos); la lejana,
+## nada.
 static func feet(mesh: KitMesh, half: Vector2, center: Vector3 = Vector3.ZERO, radius: float = 0.016) -> void:
+	if far(mesh.detail):
+		return
 	mesh.paint(LookPalette.OUTLINE, WorldPalette.Surface.SMOOTH, 0.2)
 	for x: float in KitMesh.SIGNS:
 		for z: float in KitMesh.SIGNS:

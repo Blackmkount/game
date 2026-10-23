@@ -12,7 +12,10 @@
 #   --only        all (todas, por defecto), art (solo las de arte, con las del
 #                 personaje) o char (solo las del personaje).
 #   --resolution  tamaño de la ventana, por defecto 720x1280.
-#   --quality     nivel de calidad gráfica pedido; queda anotado en budget.csv.
+#   --quality     calidad gráfica: high (Alta, por defecto), low (Baja) o auto
+#                 (la automática: mide los cuadros de verdad y, con la pantalla
+#                 virtual, que es lenta, suele bajar a Baja). El nivel que se
+#                 vio en cada captura queda en budget.csv.
 #
 # Falla si Godot termina con error, si el registro tiene un error (de script,
 # de sombreador o del ejecutor, que avisa con "Capturas:") o si falta alguna

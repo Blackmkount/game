@@ -7,7 +7,6 @@ extends GutTest
 
 const MAIN_SCENE: PackedScene = preload("res://game/scenes/main.tscn")
 const SceneBudget: GDScript = preload("res://tests/helpers/scene_budget.gd")
-const FullRoom: GDScript = preload("res://tests/helpers/full_room.gd")
 const SEED: int = 1234
 const DESK_ID: String = "mesa_computador"
 const RACK_ID: String = "estanteria_metalica"
@@ -126,7 +125,7 @@ func test_every_family_fits_every_level_of_the_rack() -> void:
 
 func test_in_the_full_room_no_printer_goes_through_a_board() -> void:
 	var state: GameState = GameState.new_game(Game.rules, SEED)
-	FullRoom.fill(state, Game.rules)
+	DebugTools.fill_workshop(state, Game.rules)
 	await _load(state)
 	var checked: int = 0
 	for printer: OwnedPrinter in state.printers:

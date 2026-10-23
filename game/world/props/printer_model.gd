@@ -46,6 +46,27 @@ static func build(parent: Node3D, node_name: String, printer_id: String, spool_c
 	return printer
 
 
+## La malla lejana de "Body" (con el zoom lejos, PrinterView.set_far): lo
+## fijo con el detalle PrinterParts.FAR_DETAIL y, adentro, lo que no se mueve
+## y en la versión normal va aparte (el bobinado del carrete del color
+## `spool_color`; en la de resina, la tapa opaca). En caché.
+static func far_body(printer_id: String, spool_color: String) -> ArrayMesh:
+	match printer_id:
+		"rayo_mini":
+			return RayoModel.far_body(RayoModel.Kind.MINI, spool_color)
+		"rayo_x1":
+			return RayoModel.far_body(RayoModel.Kind.X1, spool_color)
+		"prisma_mc":
+			return RayoModel.far_body(RayoModel.Kind.PRISMA, spool_color)
+		"boveda_p1":
+			return EnclosedPrinterModel.far_body(EnclosedPrinterModel.Kind.VAULT, spool_color)
+		"titan_pro":
+			return EnclosedPrinterModel.far_body(EnclosedPrinterModel.Kind.TITAN, spool_color)
+		"gota_r1":
+			return ResinPrinterModel.far_body()
+	return CuboUnoModel.far_body(spool_color)
+
+
 ## Escala del modelo: la Rayo Mini es más chica. PrinterView la usa para el
 ## vaivén y el espacio del cabezal, la bandeja y el espagueti.
 static func frame_scale(printer_id: String) -> float:

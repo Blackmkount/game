@@ -36,6 +36,10 @@ const LID_TOP: float = 0.47
 const DISPLAY: Vector3 = Vector3(0.0, 0.085, 0.1625)
 const DISPLAY_SIZE: Vector2 = Vector2(0.09, 0.045)
 const TRAY_ANCHOR: Vector3 = Vector3(-0.11, 0.162, 0.135)
+## La tapa opaca de la malla lejana: cuánto de su color ámbar se ve sobre lo
+## oscuro de adentro (más que su transparencia: la de cerca suma además el
+## brillo del vidrio y lo claro de la tina).
+const FAR_LID_TINT: float = 0.85
 
 
 static func build(printer: Node3D, spool_color: String, detail: float) -> void:
@@ -59,9 +63,22 @@ static func _base_top() -> float:
 	return FEET_HEIGHT + BASE_SIZE.y
 
 
+## La malla lejana (PrinterParts.FAR_DETAIL): la base con menos detalle y
+## la tapa ámbar opaca, del color que se ve a través de ella (con el zoom
+## lejos la tapa transparente, la placa y la resina van escondidas).
+static func far_body() -> ArrayMesh:
+	return KitMesh.cached(PrinterParts.key("gota_r1", "far", PrinterParts.FAR_DETAIL), _body.bind(PrinterParts.FAR_DETAIL, true))
+
+
+## Lo que se ve de la tapa ámbar con lo de adentro detrás (FAR_LID_TINT).
+static func far_lid_hex() -> String:
+	return Color(LookPalette.RESIN_BASE).lerp(Color(LookPalette.RESIN_LID), FAR_LID_TINT).to_html(false)
+
+
 ## La base con su zócalo de goma para la tapa, la pantalla LCD bajo la tina,
-## la tina con sus trabas, el riel Z con su tornillo y el motor.
-static func _body(detail: float) -> ArrayMesh:
+## la tina con sus trabas, el riel Z con su tornillo y el motor (en la malla
+## lejana, `far_lid`, con la tapa opaca encima).
+static func _body(detail: float, far_lid: bool = false) -> ArrayMesh:
 	var kit: KitMesh = PrinterParts.kit(detail)
 	var top: float = _base_top()
 	var half: Vector3 = BASE_SIZE / 2.0
@@ -106,6 +123,10 @@ static func _body(detail: float) -> ArrayMesh:
 	kit.box(Vector3(0.045, 0.04, 0.04), Vector3(0.0, top + 0.02, RAIL_Z - 0.003), 0.005)
 	kit.paint(LookPalette.METAL_BRASS, WorldPalette.Surface.METAL, 0.7)
 	kit.cylinder(0.004, rail_height - 0.05, Vector3(0.025, top + rail_height / 2.0 + 0.02, RAIL_Z), Vector3.ZERO, 6)
+	if far_lid:
+		var bottom: float = top + 0.006
+		kit.paint(far_lid_hex(), WorldPalette.Surface.SMOOTH, 0.7)
+		kit.box(Vector3(LID_HALF_X * 2.0, LID_TOP - bottom, LID_Z.y - LID_Z.x), Vector3(0.0, (LID_TOP + bottom) / 2.0, (LID_Z.x + LID_Z.y) / 2.0), 0.0)
 	return kit.commit()
 
 

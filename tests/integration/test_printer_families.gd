@@ -3,7 +3,8 @@ extends GutTest
 ## errores, caben en la estantería, tienen las partes del contrato de su modo
 ## (abiertas, cerradas, de resina), cuestan lo que dice el presupuesto (§5.2)
 ## y, en el cuarto, TODAS muestran la pieza que crece y su falla. De noche
-## cada una tiene su halo del color del estado.
+## cada una tiene su halo del color del estado. Con el zoom lejos cada una
+## pasa a su versión lejana (§5.2 y §13).
 
 const MAIN_SCENE: PackedScene = preload("res://game/scenes/main.tscn")
 const SceneBudget: GDScript = preload("res://tests/helpers/scene_budget.gd")
@@ -17,6 +18,14 @@ const FLOOR_MAX_TRIANGLES: int = 2400
 const FLOOR_MAX_DRAW_CALLS: int = 9
 const FURNITURE_MAX_TRIANGLES: int = 1200
 const FURNITURE_MAX_DRAW_CALLS: int = 6
+## La versión lejana (§5.2): triángulos de su malla y llamadas con la sombra
+## (sin trabajo; las cerradas, dos más: la cama y la luz de adentro).
+const FAR_MAX_TRIANGLES: int = 450
+const FAR_MAX_DRAW_CALLS: int = 3
+## Lo que se esconde con el zoom lejos, por modo (PrinterView.set_far).
+const FAR_HIDDEN_OPEN: Array[String] = ["Gantry", "PrintHead", "Spool"]
+const FAR_HIDDEN_CLOSED: Array[String] = ["PrintHead"]
+const FAR_HIDDEN_RESIN: Array[String] = ["Plate", "Resin", "Lid", "PieceSpot"]
 ## Dos familias se distinguen por la silueta: su caja difiere al menos esto
 ## en alguna medida (m).
 const SILHOUETTE_GAP: float = 0.02
@@ -142,6 +151,129 @@ func test_furniture_printers_are_lighter_than_the_floor_one() -> void:
 	var floor_triangles: int = (floor_printer.get_node("Body") as MeshInstance3D).mesh.get_faces().size()
 	var table_triangles: int = (table_printer.get_node("Body") as MeshInstance3D).mesh.get_faces().size()
 	assert_lt(table_triangles, floor_triangles, "La del mueble, con menos detalle")
+
+
+## Biblia §2.6: en las impresoras de los muebles solo "Body" da sombra; la
+## pieza, el espagueti y la bandeja también son de "solo Body". En la del
+## piso dan sombra.
+func test_on_furniture_only_the_body_casts_a_shadow() -> void:
+	var state: GameState = GameState.new_game(Game.rules, SEED)
+	DebugTools.fill_workshop(state, Game.rules)
+	DebugTools.give_jobs(state, Game.rules)
+	await _load(state)
+	for printer: OwnedPrinter in state.printers:
+		var node: Node3D = _room.get_node("Printer%d" % printer.uid)
+		var expected: GeometryInstance3D.ShadowCastingSetting = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if printer.is_on_floor() else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		for part: String in ["PieceSpot/Piece", "PieceSpot/Spaghetti", "Tray0", "Tray5"]:
+			assert_eq((node.get_node(part) as MeshInstance3D).cast_shadow, expected, "%s (%s): %s" % [printer.printer_id, "piso" if printer.is_on_floor() else "mueble", part])
+
+
+## Cada familia tiene su malla lejana: lo fijo con menos detalle (≤ 450
+## triángulos, menos que la de mueble), del tamaño de la impresora entera
+## (con lo que va aparte), y cuesta ≤ 3
+## llamadas con la sombra (las cerradas, dos más: la cama y la luz de
+## adentro).
+func test_every_family_has_a_cheap_far_version_of_the_same_size() -> void:
+	var sun: DirectionalLight3D = DirectionalLight3D.new()
+	sun.shadow_enabled = true
+	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
+	_root.add_child(sun)
+	for id: String in FAMILIES:
+		var far: ArrayMesh = PrinterModel.far_body(id, "3b7fe0")
+		assert_eq(PrinterModel.far_body(id, "3b7fe0"), far, "%s: en caché" % id)
+		var far_triangles: int = far.get_faces().size() / 3
+		assert_lte(far_triangles, FAR_MAX_TRIANGLES, "%s lejana: triángulos" % id)
+		var printer: Node3D = PrinterModel.build(_root, "Measured", id, "3b7fe0", PrinterParts.FURNITURE_DETAIL)
+		var body: MeshInstance3D = printer.get_node("Body")
+		assert_lt(far_triangles, body.mesh.get_faces().size() / 3, "%s lejana: menos que la de mueble" % id)
+		var near_box: AABB = PropBounds.local_aabb(printer)
+		var far_box: AABB = far.get_aabb()
+		assert_almost_eq(far_box.size.x, near_box.size.x, 0.03, "%s lejana: mismo ancho" % id)
+		assert_almost_eq(far_box.size.z, near_box.size.z, 0.03, "%s lejana: mismo fondo" % id)
+		assert_almost_eq(far_box.end.y, near_box.end.y, 0.03, "%s lejana: mismo alto" % id)
+		_root.remove_child(printer)
+		printer.free()
+	var state: GameState = GameState.new_game(Game.rules, SEED)
+	DebugTools.fill_workshop(state, Game.rules)
+	await _load(state)
+	await _set_zoom(0)
+	assert_true(_room.far_printers, "Con el zoom lejos")
+	for printer: OwnedPrinter in state.printers:
+		var node: Node3D = _room.get_node("Printer%d" % printer.uid)
+		var calls: int = SceneBudget.measure(node).get("draw_calls")
+		var extra: int = 2 if printer.printer_id in CLOSED else 0
+		assert_lte(calls, FAR_MAX_DRAW_CALLS + extra, "%s lejana: llamadas" % printer.printer_id)
+
+
+## Con el zoom lejos cada impresora del cuarto usa su malla lejana y esconde
+## lo que se mueve (los nodos siguen ahí); la pieza que crece, su capa
+## caliente, el espagueti, la pantallita y la luz de adentro se siguen
+## viendo; la zona que se toca no cambia. Con el zoom normal todo vuelve.
+func test_at_far_zoom_every_printer_switches_to_its_far_version() -> void:
+	var state: GameState = GameState.new_game(Game.rules, SEED)
+	DebugTools.fill_workshop(state, Game.rules)
+	DebugTools.give_jobs(state, Game.rules)
+	await _load(state)
+	var near_bodies: Dictionary[int, Mesh] = {}
+	var touch: Dictionary[int, AABB] = {}
+	var pieces: Dictionary[int, bool] = {}
+	for printer: OwnedPrinter in state.printers:
+		var node: Node3D = _room.get_node("Printer%d" % printer.uid)
+		near_bodies[printer.uid] = (node.get_node("Body") as MeshInstance3D).mesh
+		touch[printer.uid] = _room.item_for(WorldInteractable.Kind.PRINTER, printer.uid).bounds
+		pieces[printer.uid] = (node.get_node("PieceSpot/Piece") as Node3D).visible
+	await _set_zoom(0)
+	assert_true(_room.far_printers)
+	for printer: OwnedPrinter in state.printers:
+		var node: Node3D = _room.get_node("Printer%d" % printer.uid)
+		var what: String = "%s %d" % [printer.printer_id, printer.uid]
+		var view: PrinterView = node.get_node("View")
+		assert_true(view.is_far(), what + ": lejana")
+		assert_eq((node.get_node("Body") as MeshInstance3D).mesh, PrinterModel.far_body(printer.printer_id, WorldPalette.PLASTIC_BEIGE if state.spools.is_empty() else _spool_hex(state)), what + ": su malla lejana")
+		for part: String in _far_hidden(printer.printer_id):
+			assert_not_null(node.get_node_or_null(part), what + ": %s sigue existiendo" % part)
+			assert_false((node.get_node(part) as Node3D).visible, what + ": %s escondido" % part)
+		for i: int in PrinterView.TRAY_BLOCKS:
+			assert_false((node.get_node("Tray%d" % i) as Node3D).visible, what + ": sin bandeja")
+		assert_true((node.get_node("Display") as Node3D).visible, what + ": la pantallita se ve")
+		if printer.printer_id in CLOSED:
+			assert_true((node.get_node("Interior") as Node3D).visible, what + ": la luz de adentro se ve")
+			assert_true((node.get_node("Platform") as Node3D).visible, what + ": y la cama")
+		if printer.printer_id != "gota_r1":
+			assert_eq((node.get_node("PieceSpot/Piece") as Node3D).is_visible_in_tree(), pieces[printer.uid], what + ": la pieza se sigue viendo")
+		assert_eq(_room.item_for(WorldInteractable.Kind.PRINTER, printer.uid).bounds, touch[printer.uid], what + ": se toca igual")
+	# Quieto con el zoom lejos, cada cuadro no pide memoria.
+	var before: int = OS.get_static_memory_usage()
+	for i: int in 60:
+		_room.step(1.0 / 60.0)
+	assert_eq(OS.get_static_memory_usage(), before, "Con el zoom lejos, los cuadros no piden memoria")
+	await _set_zoom(CameraRig.DEFAULT_ZOOM_INDEX)
+	assert_false(_room.far_printers)
+	for printer: OwnedPrinter in state.printers:
+		var node: Node3D = _room.get_node("Printer%d" % printer.uid)
+		assert_eq((node.get_node("Body") as MeshInstance3D).mesh, near_bodies[printer.uid], "%s: de vuelta su malla" % printer.printer_id)
+		for part: String in _far_hidden(printer.printer_id):
+			assert_true((node.get_node(part) as Node3D).visible, "%s: de vuelta %s" % [printer.printer_id, part])
+
+
+## Una impresora que se compra con el zoom lejos llega ya en su versión
+## lejana, con la zona que se toca de siempre.
+func test_a_printer_that_appears_at_far_zoom_is_far_too() -> void:
+	await _load(GameState.new_game(Game.rules, SEED))
+	await _set_zoom(0)
+	var table: OwnedFurniture = OwnedFurniture.new(Game.state.take_uid(), "mesa_trabajo", 3)
+	Game.state.furniture.append(table)
+	var printer: OwnedPrinter = OwnedPrinter.new(Game.state.take_uid(), "rayo_x1", table.uid)
+	Game.state.printers.append(printer)
+	_room.sync_models(false)
+	var node: Node3D = _room.get_node("Printer%d" % printer.uid)
+	assert_true((node.get_node("View") as PrinterView).is_far(), "Llega lejana")
+	assert_false((node.get_node("Gantry") as Node3D).visible)
+	var far_zone: AABB = _room.item_for(WorldInteractable.Kind.PRINTER, printer.uid).local_bounds
+	# El mismo cuarto armado con el zoom normal: la misma zona.
+	await _load(Game.state)
+	assert_false((_room.get_node("Printer%d/View" % printer.uid) as PrinterView).is_far())
+	assert_eq(_room.item_for(WorldInteractable.Kind.PRINTER, printer.uid).local_bounds, far_zone, "La misma zona que con el zoom normal")
 
 
 func test_an_open_compact_printer_grows_the_piece_and_raises_its_head() -> void:
@@ -292,6 +424,30 @@ func _load(state: GameState) -> void:
 	add_child_autofree(_main)
 	await wait_process_frames(2)
 	_room = _main.get_node("WorldView/SubViewport/Room")
+
+
+## Lleva la cámara al escalón de zoom `index` de una vez y deja pasar dos
+## cuadros (RoomView.step decide la versión de las impresoras).
+func _set_zoom(index: int) -> void:
+	_room.camera.set_zoom_index(index)
+	_room.camera.snap_to_goal()
+	await wait_process_frames(2)
+
+
+## Lo que la versión lejana esconde de una familia.
+static func _far_hidden(printer_id: String) -> Array[String]:
+	if printer_id in OPEN:
+		return FAR_HIDDEN_OPEN
+	if printer_id in CLOSED:
+		return FAR_HIDDEN_CLOSED
+	return FAR_HIDDEN_RESIN
+
+
+## El color del primer carrete de la partida (con el que se arman las
+## impresoras, RoomView).
+static func _spool_hex(state: GameState) -> String:
+	var color: Dictionary = DataLookup.config_entry(Game.catalog, "filament_colors", state.spools[0].color_id)
+	return color.get("hex", WorldPalette.PLASTIC_BEIGE)
 
 
 func _floor_printer() -> Node3D:

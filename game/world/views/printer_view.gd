@@ -20,6 +20,15 @@ extends Node
 ##   falla, queda a medias y oscura: con warping, despegada y torcida; con
 ##   espagueti, con el nido de hilos encima y el cabezal sobre él.
 ## - De noche, un halo en el piso del color del estado (HaloField).
+## - Con el zoom lejos (set_far, biblia §5.2 y §13), la versión lejana:
+##   "Body" con su malla de menos detalle (PrinterModel.far_body) y
+##   escondido lo que se mueve (barra y cabezal; en la de resina, la placa),
+##   el carrete (va dentro de esa malla) y la bandeja; en la de resina, la
+##   tapa (es opaca en esa malla) con lo de adentro. La pieza que crece, su
+##   capa caliente, el espagueti, la pantallita y, en las cerradas, la cama y
+##   la luz de adentro se siguen viendo. Los nodos siguen existiendo.
+## - Como dice la biblia §2.6, en las impresoras de los muebles solo "Body"
+##   da sombra: la pieza, el espagueti y la bandeja, no.
 ##
 ## Dónde va cada cosa lo dicen los marcadores del modelo. Se actualiza con
 ## Events.printer_changed y Events.clock_ticked, nunca en cada cuadro.
@@ -77,6 +86,17 @@ const RESIN_FALL_DEGREES: Vector3 = Vector3(16.0, 20.0, -22.0)
 var printer_uid: int
 
 var _scale: float
+## La pieza, el espagueti y la bandeja dan sombra (solo en la del piso).
+var _casts_shadow: bool
+var _printer_id: String
+var _spool_color: String
+## "Body" y sus dos mallas (la de siempre y la lejana); lo que se esconde
+## con el zoom lejos; si está en la versión lejana.
+var _body: MeshInstance3D
+var _near_mesh: Mesh
+var _far_mesh: Mesh
+var _far_hidden: Array[Node3D] = []
+var _far: bool = false
 var _mode: Mode = Mode.OPEN
 var _lit_hex: String
 var _display: MeshInstance3D
@@ -104,6 +124,8 @@ var _piece: MeshInstance3D
 var _spaghetti: MeshInstance3D
 var _sparkles: ReadySparkles
 var _tray: Array[MeshInstance3D] = []
+## Cuántos bloquecitos de la bandeja se muestran (sin el zoom lejos).
+var _tray_count: int = 0
 ## Los halos de noche del cuarto y el número del de esta impresora (-1: sin
 ## halo; lo pone RoomView con attach_halo).
 var _halos: HaloField
@@ -119,8 +141,12 @@ var _swing: Tween
 var _hop: Tween
 
 
-func _init(p_printer_uid: int, printer_id: String) -> void:
+## `spool_color` y `detail`: con los que se armó el modelo (PrinterModel.build).
+func _init(p_printer_uid: int, printer_id: String, spool_color: String, detail: float) -> void:
 	printer_uid = p_printer_uid
+	_printer_id = printer_id
+	_spool_color = spool_color
+	_casts_shadow = detail >= PrinterParts.FLOOR_DETAIL
 	_scale = PrinterModel.frame_scale(printer_id)
 	_lit_hex = PrinterModel.interior_hex(printer_id)
 
@@ -128,6 +154,10 @@ func _init(p_printer_uid: int, printer_id: String) -> void:
 func _ready() -> void:
 	var model: Node3D = get_parent()
 	_display = model.get_node("Display")
+	_body = model.get_node("Body")
+	_near_mesh = _body.mesh
+	# La malla lejana se arma ahora (en caché), nunca durante un cuadro.
+	_far_mesh = PrinterModel.far_body(_printer_id, _spool_color)
 	_filament = model.get_node_or_null("Spool/Filament")
 	if _filament == null:
 		_filament = model.get_node_or_null("Resin")
@@ -151,6 +181,7 @@ func _ready() -> void:
 		_head_rest = _marker(model, "HeadRest")
 		_head_park_x = _marker(model, "HeadPark").x
 	_build_piece_parts(model)
+	_far_hidden = _far_parts(model)
 	Events.printer_changed.connect(_on_printer_changed)
 	Events.clock_ticked.connect(_on_clock_ticked)
 	Events.game_loaded.connect(_on_game_loaded)
@@ -173,6 +204,46 @@ func _build_piece_parts(model: Node3D) -> void:
 		var block: MeshInstance3D = PropBuilder.box(model, "Tray%d" % i, Vector3.ONE * TRAY_BLOCK, position, WorldPalette.solid(WorldPalette.PLASTIC_BEIGE))
 		block.visible = false
 		_tray.append(block)
+	if not _casts_shadow:
+		for part: MeshInstance3D in [_piece, _spaghetti] + _tray:
+			part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+
+
+## Lo que se esconde con el zoom lejos, según el modo: lo que se mueve, el
+## carrete (las abiertas) y, en la de resina, la tapa con lo de adentro.
+func _far_parts(model: Node3D) -> Array[Node3D]:
+	var names: Array[String] = []
+	match _mode:
+		Mode.OPEN:
+			names = ["Gantry", "PrintHead", "Spool"]
+		Mode.CLOSED:
+			# La cama dorada se queda: sin ella, de lejos, adentro se ve vacío.
+			names = ["PrintHead"]
+		Mode.RESIN:
+			names = ["Plate", "Resin", "Lid", "PieceSpot"]
+	var parts: Array[Node3D] = []
+	for part_name: String in names:
+		var part: Node3D = model.get_node_or_null(part_name)
+		if part != null:
+			parts.append(part)
+	return parts
+
+
+## La versión lejana (zoom lejos) o la de siempre. Los nodos no cambian:
+## solo la malla de "Body" y lo que se ve.
+func set_far(far: bool) -> void:
+	if far == _far:
+		return
+	_far = far
+	_body.mesh = _far_mesh if far else _near_mesh
+	for part: Node3D in _far_hidden:
+		part.visible = not far
+	_show_tray(_tray_count)
+
+
+## Si está en la versión lejana.
+func is_far() -> bool:
+	return _far
 
 
 ## Pone el halo de noche de la impresora en `field`, bajo la huella de
@@ -182,7 +253,8 @@ func _build_piece_parts(model: Node3D) -> void:
 func attach_halo(field: HaloField) -> void:
 	_halos = field
 	var model: Node3D = get_parent()
-	var body: AABB = (model.get_node("Body") as MeshInstance3D).get_aabb()
+	# La malla de siempre: el halo no cambia con el zoom.
+	var body: AABB = _near_mesh.get_aabb()
 	var center: Vector3 = body.get_center()
 	var base: Transform3D = field.get_parent_node_3d().global_transform.affine_inverse() * model.global_transform * Transform3D(Basis.IDENTITY, Vector3(center.x, 0.0, center.z))
 	_halo = field.add(base, Vector2(body.size.x, body.size.z))
@@ -378,9 +450,11 @@ func _set_swing(on: bool) -> void:
 	_swing.tween_property(_head, "position:x", middle - HEAD_SWING * _scale, HEAD_SWING_TIME)
 
 
+## Los primeros `count` bloquecitos de la bandeja (ninguno con el zoom lejos).
 func _show_tray(count: int) -> void:
+	_tray_count = count
 	for i: int in _tray.size():
-		_tray[i].visible = i < count
+		_tray[i].visible = i < count and not _far
 
 
 ## La pieza recién terminada da un saltito (la de resina no: cuelga) y suelta

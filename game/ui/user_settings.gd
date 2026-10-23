@@ -1,9 +1,13 @@
 class_name UserSettings
 extends RefCounted
-## Preferencias del jugador que no son parte de la partida: por ahora, qué
-## pistas ya vio. Se guardan aparte de la partida, en user://settings.cfg.
+## Preferencias del jugador que no son parte de la partida: qué pistas ya vio
+## y la calidad gráfica (GraphicsQuality). Se guardan aparte de la partida,
+## en user://settings.cfg.
 
 const SECTION: String = "hints"
+## Sección de la calidad gráfica: el modo elegido y si el automático ya bajó
+## a Baja (GraphicsQuality).
+const GRAPHICS_SECTION: String = "graphics"
 
 const PLAYER_PATH: String = "user://settings.cfg"
 ## En las pruebas y herramientas (RunMode) se usa otro archivo, para no tocar
@@ -31,4 +35,15 @@ func mark_seen(hint_id: String) -> void:
 	if has_seen(hint_id):
 		return
 	_config.set_value(SECTION, hint_id, true)
+	_config.save(path)
+
+
+## Un valor de la calidad gráfica (`fallback` si no está).
+func graphics_value(key: String, fallback: Variant) -> Variant:
+	return _config.get_value(GRAPHICS_SECTION, key, fallback)
+
+
+## Cambia un valor de la calidad gráfica y lo guarda.
+func set_graphics_value(key: String, value: Variant) -> void:
+	_config.set_value(GRAPHICS_SECTION, key, value)
 	_config.save(path)

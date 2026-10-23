@@ -13,16 +13,17 @@ extends SubViewportContainer
 ##
 ## Las cuentas entre la interfaz y el dibujo del mundo pasan por view_per_ui
 ## (k), ui_to_view() y view_to_ui().
-
-## Tope del ancho interno (píxeles) y suavizado de bordes del nivel de calidad
-## Alto (biblia de arte §2.2). Los niveles de calidad llegan más adelante.
-const MAX_WIDTH_HIGH: float = 1080.0
-const MSAA_HIGH: Viewport.MSAA = Viewport.MSAA_4X
+##
+## El tope del ancho y el suavizado salen del nivel de calidad gráfica
+## (GraphicsQuality, biblia §2.2: Alta 1080 px y MSAA 4×, Baja 720 px y
+## 2×); si cambia, se vuelve a ajustar. Mientras el modo automático mide los
+## primeros cuadros, este nodo le pasa cuánto dura cada uno.
 
 ## Píxeles del dibujo del mundo por cada píxel de la interfaz (k).
 var view_per_ui: float = 1.0
 
 var _view: SubViewport
+var _quality: GraphicsQuality
 
 
 func _init() -> void:
@@ -33,18 +34,25 @@ func _init() -> void:
 
 func _ready() -> void:
 	_view = get_node("SubViewport")
-	# El SubViewport no hereda el suavizado del proyecto.
-	_view.msaa_3d = MSAA_HIGH
 	# Solo hay un sol: ninguna luz de punto ni de foco necesita sombras.
 	_view.positional_shadow_atlas_size = 0
 	# El tamaño lo pone _fit(), no los anclajes.
 	set_anchors_preset(Control.PRESET_TOP_LEFT)
+	_quality = GraphicsQuality.current
+	_quality.changed.connect(_apply_quality)
 	var parent: Control = get_parent() as Control
 	if parent != null:
 		parent.resized.connect(_fit)
 	# La pantalla física puede cambiar sin que cambie la virtual.
 	get_viewport().size_changed.connect(_fit)
-	_fit()
+	_apply_quality()
+
+
+## Mientras el automático mide: la duración de cada cuadro de verdad.
+func _process(delta: float) -> void:
+	_quality.add_frame(delta)
+	if not _quality.is_measuring():
+		set_process(false)
 
 
 ## k para una pantalla de `physical_width` píxeles físicos y `ui_width` de
@@ -65,6 +73,15 @@ func view_to_ui(view_point: Vector2) -> Vector2:
 	return get_global_transform() * view_point
 
 
+## El nivel de calidad: el suavizado (el SubViewport no hereda el del
+## proyecto) y el tope del ancho. Sin pantalla no hay cuadros de verdad que
+## medir.
+func _apply_quality() -> void:
+	_view.msaa_3d = _quality.msaa()
+	_fit()
+	set_process(_quality.is_measuring() and DisplayServer.get_name() != "headless")
+
+
 ## Tamaño y escala según la pantalla de ahora.
 func _fit() -> void:
 	var parent: Control = get_parent() as Control
@@ -72,7 +89,7 @@ func _fit() -> void:
 	if ui_size.x <= 0.0 or ui_size.y <= 0.0:
 		return
 	var physical_width: float = ui_size.x * get_viewport().get_final_transform().get_scale().x
-	view_per_ui = scale_for(physical_width, ui_size.x, MAX_WIDTH_HIGH)
+	view_per_ui = scale_for(physical_width, ui_size.x, _quality.max_width())
 	position = Vector2.ZERO
 	scale = Vector2.ONE / view_per_ui
 	size = (ui_size * view_per_ui).ceil()

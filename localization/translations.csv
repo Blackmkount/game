@@ -178,6 +178,36 @@ SETTINGS_CREDITS,Créditos,Credits
 SETTINGS_CREDITS_TEXT,"Hecho con Godot Engine. Tipografía Nunito (SIL Open Font License 1.1). Pruebas con GUT (MIT). Modelos, texturas e iconos hechos para este juego.","Made with Godot Engine. Nunito typeface (SIL Open Font License 1.1). Tests with GUT (MIT). Models, textures and icons made for this game."
 SETTINGS_NEW_GAME,Empezar partida nueva,Start a new game
 SETTINGS_NEW_GAME_CONFIRM,¿Seguro? Se borra tu partida. Toca otra vez,Sure? Your game will be erased. Tap again
+SETTINGS_GRAPHICS,Calidad gráfica,Graphics quality
+SETTINGS_GRAPHICS_AUTO,Automática,Automatic
+SETTINGS_GRAPHICS_HIGH,Alta,High
+SETTINGS_GRAPHICS_LOW,Baja,Low
+SETTINGS_GRAPHICS_NOTE,"Automática empieza en Alta y pasa a Baja si tu teléfono va lento. Baja quita las sombras del sol y dibuja con menos detalle. Ahora: %s.","Automatic starts on High and switches to Low if your phone runs slow. Low removes the sun shadows and draws with less detail. Now: %s."
+DEBUG_TITLE,Depuración,Debug
+DEBUG_CLOSE,Cerrar,Close
+DEBUG_LESS,Menos,Less
+DEBUG_MORE,Más,More
+DEBUG_FPS,%s cuadros por segundo · %s ms por cuadro,%s frames per second · %s ms per frame
+DEBUG_DRAW,Llamadas de dibujo: %s (mundo: %s) · triángulos: %s,Draw calls: %s (world: %s) · triangles: %s
+DEBUG_QUALITY,Calidad: %s (opción: %s),Quality: %s (option: %s)
+DEBUG_WORLD,Mundo: %s px de ancho · suavizado %s× · sombra del sol: %s,World: %s px wide · antialiasing %s× · sun shadow: %s
+DEBUG_PROBE,ColorProbe: %s · base %s → %s · sol %s → %s,ColorProbe: %s · base %s → %s · sun %s → %s
+DEBUG_PROBE_PENDING,midiendo,measuring
+DEBUG_PROBE_MEASURED,medido,measured
+DEBUG_PROBE_OUT_OF_RANGE,fuera de rango (valores por defecto),out of range (default values)
+DEBUG_PROBE_NO_SCREEN,sin pantalla,no screen
+DEBUG_FAR,Impresoras lejanas (zoom lejos): %s,Far printers (far zoom): %s
+DEBUG_HOUR,Hora del juego: %s,Game time: %s
+DEBUG_BUILD,Armado del cuarto: %s ms la primera vez · %s ms ahora,Room build: %s ms the first time · %s ms now
+DEBUG_YES,sí,yes
+DEBUG_NO,no,no
+DEBUG_TRY,"Probar (tu partida no cambia):","Try (your game does not change):"
+DEBUG_ROOM_START,Cuarto inicial,Starting room
+DEBUG_ROOM_FULL,Taller lleno,Full workshop
+DEBUG_MORNING,Mañana,Morning
+DEBUG_GOLDEN,Tarde,Afternoon
+DEBUG_NIGHT,Noche,Night
+DEBUG_TRIAL,Modo de prueba: no se guarda nada. Vuelve a abrir el juego (o recarga la página) para seguir con tu partida.,Test mode: nothing is saved. Open the game again (or reload the page) to continue your game.
 COLOR_BLANCO,Blanco,White
 COLOR_NEGRO,Negro,Black
 COLOR_GRIS,Gris,Gray

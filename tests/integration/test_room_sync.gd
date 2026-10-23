@@ -12,7 +12,6 @@ extends GutTest
 
 const MAIN_SCENE: PackedScene = preload("res://game/scenes/main.tscn")
 const SceneBudget: GDScript = preload("res://tests/helpers/scene_budget.gd")
-const FullRoom: GDScript = preload("res://tests/helpers/full_room.gd")
 const SEED: int = 1234
 ## Uid de la impresora del piso en una partida nueva.
 const FLOOR_PRINTER_UID: int = 2
@@ -296,7 +295,7 @@ func _load(state: GameState) -> void:
 ## los lugares libres).
 func _full_game() -> GameState:
 	var state: GameState = GameState.new_game(Game.rules, SEED)
-	FullRoom.fill(state, Game.rules)
+	DebugTools.fill_workshop(state, Game.rules)
 	return state
 
 

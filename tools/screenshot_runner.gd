@@ -19,6 +19,10 @@ extends Node
 ## saltó horas), termina de una vez lo que estaba haciendo (_settle_character):
 ## así una reacción no sigue en capturas que son de otra cosa.
 ##
+## La calidad gráfica (GraphicsQuality) la elige --quality (Alta, por
+## defecto): sin eso, la automática mediría los cuadros lentos de llvmpipe y
+## bajaría a Baja. 30_heroe_sin_hud_baja se saca siempre en Baja.
+##
 ## Antes de empezar escribe manifest.txt con los nombres de las capturas que
 ## va a sacar; después de cada una agrega una fila a budget.csv con lo que
 ## contó OpenGL al dibujar el mundo y la estimación sin pantalla de
@@ -27,7 +31,6 @@ extends Node
 
 const MAIN_SCENE: String = "res://game/scenes/main.tscn"
 const SceneBudget: GDScript = preload("res://tests/helpers/scene_budget.gd")
-const FullRoom: GDScript = preload("res://tests/helpers/full_room.gd")
 const CalibrationBoard := preload("res://tools/calibration_board.gd")
 ## Semilla de las partidas: los mismos mensajes en cada corrida.
 const SEED: int = 1234
@@ -79,6 +82,7 @@ const MAX_WALK_FRAMES: int = 300
 const ONLY_ALL: String = "all"
 const ONLY_ART: String = "art"
 const ONLY_CHARACTER: String = "char"
+## Lo que se puede pedir con --quality (GraphicsQuality.MODE_NAMES).
 const QUALITIES: Array[String] = ["auto", "high", "low"]
 ## Las capturas de cada grupo, en el orden en que se sacan.
 const GAME_SHOTS: Array[String] = [
@@ -94,12 +98,13 @@ const CHARACTER_SHOTS: Array[String] = [
 	"48_personaje_celebra", "49_personaje_falla", "47_perfil",
 ]
 const ART_SHOTS: Array[String] = [
-	"00_calibracion", "30_heroe_sin_hud", "31_normal_sin_hud", "34_impresora_y_escritorio", "45_pieza_creciendo_lejos",
+	"00_calibracion", "30_heroe_sin_hud", "30_heroe_sin_hud_baja", "31_normal_sin_hud", "34_impresora_y_escritorio", "45_pieza_creciendo_lejos",
 	"36_impresora_cerca", "46_tienda_impresoras", "39_compra_imprimiendose", "42_tarde_sin_hud", "41_tarde_con_hud", "35_noche_sin_hud",
 	"36b_noche", "44_alba_sin_hud", "26_familias_de_impresoras", "37_taller_lleno_sin_hud", "38_impresoras_de_cerca",
 	"43_taller_lleno_noche",
 ]
-## Columnas de budget.csv. gl_*: lo que contó OpenGL al dibujar el mundo
+## Columnas de budget.csv. quality: el nivel de calidad gráfica que se veía
+## (high o low). gl_*: lo que contó OpenGL al dibujar el mundo
 ## (WorldView/SubViewport); las llamadas suman las de color y las de sombra
 ## (en Compatibility 4.7.2 las de sombra ya vienen dentro de las visibles).
 ## estimated_draw_calls: tests/helpers/scene_budget.gd sobre Room, que no
@@ -165,18 +170,10 @@ const FULL_ROOM_SPOT: Vector2 = Vector2(-0.6, 1.6)
 const GOLDEN_HOUR: float = 17.25
 const NIGHT_HOUR: float = 22.0
 const DAWN_HOUR: float = 5.75
-## El taller de noche (43): en el nivel del taller (la decoración con la
-## tira LED) y, una tras otra, impresoras imprimiendo, listas, con una falla
-## (espagueti o warping, alternados) y sin trabajo (-1). La pieza que se
-## imprime va por la mitad.
-const WORKSHOP_LEVEL: int = 5
-const WORKSHOP_JOBS: Array[int] = [PrintJob.Status.PRINTING, PrintJob.Status.DONE, PrintJob.Status.FAILED, -1]
-const WORKSHOP_FAILURES: Array[String] = [FailureRules.SPAGHETTI, FailureRules.WARPING]
-const WORKSHOP_HALF_PIECE_SECONDS: int = 1800
 
 var _out: String = ""
 var _only: String = ONLY_ALL
-var _quality: String = "auto"
+var _quality: String = "high"
 var _planned: Array[String] = []
 var _captured: Array[String] = []
 var _budget_file: FileAccess
@@ -199,9 +196,12 @@ func _init(out_dir: String, only: String, quality: String) -> void:
 
 
 func _ready() -> void:
-	# Ajustes en un archivo aparte, para que las pistas se vean siempre.
+	# Ajustes en un archivo aparte, para que las pistas se vean siempre, y la
+	# calidad gráfica pedida.
 	UserSettings.path = "user://screenshots_settings.cfg"
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(UserSettings.path))
+	GraphicsQuality.current = GraphicsQuality.new(UserSettings.load_settings())
+	GraphicsQuality.current.set_mode(GraphicsQuality.mode_from_name(_quality))
 	_run.call_deferred()
 
 
@@ -547,6 +547,13 @@ func _art_room_shots() -> void:
 	_camera_point = ROOM_CENTER
 	await _frames(40)
 	await _capture("30_heroe_sin_hud")
+	# El mismo cuarto con la calidad Baja (sin sombra del sol, menos píxeles y
+	# suavizado; ColorProbe vuelve a medir) y de vuelta a la pedida.
+	GraphicsQuality.current.set_mode(GraphicsQuality.Mode.LOW)
+	await _frames(40)
+	await _capture("30_heroe_sin_hud_baja")
+	GraphicsQuality.current.set_mode(GraphicsQuality.mode_from_name(_quality))
+	await _frames(10)
 	_camera_point = null
 	_zoom(CameraRig.DEFAULT_ZOOM_INDEX)
 	await _frames(40)
@@ -678,7 +685,7 @@ func _families_room() -> void:
 ## presupuesto), entero y con las estanterías de cerca.
 func _full_room() -> void:
 	var state: GameState = GameState.new_game(Game.rules, SEED)
-	FullRoom.fill(state, Game.rules)
+	DebugTools.fill_workshop(state, Game.rules)
 	await _rebuild_main(state)
 	_hud.visible = false
 	_place_character(FULL_ROOM_SPOT)
@@ -695,10 +702,10 @@ func _full_room() -> void:
 	# impresoras en cada estado. Se carga como una partida (la luz de la hora,
 	# sin mezcla).
 	state = GameState.new_game(Game.rules, SEED)
-	FullRoom.fill(state, Game.rules)
+	DebugTools.fill_workshop(state, Game.rules)
 	state.game_seconds = roundi(NIGHT_HOUR * GameClock.SECONDS_PER_HOUR)
-	state.xp = Game.rules.levels.thresholds[WORKSHOP_LEVEL - 1]
-	_give_jobs(state)
+	state.xp = Game.rules.levels.thresholds[DebugTools.WORKSHOP_LEVEL - 1]
+	DebugTools.give_jobs(state, Game.rules)
 	await _rebuild_main(state)
 	_hud.visible = false
 	_place_character(FULL_ROOM_SPOT)
@@ -706,42 +713,6 @@ func _full_room() -> void:
 	_camera_point = ROOM_CENTER
 	await _frames(40)
 	await _capture("43_taller_lleno_noche")
-
-
-## Pone a trabajar las impresoras de `state` según WORKSHOP_JOBS, cada una
-## con un pedido y un color distintos, como en una partida guardada.
-func _give_jobs(state: GameState) -> void:
-	var order_ids: Array = Game.rules.orders.keys()
-	var color_ids: Array = Game.rules.colors.keys()
-	var now: int = state.game_seconds
-	var failures: int = 0
-	for i: int in state.printers.size():
-		var status: int = WORKSHOP_JOBS[i % WORKSHOP_JOBS.size()]
-		if status < 0:
-			continue
-		var printer: OwnedPrinter = state.printers[i]
-		var order: Order = Order.new(state.take_uid(), order_ids[i % order_ids.size()], now)
-		order.stage = Order.Stage.PRINTING
-		order.printer_uid = printer.uid
-		state.orders.append(order)
-		var job: PrintJob = PrintJob.new()
-		job.order_uid = order.uid
-		job.spool_uid = state.spools[0].uid
-		job.color_id = color_ids[i % color_ids.size()]
-		job.pieces_total = 1
-		job.piece_seconds = WORKSHOP_HALF_PIECE_SECONDS * 2
-		job.piece_started_at = now - WORKSHOP_HALF_PIECE_SECONDS
-		job.ends_at = now + WORKSHOP_HALF_PIECE_SECONDS
-		job.status = status as PrintJob.Status
-		if status == PrintJob.Status.DONE:
-			order.stage = Order.Stage.PRINTED
-			order.pieces_done = 1
-		elif status == PrintJob.Status.FAILED:
-			job.fails = true
-			job.failure_type = WORKSHOP_FAILURES[failures % WORKSHOP_FAILURES.size()]
-			job.ends_at = now
-			failures += 1
-		printer.job = job
 
 
 ## Vuelve a crear la escena principal con `state`, como al cargar la partida
@@ -947,6 +918,11 @@ func _pause_character(paused: bool) -> void:
 	character.camera_yaw = NAN if paused else _camera_yaw
 
 
+## El nivel de calidad gráfica que se ve ahora ("high" o "low").
+func _level_name() -> String:
+	return "low" if GraphicsQuality.current.level == GraphicsQuality.Level.LOW else "high"
+
+
 ## Guarda la captura (con la interfaz) y anota lo que costó dibujar el mundo.
 func _capture(file_name: String) -> void:
 	if file_name not in _planned:
@@ -961,7 +937,7 @@ func _capture(file_name: String) -> void:
 	var estimate: RefCounted = SceneBudget.measure(_room)
 	var window: Vector2i = get_tree().root.size
 	_budget_file.store_line("%s,%dx%d,%dx%d,%.3f,%s,%d,%d,%d,%d,%d,%d,%d" % [
-		file_name, window.x, window.y, sub.size.x, sub.size.y, _room.camera.size, _quality,
+		file_name, window.x, window.y, sub.size.x, sub.size.y, _room.camera.size, _level_name(),
 		sub.get_render_info(visible_type, Viewport.RENDER_INFO_DRAW_CALLS_IN_FRAME)
 			+ sub.get_render_info(shadow_type, Viewport.RENDER_INFO_DRAW_CALLS_IN_FRAME),
 		estimate.get("draw_calls"),

@@ -158,6 +158,29 @@ func test_bevel_cutoff_drops_only_the_small_bevels() -> void:
 	assert_eq(counts[1], 56, "Con corte, la del bisel chico sale sin bisel (12) y la otra lo mantiene (44)")
 
 
+## La versión lejana de las impresoras (PrinterParts.FAR_MIN_FEATURE) no
+## arma lo chico y corto (un botón, un reflejo, un tornillito), pero sí lo
+## largo aunque sea fino (una franja de color, una barra de luz).
+func test_min_feature_drops_only_small_and_short_parts() -> void:
+	var kit: KitMesh = KitMesh.new()
+	kit.min_feature = 0.016
+	kit.box(Vector3(0.05, 0.01, 0.003), Vector3.ZERO, 0.0)
+	assert_eq(kit.triangle_count(), 0, "Un botón chico no se arma")
+	kit.cylinder(0.004, 0.02, Vector3.ZERO, Vector3.ZERO, 8)
+	assert_eq(kit.triangle_count(), 0, "Un tornillito tampoco")
+	kit.box(Vector3(0.45, 0.008, 0.003), Vector3.ZERO, 0.0)
+	assert_eq(kit.triangle_count(), 12, "Una franja larga sí")
+	kit.cylinder(0.004, 0.37, Vector3.ZERO, Vector3.ZERO, 8)
+	assert_gt(kit.triangle_count(), 12, "Una varilla larga también")
+	var count: int = kit.triangle_count()
+	kit.box(Vector3(0.03, 0.03, 0.03), Vector3.ZERO, 0.0)
+	assert_eq(kit.triangle_count(), count + 12, "Lo que mide más que el mínimo, sí")
+	var everything: KitMesh = KitMesh.new()
+	everything.box(Vector3(0.05, 0.01, 0.003), Vector3.ZERO, 0.0)
+	assert_eq(everything.triangle_count(), 12, "Sin mínimo (0), todo se arma")
+	assert_eq(kit.copy().min_feature, 0.016, "La copia sigue con el mismo mínimo")
+
+
 func test_contact_occlusion_is_baked_into_the_vertices() -> void:
 	var standing: KitMesh = KitMesh.new()
 	standing.quad(Vector2(0.4, 0.5), Vector3(0.0, 0.25, 0.0))
