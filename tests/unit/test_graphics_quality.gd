@@ -50,6 +50,21 @@ func test_a_new_player_starts_automatic_on_high_and_measuring() -> void:
 	assert_true(quality.is_measuring())
 
 
+## Las pruebas, check.sh y las capturas (RunMode) arrancan siempre en Alta,
+## sin leer lo guardado: una corrida con ventana lenta guardaba que el
+## automático bajó a Baja y la siguiente fallaba (empezaba en Baja).
+func test_tools_start_on_high_whatever_was_saved() -> void:
+	var saved: UserSettings = UserSettings.load_settings()
+	saved.set_graphics_value(GraphicsQuality.MODE_KEY, GraphicsQuality.MODE_NAMES[GraphicsQuality.Mode.AUTO])
+	saved.set_graphics_value(GraphicsQuality.AUTO_LOW_KEY, true)
+	assert_eq(_new_quality().level, GraphicsQuality.Level.LOW, "Lo guardado dice Baja")
+	assert_true(RunMode.is_tool_run(), "Las pruebas son una herramienta")
+	var quality: GraphicsQuality = GraphicsQuality.initial()
+	assert_eq(quality.mode, GraphicsQuality.Mode.HIGH)
+	assert_eq(quality.level, GraphicsQuality.Level.HIGH)
+	assert_false(quality.is_measuring(), "Y no mide: los cuadros de una ventana no deciden nada")
+
+
 func test_automatic_drops_to_low_with_slow_frames_and_remembers_it() -> void:
 	var quality: GraphicsQuality = _new_quality()
 	watch_signals(quality)

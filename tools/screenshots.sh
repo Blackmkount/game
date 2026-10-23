@@ -17,6 +17,10 @@
 #                 virtual, que es lenta, suele bajar a Baja). El nivel que se
 #                 vio en cada captura queda en budget.csv.
 #
+# Tarda unos 5 minutos a 720x1280 en la pantalla virtual (dibuja sin tarjeta
+# de video) y más con más píxeles: a 1080x2400, unos 11. Godot se corta
+# después de TIMEOUT_SECONDS por cada 720x1280 de píxeles (nunca menos).
+#
 # Falla si Godot termina con error, si el registro tiene un error (de script,
 # de sombreador o del ejecutor, que avisa con "Capturas:") o si falta alguna
 # de las capturas de manifest.txt.
@@ -56,6 +60,12 @@ if [[ ! "$resolution" =~ ^([0-9]+)x([0-9]+)$ ]]; then
 fi
 # La pantalla virtual tiene que ser más grande que la ventana.
 screen="$((BASH_REMATCH[1] + 80))x$((BASH_REMATCH[2] + 120))x24"
+# Cada cuadro tarda más con más píxeles: el corte crece con ellos.
+TIMEOUT_SECONDS=600
+timeout_seconds=$((TIMEOUT_SECONDS * BASH_REMATCH[1] * BASH_REMATCH[2] / (720 * 1280)))
+if [[ "$timeout_seconds" -lt "$TIMEOUT_SECONDS" ]]; then
+	timeout_seconds="$TIMEOUT_SECONDS"
+fi
 
 out_dir="$ROOT_DIR/build/screenshots"
 rm -rf "${out_dir:?}"
@@ -67,7 +77,7 @@ trap 'rm -f "$log_file"' EXIT
 
 import_project > /dev/null
 set +e
-timeout 600 xvfb-run -a -s "-screen 0 $screen" "$GODOT_BIN" --path "$ROOT_DIR" \
+timeout "$timeout_seconds" xvfb-run -a -s "-screen 0 $screen" "$GODOT_BIN" --path "$ROOT_DIR" \
 	--resolution "$resolution" --rendering-driver opengl3 --audio-driver Dummy \
 	-s res://tools/screenshots.gd -- --out="$out_dir" "${runner_args[@]}" 2>&1 | tee "$log_file"
 status="${PIPESTATUS[0]}"

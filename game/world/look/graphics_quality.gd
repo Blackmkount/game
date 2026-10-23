@@ -53,8 +53,9 @@ const MODE_KEY: String = "mode"
 const AUTO_LOW_KEY: String = "auto_low"
 const MODE_NAMES: Dictionary[Mode, String] = {Mode.AUTO: "auto", Mode.HIGH: "high", Mode.LOW: "low"}
 
-## La calidad del juego. Las pruebas y las capturas ponen una propia.
-static var current: GraphicsQuality = GraphicsQuality.new(UserSettings.load_settings())
+## La calidad del juego (initial()). Las pruebas y las capturas ponen una
+## propia.
+static var current: GraphicsQuality = initial()
 
 var mode: Mode = Mode.AUTO
 var level: Level = Level.HIGH
@@ -76,6 +77,21 @@ func _init(settings: UserSettings) -> void:
 	_auto_low = bool(settings.graphics_value(AUTO_LOW_KEY, false))
 	level = _level_for_mode()
 	_measuring = mode == Mode.AUTO and not _auto_low
+
+
+## La calidad con que arranca el juego: la que eligió el jugador. En las
+## herramientas (RunMode: pruebas, check.sh, capturas) siempre Alta y sin
+## leer nada guardado, para que una corrida no dependa de otra (en una
+## ventana lenta, el automático de una corrida de pruebas guardaba que bajó a
+## Baja y la siguiente empezaba en Baja).
+static func initial() -> GraphicsQuality:
+	if not RunMode.is_tool_run():
+		return GraphicsQuality.new(UserSettings.load_settings())
+	var quality: GraphicsQuality = GraphicsQuality.new(UserSettings.new())
+	quality.mode = Mode.HIGH
+	quality.level = Level.HIGH
+	quality._measuring = false
+	return quality
 
 
 ## El modo escrito así ("auto", "high" o "low"); uno desconocido es AUTO.

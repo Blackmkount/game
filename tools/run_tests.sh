@@ -19,9 +19,15 @@ status="${PIPESTATUS[0]}"
 set -e
 
 # GUT se salta en silencio los archivos de prueba que no compilan, así que
-# también buscamos errores de carga en la salida.
+# también buscamos errores de carga en la salida. Y un sombreador que no se
+# arma: si el error sale mientras se prepara una prueba (before_each), GUT no
+# lo cuenta y todas las pruebas pasan igual.
 if grep -qE 'SCRIPT ERROR|Parse Error|Failed to load script' "$log_file"; then
 	echo "run_tests.sh: hay archivos de prueba con errores (revisa la salida de arriba)." >&2
+	exit 1
+fi
+if grep -qE 'SHADER ERROR|Shader compilation failed' "$log_file"; then
+	echo "run_tests.sh: hay sombreadores con errores (revisa la salida de arriba)." >&2
 	exit 1
 fi
 # Si algo cierra el programa a mitad de las pruebas, GUT no llega a imprimir

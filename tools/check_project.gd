@@ -2,10 +2,14 @@ extends SceneTree
 ## Carga todos los scripts y escenas del proyecto y termina con código 1 si
 ## alguno tiene errores. Lo usa tools/check.sh; no se ejecuta solo.
 ##
-## Se salta addons/ (código de terceros) y las carpetas con .gdignore.
+## Se salta addons/ (código de terceros) y las carpetas con .gdignore, salvo
+## los scripts de tools/ (las capturas y la hoja de calibración): Godot no
+## importa esa carpeta, pero sus scripts usan las clases del juego y un
+## cambio en ellas los puede romper sin que nada más lo note.
 
 const SKIPPED_DIRS: Array[String] = ["res://addons", "res://.godot"]
 const CHECKED_EXTENSIONS: Array[String] = ["gd", "tscn", "tres"]
+const TOOLS_DIR: String = "res://tools"
 
 var _failures: Array[String] = []
 var _checked: int = 0
@@ -13,6 +17,12 @@ var _checked: int = 0
 
 func _initialize() -> void:
 	_scan("res://")
+	# Este mismo script no: volver a cargarlo mientras corre lo rompe.
+	var running: String = (get_script() as Script).resource_path
+	for file_name: String in DirAccess.get_files_at(TOOLS_DIR):
+		var path: String = TOOLS_DIR.path_join(file_name)
+		if file_name.get_extension() == "gd" and path != running:
+			_check_file(path)
 	for failure: String in _failures:
 		printerr("FALLO: ", failure)
 	print("Archivos revisados: %d. Con errores: %d." % [_checked, _failures.size()])
