@@ -14,7 +14,8 @@ Lo desarrolla una sola persona con ayuda de Claude.
 | [`docs/PROGRESO.md`](docs/PROGRESO.md) | En qué vamos y cuál es el siguiente paso. |
 | [`docs/RUTA.md`](docs/RUTA.md) | Hacia dónde vamos: las fases del proyecto, sus tareas y por qué en ese orden. |
 | [`docs/DECISIONES.md`](docs/DECISIONES.md) | Por qué se tomó cada decisión técnica. |
-| [`docs/ESTILO.md`](docs/ESTILO.md) | Guía de estilo visual: pixel art, paleta, luz, interfaz e iconos. |
+| [`docs/ESTILO.md`](docs/ESTILO.md) | Guía de estilo visual "Mundo Impreso": la idea, la paleta, la luz, el presupuesto de dibujo, la interfaz y los iconos. |
+| [`docs/BIBLIA_ARTE.md`](docs/BIBLIA_ARTE.md) | La dirección de arte de Arte 2.0 con todos sus números (se guarda como referencia; lo vigente está en `ESTILO.md`). |
 | [`CLAUDE.md`](CLAUDE.md) | Reglas técnicas del proyecto (las lee Claude en cada sesión). |
 | [`docs/PROMPTS.md`](docs/PROMPTS.md) | Mensajes listos para pedirle trabajo a Claude: empezar fase, continuar, reportar errores, balance... |
 
@@ -49,7 +50,7 @@ core/          Lógica pura del juego (sin gráficos)
 data/          Números de balance en JSON
 game/          Escenas 3D, interfaz y cámara
 autoload/      Game, SaveManager y Events
-assets/        Modelos, sonidos y fuentes (con CREDITS.md)
+assets/        Fuentes e iconos (con CREDITS.md); los modelos se arman por código
 localization/  Textos del juego en español e inglés
 tests/         Pruebas automáticas (GUT)
 tools/         Scripts de trabajo

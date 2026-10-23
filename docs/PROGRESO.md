@@ -774,3 +774,38 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 
 **Siguiente paso sugerido:** que el dueño revise y mida en su teléfono (listas de arriba y del paso 15). Después, la Fase 1: tareas 3, 4 y 5.
 
+
+### 2026-10-23 — Arte 2.0, revisión final del arte
+
+Una revisión de todo Arte 2.0 desde ocho miradas (la versión web, errores de código, rendimiento, compatibilidad con teléfonos y la web, pruebas, reglas y documentos, cómo se ve y cómo se juega). Cada problema lo confirmaron dos revisores más antes de arreglarlo.
+
+**Qué se arregló**
+- **El personaje:** al despachar junto al rincón vuelve a festejar el cobro (puño arriba) y a saltar al subir de nivel (el gesto de embalar los cortaba). Si lo tocas mientras camina, se detiene, te saluda y queda de frente (antes llegaba y quedaba de espaldas). Al fallar una impresión se da vuelta hacia ti: la cara preocupada se ve.
+- **Tocar:** la estantería metálica se toca por sus tablas y postes; entre las tablas se toca lo que se ve detrás (el personaje, por ejemplo).
+- **Panel de depuración:** mientras pruebas una escena aparece abajo a la derecha el botón **"Salir de la prueba"**, que vuelve a tu partida tal como estaba (antes, al cerrar el panel no quedaba ninguna señal de que nada se guardaba). Con el taller lleno, "Mañana", "Tarde" y "Noche" lo vuelven a armar a esa hora con sus trabajos (antes, de noche estaban todos terminados). Muestra también los triángulos del mundo solo, y la flecha que en la web se veía como un cuadrito ya no está.
+- **Ajustes:** los botones de idioma y de calidad gráfica son del alto táctil de la guía (88 px).
+- **Rendimiento:** detrás de una sección (Tienda, Pedidos, Ajustes…) el mundo deja de dibujarse (menos batería y calor); las luces apagadas no se calculan; las burbujas laten sin volver a dibujarse en cada cuadro.
+- **Vistas 3D de la tienda y retratos:** ya no tienen un borde oscuro alrededor del modelo, hacen la misma sombra que el cuarto (ahora se ve un poco de sombra del cabezal en la cama) y se vuelven a dibujar cuando el juego termina de medir los colores del teléfono.
+- **Imagen:** la pared del fondo en la tarde dorada y el piso al mediodía ya no se queman (el sol de esas horas baja de 0,56 y 0,52 a 0,46); los destellos de "pieza lista" son estrellas verdes con centro dorado, más grandes, que se ven sobre el piso al sol; la cama está un poco más cerca de la cámara (ya no tapa la impresora de abajo de una estantería en el lugar 4 y deja pasar al personaje); el tubo de la Rayo Mini va hacia la columna (antes terminaba en el aire); los mechoncitos de la coronilla son más gruesos (ya no parecen cortes).
+- **Pruebas y herramientas:** la prueba de sombreadores revisa todos (faltaba uno y un error podía pasar callado); `check.sh` también revisa los scripts de las capturas; una corrida de pruebas ya no depende de la anterior; `screenshots.sh` a 1080x2400 ya no se corta por tiempo; el presupuesto mide el taller lleno en su nivel y el primer armado del juego.
+- **Código y documentos:** `room_view.gd` se dividió en partes (`RoomStage`, `RoomLights`, `CharacterReactions`); se corrigieron números y textos viejos de la biblia, la ruta, el README y fechas de las decisiones.
+
+**Verificado**
+- `check.sh`, `run_tests.sh` (776 pruebas, todas pasan; antes 755) y `screenshots.sh` (50 capturas) pasan en cada commit. Cada arreglo tiene su prueba, y cada prueba nueva se comprobó fallando con el error de antes. Detalle en `docs/DECISIONES.md` (revisión final).
+
+**Qué revisar en el teléfono** (versión web)
+1. Despacha un pedido con el personaje junto al rincón: puño arriba al cobrar (y salto si sube de nivel).
+2. Toca al personaje mientras camina hacia un punto: se detiene, saluda y queda de frente.
+3. En la Tienda: las impresoras sin borde oscuro, con un poco de sombra del cabezal sobre la cama.
+4. Panel `#debug` → "Taller lleno" → "Noche" → Cerrar: abajo a la derecha está "Salir de la prueba"; tócalo y vuelves a tu partida.
+5. La tarde (16:30–18:00): la pared del fondo cálida pero con su textura, no un color plano.
+6. Al terminar una pieza: tres estrellitas verdes y doradas que se ven sobre el piso al sol.
+7. Las mediciones del paso 15 (cuadros por segundo, llamadas, `ColorProbe`, tiempo de armado) siguen pendientes.
+
+**Problemas conocidos**
+- Una estantería en el lugar 5 tapa la cara del personaje en su lugar del comienzo (ya se le puede tocar entre las tablas). Que lo que lo tapa se vuelva transparente está en la tarea 3 de la Fase 2.
+- Tocar el basurero rojo a veces abre el escritorio: es el margen de toque a propósito (el basurero se ve más chico que un dedo).
+- De espaldas, los mechoncitos de la coronilla siguen con su línea de contorno (de frente ya se ven bien); quitársela necesitaría una marca nueva en el modelo.
+- Sigue sin medirse nada en un teléfono.
+
+**Siguiente paso sugerido:** que el dueño revise y mida en su teléfono (listas de arriba y del paso 15). Después, la Fase 1: tareas 3, 4 y 5.

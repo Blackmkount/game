@@ -14,9 +14,10 @@ extends Node3D
 ## caminar (grid) y dónde está cada cosa en la pantalla. Los gestos del
 ## jugador los interpreta WorldControls, desde la escena principal.
 ##
-## El personaje reacciona a lo que pasa (biblia de arte §7.8): RoomView
-## escucha las señales de Events y se lo cuenta a su CharacterAnimator (qué
-## impresora falló o terminó, si está cerca, si se modela, la hora).
+## El personaje reacciona a lo que pasa (biblia de arte §7.8): se lo cuenta
+## CharacterReactions, que arma con él. Lo que rodea al cuarto (el entorno,
+## el sol, la cámara y el fondo) lo arma RoomStage, y las luces que salen de
+## los muebles y lo que se les cuenta a los sombreadores, RoomLights.
 ##
 ## Lo que hay en el cuarto sigue al estado (sync_models, biblia §12.2): al
 ## cargar otra partida (Events.game_loaded) se arma lo que falta y se quita
@@ -34,14 +35,6 @@ extends Node3D
 ## guardan objetos que se tocan.
 signal models_changed
 
-const BACKDROP_SHADER: Shader = preload("res://game/world/look/backdrop.gdshader")
-const BASE_SHADOW_SHADER: Shader = preload("res://game/world/look/base_shadow.gdshader")
-const CAMERA_SIZE: float = 6.8
-const CAMERA_TARGET: Vector3 = Vector3(-0.15, 1.95, -0.15)
-## Proporción de pantalla (alto / ancho) para la que está pensado CAMERA_SIZE.
-## En teléfonos más altos se acerca un poco la cámara para llenar el espacio.
-const BASE_ASPECT: float = 16.0 / 9.0
-const MIN_ZOOM: float = 0.85
 ## Margen extra alrededor de cada objeto al tocarlo, en metros.
 const PICK_MARGIN: float = 0.08
 ## Las impresoras y los muebles ocupan un poco más en el piso que su dibujo.
@@ -63,8 +56,6 @@ const NO_GAME_HOUR: float = 8.0
 ## alejar, el cambio llega cuando la cámara casi terminó de moverse.
 const FAR_ZOOM_ENTER: float = 0.7
 const FAR_ZOOM_LEAVE: float = 0.86
-## Radio de la mancha de sombra suave bajo el personaje (biblia de arte §3.5).
-const CHARACTER_SHADOW_RADIUS: float = 0.36
 ## Las marcas de lugares libres (biblia §8.7) laten suave entre estos dos
 ## alfas, en este periodo (segundos), y se encienden (LIT) cuando el
 ## personaje está a MARKER_NEAR metros o menos, o con la tienda abierta.
@@ -81,14 +72,6 @@ const DESTINATION_FADE_TIME: float = 0.45
 const DESTINATION_RADIUS: float = 0.18
 const DESTINATION_LINE: float = 0.035
 const DESTINATION_HEIGHT: float = 0.01
-## Sombra del sol (biblia §2.6).
-const SUN_SHADOW_BIAS: float = 0.04
-const SUN_SHADOW_NORMAL_BIAS: float = 1.2
-const SUN_SHADOW_OPACITY: float = 0.9
-## Sombra suave bajo la base del diorama: tamaño respecto del cuarto y cuánto
-## más abajo que la base.
-const BASE_SHADOW_SCALE: float = 1.9
-const BASE_SHADOW_GAP: float = 0.06
 
 var camera: CameraRig
 var character: CharacterController
@@ -153,12 +136,11 @@ var _fixed_obstacles: Array[Rect2] = []
 ## Lo que se está imprimiendo en el cuarto (las compras que llegan).
 var _print_ins: Array[PrintIn] = []
 ## Lo que el animador del personaje necesita del cuarto: el escritorio (para
-## la cara concentrada), los cabezales de las impresoras (para mirarlos; ver
-## _watched_part) y qué impresoras tenían una pieza lista (para el pulgar
-## arriba al terminar).
+## la cara concentrada) y los cabezales de las impresoras (para mirarlos; ver
+## CharacterReactions.watched_part). Y lo que le cuenta lo que pasa.
 var _desk_area: Rect2 = Rect2()
 var _print_heads: Array[Node3D] = []
-var _printers_done: Dictionary[int, bool] = {}
+var _reactions: CharacterReactions
 ## El esqueleto del personaje (copia la pose de sus pivotes) y el punto
 ## sobre su cabeza donde va el globo de diálogo.
 var _rig: CharacterRig
@@ -192,10 +174,10 @@ class Placed:
 func _ready() -> void:
 	var started: int = Time.get_ticks_usec()
 	_quality = GraphicsQuality.current
-	_build_environment()
-	_build_camera()
+	day_cycle = RoomStage.build_environment(self)
+	camera = RoomStage.build_camera(self, day_cycle)
 	RoomShell.build(self)
-	_build_base_shadow()
+	RoomStage.build_base_shadow(self)
 	grid = WalkGrid.new(Rect2(-RoomShell.SIZE / 2.0, -RoomShell.SIZE / 2.0, RoomShell.SIZE, RoomShell.SIZE))
 	halos = HaloField.new()
 	add_child(halos)
@@ -345,97 +327,6 @@ func character_focus_point() -> Vector3:
 ## sus saltos y gestos).
 func speech_point() -> Vector3:
 	return _speech_anchor.global_position
-
-
-## Entorno de la biblia de arte §2.5: el ambiente, los reflejos y los
-## efectos del motor apagados (los calcula el sombreador del mundo, ver
-## game/world/look/) y tonemap lineal, para que la cuenta de color sea una
-## suma simple. Un solo sol con sombra; DayCycle lo orienta según la hora.
-func _build_environment() -> void:
-	var environment: Environment = Environment.new()
-	environment.background_mode = Environment.BG_COLOR
-	environment.background_color = Color(WorldPalette.BACKGROUND)
-	environment.ambient_light_source = Environment.AMBIENT_SOURCE_DISABLED
-	environment.reflected_light_source = Environment.REFLECTION_SOURCE_DISABLED
-	environment.tonemap_mode = Environment.TONE_MAPPER_LINEAR
-	var world_environment: WorldEnvironment = WorldEnvironment.new()
-	world_environment.name = "WorldEnvironment"
-	world_environment.environment = environment
-	add_child(world_environment)
-
-	var sun: DirectionalLight3D = DirectionalLight3D.new()
-	sun.name = "Sun"
-	sun.shadow_enabled = true
-	# Una sola sombra ortogonal para todo el cuarto: con la cámara en movimiento,
-	# las divisiones del modo por defecto se recalculan y los bordes tiemblan.
-	# Con cámara ortográfica, la sombra cubre de near a far de la cámara.
-	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
-	sun.shadow_bias = SUN_SHADOW_BIAS
-	sun.shadow_normal_bias = SUN_SHADOW_NORMAL_BIAS
-	sun.shadow_opacity = SUN_SHADOW_OPACITY
-	add_child(sun)
-
-	day_cycle = DayCycle.new()
-	day_cycle.name = "DayCycle"
-	day_cycle.sun = sun
-	add_child(day_cycle)
-	var half: float = RoomShell.SIZE / 2.0
-	RenderingServer.global_shader_parameter_set(&"cc_room", Vector4(-half, -half, RoomShell.SIZE, RoomShell.WALL_HEIGHT))
-	WindowSpec.publish()
-
-
-func _build_camera() -> void:
-	camera = CameraRig.new()
-	camera.name = "Camera"
-	add_child(camera)
-	var half: float = RoomShell.SIZE / 2.0 + RoomShell.WALL_THICKNESS
-	var room_bounds: AABB = AABB(Vector3(-half, 0.0, -half), Vector3(half + RoomShell.SIZE / 2.0, RoomShell.WALL_HEIGHT, half + RoomShell.SIZE / 2.0))
-	camera.configure(room_bounds, CAMERA_TARGET, _fitted_camera_size())
-	camera.current = true
-	_build_backdrop()
-	get_viewport().size_changed.connect(func() -> void: camera.set_base_size(_fitted_camera_size()))
-
-
-## Fondo degradado del diorama (biblia §8.10): un cuadro pegado a la cámara,
-## al fondo de lo que ve. Sus colores los pone DayCycle.
-func _build_backdrop() -> void:
-	var quad: QuadMesh = QuadMesh.new()
-	quad.size = Vector2.ONE * CameraRig.FAR * 4.0
-	var material: ShaderMaterial = ShaderMaterial.new()
-	material.shader = BACKDROP_SHADER
-	var backdrop: MeshInstance3D = MeshInstance3D.new()
-	backdrop.name = "Backdrop"
-	backdrop.mesh = quad
-	backdrop.material_override = material
-	backdrop.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	backdrop.position = Vector3(0.0, 0.0, -(CameraRig.FAR - 0.5))
-	camera.add_child(backdrop)
-	day_cycle.backdrop = material
-
-
-## Sombra suave bajo la base del diorama: lo apoya en el fondo.
-func _build_base_shadow() -> void:
-	var quad: QuadMesh = QuadMesh.new()
-	quad.size = Vector2.ONE * RoomShell.SIZE * BASE_SHADOW_SCALE
-	var material: ShaderMaterial = ShaderMaterial.new()
-	material.shader = BASE_SHADOW_SHADER
-	material.set_shader_parameter("color", Color(LookPalette.BASE_SHADOW, LookPalette.BASE_SHADOW_ALPHA))
-	var shadow: MeshInstance3D = MeshInstance3D.new()
-	shadow.name = "BaseShadow"
-	shadow.mesh = quad
-	shadow.material_override = material
-	shadow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	shadow.position = Vector3(0.0, RoomShell.BASE_BOTTOM - BASE_SHADOW_GAP, 0.0)
-	shadow.rotation_degrees = Vector3(-90.0, 0.0, 0.0)
-	add_child(shadow)
-
-
-func _fitted_camera_size() -> float:
-	var size: Vector2 = get_viewport().get_visible_rect().size
-	if size.x <= 0.0:
-		return CAMERA_SIZE
-	var aspect: float = size.y / size.x
-	return CAMERA_SIZE * clampf(sqrt(BASE_ASPECT / aspect), MIN_ZOOM, 1.0)
 
 
 ## Arma lo que sale del estado (muebles, impresoras, lugares libres), lo
@@ -676,7 +567,7 @@ func _rebuild_room(state: GameState) -> void:
 			view.attach_halo(halos)
 			view.attach_display(far_displays)
 	if _desk != null:
-		_add_desk_halos(_desk)
+		RoomLights.add_desk_halos(halos, _desk)
 	decor.add_night_lights(halos)
 
 
@@ -726,18 +617,18 @@ func _place_lights(state: GameState) -> void:
 			_desk_area = placed.item.footprint()
 	_publish_window_occluders(under_window, under_window_id)
 	if _desk != null:
-		_place_desk_lights(_desk)
+		RoomLights.place_desk(day_cycle, _desk)
 	else:
 		day_cycle.clear_light("desk_lamp")
 		day_cycle.clear_light("monitor")
 	if _floor_printer != null:
-		_place_printer_led(_floor_printer)
+		RoomLights.place_printer_led(day_cycle, _floor_printer)
 	else:
 		day_cycle.clear_light("printer_led")
 	_print_heads.clear()
 	for printer: OwnedPrinter in state.printers:
 		if _printers.has(printer.uid):
-			_print_heads.append(_watched_part(_printers[printer.uid].node))
+			_print_heads.append(CharacterReactions.watched_part(_printers[printer.uid].node))
 
 
 ## Pone a imprimirse lo que acaba de aparecer: los muebles y después las
@@ -817,43 +708,20 @@ func character_near(item: WorldInteractable) -> bool:
 
 
 ## Le cuenta al animador del personaje lo que tiene alrededor y lo conecta a
-## lo que pasa en la partida. Su azar cambia en cada partida (las capturas
-## le ponen una semilla fija).
+## lo que pasa en la partida (CharacterReactions). Su azar cambia en cada
+## partida (las capturas le ponen una semilla fija). Al subir de nivel la
+## decoración crece (la grilla de caminar no cambia).
 func _setup_animator() -> void:
 	var animator: CharacterAnimator = character.animator
 	animator.reseed(randi())
 	animator.desk_area = _desk_area
 	animator.watch_points = _print_heads
-	Events.order_delivered.connect(_on_order_delivered)
-	Events.print_failed.connect(_on_print_failed)
-	Events.level_up.connect(_on_level_up)
-	Events.offer_arrived.connect(_on_offer_arrived.unbind(1))
-	Events.printer_changed.connect(_on_printer_changed)
-	Events.computer_changed.connect(_on_computer_changed)
+	_reactions = CharacterReactions.new(self)
+	add_child(_reactions)
+	Events.level_up.connect(_show_decor_level)
 	Events.time_changed.connect(_on_time_changed)
 	Events.game_loaded.connect(_on_game_loaded)
 	_on_game_loaded()
-
-
-func _on_order_delivered(_order_uid: int, _order_id: String, _cents: int, _xp: int, late: bool) -> void:
-	character.animator.react(CharacterAnimator.Reaction.DELIVERED_LATE if late else CharacterAnimator.Reaction.DELIVERED)
-
-
-## Se agarra la cabeza de cara al jugador (se gira hacia la cámara, como al
-## saludar: si estaba mirando la impresora, la cara preocupada quedaba de
-## espaldas) y mira de reojo la impresora que falló. Con un panel abierto
-## sigue de frente al objeto del panel.
-func _on_print_failed(printer_uid: int, _failure_type: String) -> void:
-	character.animator.react(CharacterAnimator.Reaction.PRINT_FAILED, _print_head_of(printer_uid))
-	if character.animator.current_gesture() == CharacterGestures.Gesture.HANDS_ON_HEAD and not character.animator.panel_open:
-		character.face_camera()
-
-
-## Sube de nivel: el personaje salta y la decoración crece (la grilla de
-## caminar no cambia).
-func _on_level_up(level: int) -> void:
-	character.animator.react(CharacterAnimator.Reaction.LEVEL_UP)
-	_show_decor_level(level)
 
 
 ## La decoración del nivel `level`. La tira LED del taller enciende o apaga
@@ -870,66 +738,20 @@ func _level() -> int:
 	return OrderQueries.level(Game.state, Game.rules) if Game.state != null else RoomDecor.TIER_LEVELS[0]
 
 
-func _on_offer_arrived() -> void:
-	character.animator.react(CharacterAnimator.Reaction.OFFER)
-
-
-## Una impresora que termina su pieza con el personaje cerca: pulgar arriba
-## para el jugador (se gira hacia la cámara, como al saludar, y la mira de
-## reojo). Con un panel abierto sigue de frente al objeto del panel.
-func _on_printer_changed(printer_uid: int) -> void:
-	var printer: OwnedPrinter = Game.state.find_printer(printer_uid)
-	if printer == null:
-		return
-	var done: bool = OrderQueries.printer_status(Game.state, Game.rules, printer) == OrderQueries.PrinterStatus.DONE
-	var was_done: bool = _printers_done.get(printer_uid, false)
-	_printers_done[printer_uid] = done
-	if done and not was_done and character_near(item_for(WorldInteractable.Kind.PRINTER, printer_uid)):
-		character.animator.react(CharacterAnimator.Reaction.PRINTER_READY, _print_head_of(printer_uid))
-		if character.animator.current_gesture() == CharacterGestures.Gesture.THUMBS_UP and not character.animator.panel_open:
-			character.face_camera()
-
-
-func _on_computer_changed() -> void:
-	character.animator.modeling = Game.state.designing_uid >= 0
-
-
 ## Avanzó el reloj (un minuto de juego): la luz va hacia la hora nueva
-## mezclándose y el personaje sabe qué hora es (bosteza de noche).
+## mezclándose.
 func _on_time_changed(game_minutes: float) -> void:
 	day_cycle.go_to_hour(game_minutes / GameClock.MINUTES_PER_HOUR)
-	character.animator.game_minutes = game_minutes
 
 
 ## Partida nueva o cargada: el cuarto igual a su estado (sin efecto de
-## impresión), la luz de su hora de una vez (sin mezcla), el animador sin
-## reacciones pendientes y al día, y la decoración de su nivel.
+## impresión), la luz de su hora de una vez (sin mezcla), la decoración de
+## su nivel y el personaje sin reacciones pendientes y al día.
 func _on_game_loaded() -> void:
 	sync_models(false)
 	day_cycle.set_hour(Game.state.game_minutes / GameClock.MINUTES_PER_HOUR)
 	_show_decor_level(_level())
-	character.animator.reset()
-	_on_computer_changed()
-	character.animator.game_minutes = Game.state.game_minutes
-	_printers_done.clear()
-	for printer: OwnedPrinter in Game.state.printers:
-		_printers_done[printer.uid] = OrderQueries.printer_status(Game.state, Game.rules, printer) == OrderQueries.PrinterStatus.DONE
-
-
-## Lo que el personaje mira de una impresora: su cabezal o, en la de resina
-## (que no tiene), la placa.
-func _watched_part(printer: Node3D) -> Node3D:
-	for part: String in ["PrintHead", "PlateTop"]:
-		var node: Node3D = printer.get_node_or_null(part)
-		if node != null:
-			return node
-	return printer
-
-
-## Dónde está lo que se mira de una impresora (o el personaje, si ya no está).
-func _print_head_of(printer_uid: int) -> Vector3:
-	var printer: Node3D = get_node_or_null("Printer%d" % printer_uid)
-	return _watched_part(printer).global_position if printer != null else character.model.position
+	_reactions.reset()
 
 
 ## Lo que se toca de un modelo: la caja de sus mallas (no depende de su
@@ -975,27 +797,6 @@ func _build_destination() -> void:
 	_destination.visible = false
 
 
-## Las luces del escritorio (biblia §6.2): la lámpara (cc_pl0) en su
-## ampolleta y el monitor (cc_pl1) delante de la pantalla, en los marcadores
-## "LampBulb" y "ScreenGlow" del modelo.
-func _place_desk_lights(desk: Node3D) -> void:
-	day_cycle.place_light("desk_lamp", (desk.get_node("LampBulb") as Node3D).global_position)
-	day_cycle.place_light("monitor", (desk.get_node("ScreenGlow") as Node3D).global_position)
-
-
-## Los halos de noche del escritorio (ComputerDeskModel.night_lights): la
-## mancha de la lámpara sobre la mesa y el resplandor del monitor.
-func _add_desk_halos(desk: Node3D) -> void:
-	for light: Dictionary in ComputerDeskModel.night_lights():
-		halos.add_glow(desk.transform * (light["at"] as Transform3D), light["size"], light["color"])
-
-
-## La luz LED que alumbra la cama de la impresora del piso (cc_pl3), en su
-## marcador "BedLight".
-func _place_printer_led(printer: Node3D) -> void:
-	day_cycle.place_light("printer_led", (printer.get_node("BedLight") as Node3D).global_position)
-
-
 func _first_spool_color(state: GameState) -> String:
 	if state.spools.is_empty():
 		return WorldPalette.PLASTIC_BEIGE
@@ -1018,26 +819,12 @@ func _update_markers() -> void:
 ## cc_occ_b): el mueble del lugar 0, que está bajo la ventana (del escritorio,
 ## su tablero; sin mueble, ninguna caja), y la cama de la decoración.
 func _publish_window_occluders(under_window: Node3D, furniture_id: String = "") -> void:
-	window_occluder = AABB()
-	if under_window != null:
-		var local: AABB = ComputerDeskModel.table_box() if furniture_id == DeskSheet.FURNITURE_ID else PropBounds.local_aabb(under_window)
-		window_occluder = under_window.transform * local
+	window_occluder = RoomLights.window_box(under_window, furniture_id)
 	bed_occluder = RoomDecor.BED_BOX
-	_publish_box(&"cc_occ_a_c", &"cc_occ_a_h", window_occluder)
-	_publish_box(&"cc_occ_b_c", &"cc_occ_b_h", bed_occluder)
+	RoomLights.publish_occluders(window_occluder, bed_occluder)
 
 
-static func _publish_box(center_name: StringName, half_name: StringName, box: AABB) -> void:
-	var center: Vector3 = box.get_center()
-	var half: Vector3 = box.size / 2.0
-	RenderingServer.global_shader_parameter_set(center_name, Vector4(center.x, center.y, center.z, 0.0))
-	RenderingServer.global_shader_parameter_set(half_name, Vector4(half.x, half.y, half.z, 0.0))
-
-
-## Dónde está el personaje para los sombreadores: su mancha en el piso y la
-## cápsula que tapa el parche de la ventana (cc_char_pos).
+## Dónde está el personaje para los sombreadores (RoomLights).
 func _publish_character() -> void:
-	if character == null:
-		return
-	var feet: Vector3 = character.model.position
-	RenderingServer.global_shader_parameter_set(&"cc_char_pos", Vector4(feet.x, feet.y, feet.z, CHARACTER_SHADOW_RADIUS))
+	if character != null:
+		RoomLights.publish_character(character.model.position)

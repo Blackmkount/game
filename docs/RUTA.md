@@ -211,7 +211,7 @@ Son metas para el simulador, no reglas fijas. Aprobadas por el dueño y pasadas 
 | Tocar un botón | Se hunde y rebota | Clic suave | Muy leve | 2 |
 | Abrir o cerrar un panel | Sube desde abajo en 0,2 s | Deslizamiento | — | 2 |
 | Empieza una impresión | El cabezal se mueve, el carrete gira y la pantalla de la impresora muestra el % | Pitido y motores en bucle, distintos para cada familia de impresoras | Leve | 1 (básico) y 2 |
-| La pieza crece | Sube capa a capa, en escalones de un píxel | — | — | 1 |
+| La pieza crece | Sube capa a capa, de a una capa de 1 cm, con la capa caliente naranja arriba | — | — | 1 |
 | Termina | Burbuja ✓, brillo y la pieza da un salto | "Ding" | Leve | 1 |
 | Entregar y cobrar | Monedas vuelan de la impresora al contador, que sube rodando; "+$6" flotante; la barra de XP se llena | Caja registradora | Media | 1 (básico) y 2 |
 | Subir de nivel | Celebración en pantalla con confeti y tarjetas de lo desbloqueado ("¡Nuevo! Rayo X1") | Fanfarria corta | Fuerte | 2 |

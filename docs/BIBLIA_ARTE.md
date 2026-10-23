@@ -151,7 +151,7 @@ Todos se cargan con `preload` desde un script, para que `check.sh` los compile s
 | `cc_base_fix`, `cc_sun_fix`, `cc_sun_shadowed` | float | Modelo de color (§2.4) y si el sol del nivel actual tiene sombra |
 | `cc_anim_time` | float | Tiempo de animación (polvo, cortina, plantas). Lo avanza `RoomView.step()`; las capturas lo congelan |
 
-Son unos 35 globales (el límite web es 1024). En las vistas de la tienda y los retratos, que tienen su propio mundo, un `instance uniform float preview_light` cambia el ambiente por una luz de estudio fija y `instance uniform float px_m_override` fija el grosor del contorno.
+Son unos 35 globales (el límite web es 1024). En las vistas de la tienda y los retratos, que tienen su propio mundo, un `instance uniform float preview_light` cambia el ambiente por una luz de estudio fija y `instance uniform float px_m_override` fija el grosor del contorno. *(Hecho distinto: `preview_light` es un uniform del material, en una copia de cada material (`WorldPalette.preview_of`); como instance uniform en cada malla del kit no cabía en los 1.024 lugares del búfer de globales de la web. Ver `docs/DECISIONES.md` (paso 16) y `docs/ESTILO.md`.)*
 
 ### 3.3 Atributos de vértice (mallas del kit)
 
@@ -179,7 +179,7 @@ Son unos 35 globales (el límite web es 1024). En las vistas de la tienda y los 
 
 - **Capas** (solo en lo que fue impreso en la historia: pieza, bandeja, base del diorama, cortes de pared, figuritas, macetas y portalápices impresos): crestas que inclinan la normal `sin(2π·y/capa) × 0,38`, bandas claras y surcos oscuros con fuerza `clamp(capa × 14; 0,07; 0,36)`. **Se apagan cuando una capa mide menos de 1,3 px** (`fwidth`): nunca centellean.
   - Altos de capa: base 2,4 cm, cortes de pared 1,2 cm, pieza/bandeja/filamento 1 cm, figuritas 3–4,5 mm.
-- **Capa caliente:** `instance uniform float hot_y` (alto en el mundo del borde de arriba). Banda de grosor `max(PieceModel.LAYER_STEP; 2 × cc_px_m)`, color `#ff8a3d`, luz propia 1,4. Con zoom lejos sigue midiendo 2 px: **el crecimiento se ve en cualquier zoom**.
+- **Capa caliente:** `instance uniform float hot_y` (alto en el mundo del borde de arriba). *(Hecho distinto: `hot_top`, en el espacio de la malla de la pieza, solo en la variante `kit_printing`; ver `docs/DECISIONES.md` y `docs/ESTILO.md`.)* Banda de grosor `max(PieceModel.LAYER_STEP; 2 × cc_px_m)`, color `#ff8a3d`, luz propia 1,4. Con zoom lejos sigue midiendo 2 px: **el crecimiento se ve en cualquier zoom**.
 - **Oclusión** (todo multiplicado y teñido hacia índigo: `mix(blanco, #c7ccff, 1 − ao) × ao`, nunca gris):
   - Horneada en los vértices: −35 % en el contacto, se desvanece en 12–16 cm; caras que miran hacia abajo −25 %.
   - Uniones piso-pared y rincón: −40 % dentro de 0,35 m.
@@ -710,7 +710,7 @@ Medido con el contador sin pantalla (`tests/helpers/scene_budget.gd`, que coinci
 | 16 impresoras (5 estanterías + piso) | **≤ 200** (meta 150) | ≤ 60.000 | ≤ 100.000 | ≤ 18 | igual |
 | Garaje de 40 (Fase 4, estimado) | ≤ 350 | ≤ 70.000 | ≤ 100.000 | ≤ 20 | igual |
 
-Hoy: 333 y 1.204 llamadas. Otras metas: ≤ 15 mallas que dan sombra y ≤ 12 superficies transparentes en el cuarto inicial; armar la escena principal con las mallas en caché ≤ 40 ms sin pantalla; primer armado ≤ 400 ms en escritorio (si en el teléfono pasa de 1 s, hornear); **0 asignaciones de memoria en `_process`**.
+Antes de Arte 2.0: 334 y 1.042 llamadas; al cerrar Arte 2.0 (2026-10-23): 38 y 133 (148 con trabajos). Otras metas: ≤ 15 mallas que dan sombra y ≤ 12 superficies transparentes en el cuarto inicial; armar la escena principal con las mallas en caché ≤ 40 ms sin pantalla; primer armado ≤ 400 ms en escritorio (si en el teléfono pasa de 1 s, hornear); **0 asignaciones de memoria en `_process`**.
 
 **Cómo se llega:** una malla por objeto, un material compartido, sin contorno en el mundo, contorno del personaje sin sombra, impresoras de mueble con solo `Body` dando sombra, `MultiMesh` para halos, polvo y destellos, versión lejana de las impresoras a zoom lejos (piezas móviles ocultas: los nodos siguen existiendo), mapa de oclusión del piso en textura.
 

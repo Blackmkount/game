@@ -217,7 +217,7 @@ func test_the_face_atlas_has_eight_expressions_in_cells_of_128_px() -> void:
 	for y: int in FacePainter.CELL:
 		if image.get_pixel(eye.x, y).a > 0.5:
 			rows += 1
-	var meters_per_pixel: float = RoomView.CAMERA_SIZE / 720.0
+	var meters_per_pixel: float = RoomStage.CAMERA_SIZE / 720.0
 	assert_gte(rows * FacePainter.HEIGHT / FacePainter.CELL / meters_per_pixel, 6.0, "Ojos legibles con el zoom normal")
 
 
