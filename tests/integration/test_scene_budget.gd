@@ -37,6 +37,12 @@ const START_MAX_TOTAL_TRIANGLES: int = 80000
 const START_MAX_MATERIALS: int = 15
 const START_MAX_SHADOW_MESHES: int = 9
 const START_MAX_TRANSPARENT: int = 9
+## En la tarde dorada y al alba (paso 13) se ven a la vez los halos (las
+## luces de noche a medias) y el polvo del haz: una superficie transparente
+## y un material más que de mañana o de noche (medido: 39 llamadas, 15
+## materiales y 10 transparentes). Tope propio de esas horas, el medido, bajo
+## el final de la biblia (12); el de la mañana y la noche no cambia.
+const START_MAX_TRANSPARENT_HALOS_AND_DUST: int = 10
 ## El personaje (biblia §5.2): cuerpo y cabeza con su sombra y su contorno, y
 ## los triángulos de sus mallas (el contorno comparte la malla).
 const CHARACTER_MAX_DRAW_CALLS: int = 6
@@ -68,8 +74,13 @@ const FULL_MAX_TRANSPARENT: int = 12
 const BUILD_RUNS: int = 5
 const BUILD_MAX_MSEC: float = 120.0
 const BUILD_GOAL_MSEC: float = 40.0
-## La hora de la medida de noche (las 22:00; en horas de juego).
-const NIGHT_HOUR: int = 22
+## Las horas de las medidas con luz de noche (en horas de juego): la noche
+## (22:00) y las dos horas que tienen a la vez halos (cc_night 0,2–0,3) y
+## polvo del haz, las de más llamadas del día: la tarde dorada (17:00) y el
+## alba (5:45).
+const NIGHT_HOUR: float = 22.0
+const GOLDEN_HOUR: float = 17.0
+const DAWN_HOUR: float = 5.75
 
 var _main: Control
 var _previous_processing: bool
@@ -131,29 +142,15 @@ func test_a_full_room_fits_the_mobile_budget() -> void:
 ## sumada) y se apaga el polvo del haz: los dos cuartos caben en los mismos
 ## topes, con la misma luz única.
 func test_the_night_fits_the_same_budget() -> void:
-	Game.state.game_seconds = NIGHT_HOUR * GameClock.SECONDS_PER_HOUR
-	var start: RefCounted = await _measure()
-	gut.p("Cuarto inicial de noche: " + String(start.call("report")))
-	assert_true((_main.get_node("WorldView/SubViewport/Room/Halos") as Node3D).visible, "Es de noche: los halos se ven")
-	assert_lte(start.get("draw_calls"), START_MAX_DRAW_CALLS, "Llamadas de dibujo de noche")
-	assert_lte(start.get("visible_triangles"), START_MAX_VISIBLE_TRIANGLES, "Triángulos en la pasada de color de noche")
-	assert_lte(start.call("total_triangles"), START_MAX_TOTAL_TRIANGLES, "Triángulos con la pasada de sombra de noche")
-	assert_lte(start.get("transparent_surfaces"), START_MAX_TRANSPARENT, "Superficies transparentes de noche")
-	assert_lte((start.get("materials") as Dictionary).size(), START_MAX_MATERIALS, "Materiales de noche")
-	_assert_one_sun_and_everything_measured(start)
-	_main.queue_free()
-	await wait_process_frames(1)
-	Game.reset_game(SEED)
-	FullRoom.fill(Game.state, Game.rules)
-	Game.state.game_seconds = NIGHT_HOUR * GameClock.SECONDS_PER_HOUR
-	var full: RefCounted = await _measure()
-	gut.p("Cuarto lleno de noche: " + String(full.call("report")))
-	assert_lte(full.get("draw_calls"), FULL_MAX_DRAW_CALLS, "Llamadas de dibujo de noche")
-	assert_lte(full.get("visible_triangles"), FULL_MAX_VISIBLE_TRIANGLES, "Triángulos en la pasada de color de noche")
-	assert_lte(full.call("total_triangles"), FULL_MAX_TOTAL_TRIANGLES, "Triángulos con la pasada de sombra de noche")
-	assert_lte(full.get("transparent_surfaces"), FULL_MAX_TRANSPARENT, "Superficies transparentes de noche")
-	assert_lte((full.get("materials") as Dictionary).size(), FULL_MAX_MATERIALS, "Materiales de noche")
-	_assert_one_sun_and_everything_measured(full)
+	await _assert_both_rooms_fit_at(NIGHT_HOUR, "de noche", false)
+
+
+## En la tarde dorada y al alba se ven a la vez los halos (las luces de noche
+## a medias) y el polvo del haz: las horas de más llamadas del día, en los
+## mismos topes.
+func test_the_golden_hour_and_the_dawn_fit_the_same_budget() -> void:
+	await _assert_both_rooms_fit_at(GOLDEN_HOUR, "en la tarde dorada", true)
+	await _assert_both_rooms_fit_at(DAWN_HOUR, "al alba", true)
 
 
 func test_the_main_scene_builds_fast_with_cached_meshes() -> void:
@@ -184,6 +181,34 @@ func _assert_one_sun_and_everything_measured(budget: RefCounted) -> void:
 	assert_eq(world.get("unmeasured"), [] as Array[String], "Todo lo que se dibuja se mide")
 	assert_eq(world.get("draw_calls"), budget.get("draw_calls"), "Todo lo que dibuja el mundo está dentro de Room")
 	assert_eq(world.call("total_triangles"), budget.call("total_triangles"), "Todos los triángulos están dentro de Room")
+
+
+## Mide el cuarto inicial y el lleno a la hora `hour` (horas de juego)
+## contra sus topes de siempre, con los halos encendidos; `dust`: si a esa
+## hora se ve también el polvo del haz (el inicial tiene entonces una
+## transparente más, START_MAX_TRANSPARENT_HALOS_AND_DUST).
+func _assert_both_rooms_fit_at(hour: float, label: String, dust: bool) -> void:
+	for full: bool in [false, true]:
+		Game.reset_game(SEED)
+		if full:
+			FullRoom.fill(Game.state, Game.rules)
+		Game.state.game_seconds = roundi(hour * GameClock.SECONDS_PER_HOUR)
+		var budget: RefCounted = await _measure()
+		var what: String = "Cuarto %s %s" % ["lleno" if full else "inicial", label]
+		gut.p(what + ": " + String(budget.call("report")))
+		var room: RoomView = _main.get_node("WorldView/SubViewport/Room")
+		assert_true(room.halos.visible, what + ": los halos se ven")
+		assert_eq(room.decor.dust.visible, dust, what + ": el polvo del haz")
+		assert_lte(budget.get("draw_calls"), FULL_MAX_DRAW_CALLS if full else START_MAX_DRAW_CALLS, what + ": llamadas de dibujo")
+		assert_lte(budget.get("visible_triangles"), FULL_MAX_VISIBLE_TRIANGLES if full else START_MAX_VISIBLE_TRIANGLES, what + ": triángulos en la pasada de color")
+		assert_lte(budget.call("total_triangles"), FULL_MAX_TOTAL_TRIANGLES if full else START_MAX_TOTAL_TRIANGLES, what + ": triángulos con la pasada de sombra")
+		assert_lte((budget.get("materials") as Dictionary).size(), FULL_MAX_MATERIALS if full else START_MAX_MATERIALS, what + ": materiales")
+		assert_lte(budget.get("shadow_meshes"), FULL_MAX_SHADOW_MESHES if full else START_MAX_SHADOW_MESHES, what + ": mallas que dan sombra")
+		var transparent: int = START_MAX_TRANSPARENT_HALOS_AND_DUST if dust else START_MAX_TRANSPARENT
+		assert_lte(budget.get("transparent_surfaces"), FULL_MAX_TRANSPARENT if full else transparent, what + ": superficies transparentes")
+		_assert_one_sun_and_everything_measured(budget)
+		_main.queue_free()
+		await wait_process_frames(1)
 
 
 func _measure() -> RefCounted:

@@ -649,3 +649,15 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 
 **Qué revisar en el teléfono:** lo mismo del paso 13 (nada visible cambió).
 
+
+### 2026-10-22 — Arte 2.0, paso 13, ronda de arreglos 2
+
+**Qué se hizo** (lo pidió la revisión; no cambia nada de lo que se ve)
+- **Las pruebas del día y la noche pasan por el cuarto de verdad:** la revisión mostró que dos errores posibles no los notaba ninguna prueba: que la luz se quede congelada en la hora de la carga, o que al cargar una partida la luz se mezcle en vez de aparecer de una vez. Ahora una prueba carga una partida de noche con el cuarto ya armado de mañana y otra deja correr los cuadros del juego de verdad mientras la luz llega a la hora del reloj. Comprobado rompiendo el código a propósito: con cada error, una prueba falla.
+- **La tarde dorada y el alba, medidas:** son las horas con más cosas a la vez (los halos de noche a medias y el polvo del haz). Una prueba nueva las mide: caben en los topes, salvo una superficie transparente más en el cuarto inicial (10 en vez de 9, bajo el tope final de 12); tiene su propio tope, anotado en `docs/DECISIONES.md`.
+- La prueba del piso de noche lee los números del sombreador en vez de copiarlos, y otra avisa si el balance acorta el minuto de juego por debajo de lo que dura la mezcla de la luz (2 s).
+
+**Verificado**
+- `check.sh` y `run_tests.sh` pasan: 696 pruebas (tres nuevas y cuatro adaptadas, detalle en `docs/DECISIONES.md`). `screenshots.sh` saca las 48 capturas; las de la tarde, la noche y el alba son idénticas al píxel a las de antes.
+
+**Qué revisar en el teléfono:** lo mismo del paso 13 (nada visible cambió).

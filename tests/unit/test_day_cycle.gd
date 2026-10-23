@@ -85,15 +85,12 @@ const MAX_TURN_PER_MINUTE: float = 2.0
 ## noche, se ve con al menos esta luminancia en la pantalla.
 const NIGHT_FLOOR_MIN: float = 70.0 / 255.0
 const NIGHT_HOURS: Array[float] = [20.25, 22.0, 0.0, 3.0, 5.0]
-## Lo mismo que hace el sombreador (kit_body.gdshaderinc, light(), y
-## world_light.gdshaderinc, cc_world_light()) en un punto del piso que mira
-## hacia arriba, sin oclusión, al sol y sin brillo: la envoltura y la mitad
-## del ancho del terminador, la luz de borde y el relleno (cuánto de la
-## dirección y desde dónde).
-const WRAP: float = 0.35
-const TERMINATOR: float = 0.18
-const RIM: float = 0.28
-const FILL_SPREAD: Vector2 = Vector2(0.6, 0.4)
+## Los sombreadores de donde la cuenta del piso (_floor_luma) lee sus
+## números: kit_body.gdshaderinc (light(): la envoltura y la mitad del ancho
+## del terminador del sol, la luz de borde) y world_light.gdshaderinc
+## (cc_world_light(): el relleno, cuánto de la dirección y desde dónde).
+const KIT_BODY: String = "res://game/world/look/kit_body.gdshaderinc"
+const WORLD_LIGHT: String = "res://game/world/look/world_light.gdshaderinc"
 ## Pesos de la luminancia (Rec. 709).
 const LUMA: Vector3 = Vector3(0.2126, 0.7152, 0.0722)
 ## Un cuadro a 60 por segundo.
@@ -201,15 +198,18 @@ func test_the_desk_lamp_is_off_at_ten_and_on_at_night() -> void:
 ## bajo). Además el piso de verdad (la baldosa más oscura del damero) nunca
 ## baja de eso, a ninguna hora.
 func test_the_night_floor_reads_on_a_dim_phone() -> void:
+	var shading: Dictionary[String, float] = _floor_shading()
+	for number: String in shading:
+		assert_false(is_nan(shading[number]), "La cuenta del piso lee «%s» del sombreador" % number)
 	var gray: Color = Color(0.5, 0.5, 0.5)
 	for hour: float in NIGHT_HOURS:
-		var luma: float = _floor_luma(DayCycle.sample(hour), gray)
+		var luma: float = _floor_luma(DayCycle.sample(hour), gray, shading)
 		assert_gte(luma, NIGHT_FLOOR_MIN, "Gris medio de noche a las %.2f: %.1f/255" % [hour, luma * 255.0])
-	gut.p("Gris medio del piso de noche: %.1f/255" % (_floor_luma(DayCycle.sample(22.0), gray) * 255.0))
+	gut.p("Gris medio del piso de noche: %.1f/255" % (_floor_luma(DayCycle.sample(22.0), gray, shading) * 255.0))
 	var tile: Color = Color(LookPalette.FLOOR_TILE_B)
 	var darkest: float = INF
 	for minute: int in 24 * 60:
-		darkest = minf(darkest, _floor_luma(DayCycle.sample(minute / 60.0), tile))
+		darkest = minf(darkest, _floor_luma(DayCycle.sample(minute / 60.0), tile, shading))
 	assert_gte(darkest, NIGHT_FLOOR_MIN, "La baldosa, a cualquier hora: %.1f/255" % (darkest * 255.0))
 
 
@@ -392,21 +392,46 @@ func _difference(a: Dictionary, b: Dictionary) -> Vector2:
 
 ## Luminancia en la pantalla de un punto del piso de color `albedo`, lejos
 ## de las luces del sombreador y de las paredes, al sol (sin sombra), con la
-## cuenta del sombreador: ambiente + relleno (pasada base) + sol (light()).
-func _floor_luma(light: Dictionary, albedo: Color) -> float:
+## cuenta del sombreador: ambiente + relleno (pasada base) + sol (light()),
+## en un punto del piso que mira hacia arriba, sin oclusión y sin brillo.
+## `shading`: los números del sombreador (_floor_shading()).
+func _floor_luma(light: Dictionary, albedo: Color, shading: Dictionary[String, float]) -> float:
 	var n: Vector3 = Vector3.UP
 	var ambient: Vector3 = light["ambient_sky"]
-	var f: float = clampf(n.dot(DayCycle.FILL_DIRECTION.normalized()) * FILL_SPREAD.x + FILL_SPREAD.y, 0.0, 1.0)
+	var f: float = clampf(n.dot(DayCycle.FILL_DIRECTION.normalized()) * shading["fill_spread"] + shading["fill_base"], 0.0, 1.0)
 	var fill: Vector3 = (light["fill"] as Vector3) * f * f
 	var to_sun: Vector3 = -(light["sun_direction"] as Vector3)
-	var wrap: float = clampf((n.dot(to_sun) + WRAP) / (1.0 + WRAP), 0.0, 1.0)
-	var diffuse: float = smoothstep(0.5 - TERMINATOR, 0.5 + TERMINATOR, wrap)
+	var wrap: float = clampf((n.dot(to_sun) + shading["wrap"]) / (1.0 + shading["wrap"]), 0.0, 1.0)
+	var diffuse: float = smoothstep(0.5 - shading["terminator"], 0.5 + shading["terminator"], wrap)
 	var to_camera: Vector3 = -RoomShell.view_direction()
-	var edge: float = pow(1.0 - clampf(n.dot(to_camera), 0.0, 1.0), 4.0) * RIM * diffuse
+	var edge: float = pow(1.0 - clampf(n.dot(to_camera), 0.0, 1.0), 4.0) * shading["rim"] * diffuse
 	var sun_color: Color = light["sun_color"]
 	var sun: Vector3 = Vector3(sun_color.r, sun_color.g, sun_color.b) * float(light["sun_energy"]) * (diffuse + edge)
 	var color: Vector3 = Vector3(albedo.r, albedo.g, albedo.b) * (ambient + fill + sun)
 	return color.clampf(0.0, 1.0).dot(LUMA)
+
+
+## Los números de los sombreadores que usa _floor_luma, leídos de los mismos
+## archivos (así la cuenta cambia con el sombreador). Lo que no se encuentra
+## queda en NAN.
+static func _floor_shading() -> Dictionary[String, float]:
+	return {
+		"wrap": _shader_number(KIT_BODY, "const float CC_SUN_WRAP"),
+		"terminator": _shader_number(KIT_BODY, "const float CC_SUN_TERMINATOR"),
+		"rim": _shader_number(KIT_BODY, "uniform float rim"),
+		"fill_spread": _shader_number(WORLD_LIGHT, "const vec2 CC_FILL_SPREAD", 0),
+		"fill_base": _shader_number(WORLD_LIGHT, "const vec2 CC_FILL_SPREAD", 1),
+	}
+
+
+## El número `index` (0 o 1) de `declaration = valor;` o de
+## `declaration = vec2(a, b);` en el sombreador `path`; NAN si no está.
+static func _shader_number(path: String, declaration: String, index: int = 0) -> float:
+	var pattern: RegEx = RegEx.create_from_string(declaration + " = (?:vec2\\()?(-?[0-9.]+)(?:, (-?[0-9.]+))?")
+	var found: RegExMatch = pattern.search(FileAccess.get_file_as_string(path))
+	if found == null or found.get_string(index + 1).is_empty():
+		return NAN
+	return found.get_string(index + 1).to_float()
 
 
 func _scaled(hex: String, energy: float) -> Vector3:

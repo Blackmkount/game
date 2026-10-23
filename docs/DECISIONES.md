@@ -964,3 +964,23 @@ Las tres fallan si `place_light()` escribe en el lugar de otra luz (probado romp
 
 ### Detalles
 - `RoomView` pasa los minutos a horas con `GameClock.MINUTES_PER_HOUR` (como las herramientas), no con un `60.0` escrito.
+
+## 2026-10-22 — Arte 2.0, paso 13, ronda de arreglos 2: las pruebas del día y la noche pasan por el cuarto de verdad
+
+### Las pruebas de integración ejercen lo que dicen (arregla un defecto que bloqueaba)
+**Decisión:** las dos pruebas de `tests/integration/test_day_night.gd` que miraban la carga y el reloj ahora pasan por el cableado de `RoomView` en vez de hacer el trabajo a mano.
+**Motivo:** nota de la revisión, con dos mutantes que pasaban toda la suite: (1) sin `day_cycle.step(delta)` en `RoomView.step` la luz quedaría congelada en la hora de la carga, y pasaba porque la prueba llamaba `cycle.step()` sola; (2) con `go_to_hour` en vez de `set_hour` en `RoomView._on_game_loaded` (contra la biblia §6.4, "al cargar, la hora sin mezcla") pasaba porque la prueba solo cargaba en órdenes en que los dos caminos hacen lo mismo. El paso 14 rehace la carga (`sync_models` en `game_loaded`): hace falta esta guarda ya.
+
+### Pruebas adaptadas (misma intención, más estrictas)
+- `test_a_game_saved_at_night_loads_at_night_without_blending` se partió en dos: `test_a_game_saved_at_night_opens_at_night` (el cuarto se arma con una partida de las 22:00: lo de antes) y `test_loading_a_game_shows_its_hour_without_blending` (con el cuarto ya armado de mañana se carga con `Game._start` una partida de las 22:00: sin mezcla, a las 22:00, con halos, sin polvo, noche por la ventana y la luna; después una partida nueva vuelve a la mañana de una vez, como antes). Ahora falla con el mutante 2.
+- `test_the_game_clock_moves_the_light_without_jumps`: la mezcla la llevan los cuadros del juego (`WorldControls` → `RoomView.step`), no la prueba: después de dos cuadros la hora que se ve ya se movió sin pasarse, y tras `BLEND_SECONDS` + 0,5 s reales llegó a la del reloj con el sol de esa hora (la energía del sol también se compara, no solo la hora interna). La hora de la prueba pasa de 11:00 a 11:30, la mitad exacta del paso mañana → mediodía, para que el sol cambie lo bastante (0,02) como para verlo. Ahora falla con el mutante 1.
+- `tests/integration/test_scene_budget.gd`, `test_the_night_fits_the_same_budget`: la medida pasa a un ayudante común (`_assert_both_rooms_fit_at`) que además mira, en los dos cuartos, que se vean los halos, que el polvo esté apagado y las mallas con sombra (antes no se miraban de noche).
+- `tests/unit/test_day_cycle.gd`, `test_the_night_floor_reads_on_a_dim_phone`: la cuenta del piso ya no copia los números del sombreador (envoltura 0,35, terminador 0,18, borde 0,28, relleno 0,6/0,4): los lee de `kit_body.gdshaderinc` (`CC_SUN_WRAP`, `CC_SUN_TERMINATOR`, `uniform float rim`) y de `world_light.gdshaderinc` (`CC_FILL_SPREAD`), y falla si no los encuentra. Si el sombreador cambia, la cuenta cambia con él. Los sombreadores solo cambiaron esos números escritos por constantes con nombre (el mismo valor: las capturas no cambian).
+
+### Pruebas nuevas
+- `test_scene_budget.gd`, `test_the_golden_hour_and_the_dawn_fit_the_same_budget`: el cuarto inicial y el lleno a las 17:00 y a las 5:45, las horas que tienen a la vez halos (las luces de noche a medias) y polvo del haz. Medido: inicial 39 llamadas, 15 materiales, **10 transparentes**; lleno 134 llamadas, 15 materiales, 7 transparentes.
+- `test_day_night.gd`, `test_each_blend_ends_before_the_next_game_minute`: `DayCycle.BLEND_SECONDS` (2 s) es menor que un minuto de juego en segundos reales (hoy 2,5 s, de `data/config.json`). Si el balance acorta el minuto, la prueba avisa que hay que acortar la mezcla (si no, la luz iría por detrás del reloj).
+
+### Un tope propio de transparentes para la tarde dorada y el alba
+**Decisión:** `START_MAX_TRANSPARENT_HALOS_AND_DUST = 10` en `test_scene_budget.gd`, solo para las horas con halos y polvo a la vez. `START_MAX_TRANSPARENT` (9, la mañana y la noche) no cambia.
+**Motivo:** la medida nueva encontró que el cuarto inicial tiene 10 superficies transparentes en esas horas desde el paso 13 (las 9 de la mañana más los halos), una más que el tope de 9, que salió de medir solo la mañana y la noche. Bajar el costo pediría apagar los halos en la tarde (la biblia §6.2 enciende la guirnalda a 0,2 y al alba a 0,3: se verían aparecer de golpe) o quitar el polvo del haz (lo más propio de la tarde dorada). El tope nuevo es lo medido y queda bajo el final de la biblia para el cuarto inicial (12). Lo revisa el paso 15 (rendimiento).

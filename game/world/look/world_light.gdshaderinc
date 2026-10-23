@@ -20,6 +20,9 @@ global uniform sampler2D cc_floor_ao : filter_linear, repeat_disable;
 const vec3 CC_AO_TINT = vec3(0.7804, 0.8, 1.0);
 // Envoltura de las luces del sombreador.
 const float CC_POINT_WRAP = 0.3;
+// Relleno: dot(n, dirección) × x + y (cuánto depende de la dirección y
+// desde dónde parte). La prueba del piso de noche lo lee de aquí.
+const vec2 CC_FILL_SPREAD = vec2(0.6, 0.4);
 // El parche de la ventana tapado por un mueble o el personaje queda a este
 // tanto.
 const float CC_PATCH_BLOCKED = 0.15;
@@ -178,7 +181,7 @@ float cc_occlusion(vec3 p, vec3 n) {
 vec3 cc_world_light(vec3 p, vec3 n, float ao, float fill_boost) {
 	vec3 ao_color = cc_ao_color(ao);
 	vec3 ambient = mix(cc_amb_ground, cc_amb_sky, clamp(n.y * 0.5 + 0.5, 0.0, 1.0));
-	float f = clamp(dot(n, normalize(cc_fill_dir)) * 0.6 + 0.4, 0.0, 1.0);
+	float f = clamp(dot(n, normalize(cc_fill_dir)) * CC_FILL_SPREAD.x + CC_FILL_SPREAD.y, 0.0, 1.0);
 	float fill_peak = max(max(cc_fill.r, cc_fill.g), max(cc_fill.b, 0.001));
 	vec3 fill = (cc_fill.rgb + cc_fill.rgb / fill_peak * cc_fill.w * fill_boost) * f * f;
 	vec3 lights = cc_point(p, n, cc_pl0, cc_pl0_col) + cc_point(p, n, cc_pl1, cc_pl1_col)

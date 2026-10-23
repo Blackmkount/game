@@ -35,7 +35,8 @@ uniform float emit = 0.0;
 #endif
 // Terminador: 0 suave (mundo), más alto más marcado (personaje).
 uniform float toon = 0.0;
-// Luz de borde, solo del lado iluminado y teñida con el color del objeto.
+// Luz de borde, solo del lado iluminado y teñida con el color del objeto
+// (la prueba del piso de noche lee de aquí la del mundo).
 uniform float rim = 0.28;
 #ifdef KIT_GLASS
 uniform float alpha = 0.5;
@@ -112,6 +113,12 @@ const float CC_TILE_BEVEL = 0.006;
 const float CC_PLANK = 0.11;
 // Paredes a contraluz: reciben al menos este tanto del sol.
 const float CC_WALL_WRAP = 0.35;
+// El sol en light(): envoltura y medio ancho del terminador del mundo (el
+// personaje lo marca más con `toon`). La prueba del piso de noche
+// (tests/unit/test_day_cycle.gd) hace la misma cuenta leyendo estos números
+// de aquí, junto con `rim` y CC_FILL_SPREAD (world_light.gdshaderinc).
+const float CC_SUN_WRAP = 0.35;
+const float CC_SUN_TERMINATOR = 0.18;
 // Capa caliente: color (se ve tal cual, brilla sola) y grosor mínimo
 // (PieceModel.LAYER_STEP).
 const vec3 CC_HOT_COLOR = vec3(1.0, 0.5412, 0.2392);
@@ -374,8 +381,8 @@ void fragment() {
 // envoltura, sombra recibida, brillo Blinn y luz de borde.
 void light() {
 	float ndl = dot(NORMAL, LIGHT);
-	float wrap = clamp((ndl + 0.35) / 1.35, 0.0, 1.0);
-	float soft = mix(0.18, 0.06, toon);
+	float wrap = clamp((ndl + CC_SUN_WRAP) / (1.0 + CC_SUN_WRAP), 0.0, 1.0);
+	float soft = mix(CC_SUN_TERMINATOR, 0.06, toon);
 	float diffuse = max(smoothstep(0.5 - soft, 0.5 + soft, wrap), v_wall_wrap);
 	float shade = smoothstep(0.1, 0.9, ATTENUATION);
 	float shine = 1.0 - ROUGHNESS;

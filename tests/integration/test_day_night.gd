@@ -1,7 +1,8 @@
 extends GutTest
 ## El día y la noche en el cuarto (Arte 2.0, paso 13; biblia de arte §6):
-## una partida cargada de noche se ve de noche de una vez; el reloj del juego
-## mueve la luz mezclándose; de noche se encienden la lámpara y el monitor
+## una partida cargada de noche se ve de noche de una vez (al armar el cuarto
+## y con el cuarto ya armado); los cuadros del juego llevan la luz hacia la
+## hora del reloj mezclándose; de noche se encienden la lámpara y el monitor
 ## del escritorio (con sus halos), la guirnalda parpadea y el borde de la
 ## base apenas brilla.
 
@@ -11,7 +12,12 @@ const SEED: int = 1234
 const DESK_UID: int = 1
 const NIGHT_HOUR: float = 22.0
 ## Una hora en medio del paso de la mañana al mediodía (10:30–12:30).
-const MIDDAY_SHIFT_HOUR: float = 11.0
+const MIDDAY_SHIFT_HOUR: float = 11.5
+## Lo mínimo que cambia la energía del sol entre la mañana y esa hora, para
+## que la prueba vea la mezcla.
+const ENERGY_STEP: float = 0.01
+## Segundos reales de más que se esperan sobre BLEND_SECONDS (cuadros lentos).
+const BLEND_MARGIN: float = 0.5
 
 var _main: Control
 var _room: RoomView
@@ -27,37 +33,64 @@ func after_each() -> void:
 	Game.set_process(_previous_processing)
 
 
-func test_a_game_saved_at_night_loads_at_night_without_blending() -> void:
-	var state: GameState = GameState.new_game(Game.rules, SEED)
-	state.game_seconds = roundi(NIGHT_HOUR * GameClock.SECONDS_PER_HOUR)
-	await _load(state)
+func test_a_game_saved_at_night_opens_at_night() -> void:
+	await _load(_night_game())
 	var cycle: DayCycle = _room.day_cycle
+	assert_false(cycle.is_blending(), "Al armar el cuarto, la hora de una vez")
+	assert_almost_eq(cycle.shown_hour(), NIGHT_HOUR, 0.001, "Se ven las 22:00")
+	_assert_night_is_shown()
+
+
+## Biblia §6.4: al cargar una partida con el cuarto ya armado
+## (Events.game_loaded → RoomView), su hora se aplica sin mezcla, también
+## cuando es más tarde que la que se veía; y una partida nueva vuelve a la
+## mañana de una vez.
+func test_loading_a_game_shows_its_hour_without_blending() -> void:
+	await _load(GameState.new_game(Game.rules, SEED))
+	var cycle: DayCycle = _room.day_cycle
+	assert_lt(cycle.shown_hour(), NIGHT_HOUR, "El cuarto empieza de mañana")
+	assert_false(_room.halos.visible, "De día no hay halos")
+	Game._start(_night_game())
 	assert_false(cycle.is_blending(), "Al cargar, la hora de una vez")
-	assert_almost_eq(cycle.shown_hour(), NIGHT_HOUR, 0.001)
-	assert_true(_room.halos.visible, "De noche se ven los halos")
-	assert_false(_room.decor.dust.visible, "Y no hay polvo en el haz")
-	assert_eq(WorldPalette.glow("ffffff", WorldPalette.WINDOW_VIEW).get_shader_parameter("mood"), Vector3(0.0, 0.0, 1.0), "Por la ventana, la noche")
-	var sun: DirectionalLight3D = _room.get_node("Sun")
-	assert_eq(sun.light_color, Color("9ab0ff"), "El sol es la luna")
-	# Una partida nueva (la mañana) también va de una vez.
+	assert_almost_eq(cycle.shown_hour(), NIGHT_HOUR, 0.001, "Se ven las 22:00 de la partida cargada")
+	_assert_night_is_shown()
 	Game.reset_game(SEED)
-	assert_false(cycle.is_blending())
-	assert_almost_eq(cycle.shown_hour(), Game.state.game_minutes / GameClock.MINUTES_PER_HOUR, 0.001)
+	assert_false(cycle.is_blending(), "Una partida nueva, de una vez")
+	assert_almost_eq(cycle.shown_hour(), Game.state.game_minutes / GameClock.MINUTES_PER_HOUR, 0.001, "Se ve su mañana")
 	assert_false(_room.halos.visible, "De día no")
 
 
+## El reloj llega a otra luz y la mezcla la llevan los cuadros del juego
+## (WorldControls → RoomView.step), no la prueba.
 func test_the_game_clock_moves_the_light_without_jumps() -> void:
 	await _load(GameState.new_game(Game.rules, SEED))
 	var cycle: DayCycle = _room.day_cycle
+	var sun: DirectionalLight3D = _room.get_node("Sun")
 	var start: float = cycle.shown_hour()
+	var start_energy: float = sun.light_energy
 	var minutes: float = MIDDAY_SHIFT_HOUR * GameClock.MINUTES_PER_HOUR - Game.state.game_minutes
 	Game.advance(minutes * GameClock.SECONDS_PER_MINUTE / Game.rules.game_seconds_per_real_second)
 	var hour: float = Game.state.game_minutes / GameClock.MINUTES_PER_HOUR
+	var energy: float = float(DayCycle.sample(hour)["sun_energy"])
+	assert_gt(absf(energy - start_energy), ENERGY_STEP, "La hora nueva tiene otra luz")
 	assert_true(cycle.is_blending(), "El reloj llegó a otra luz: se mezcla")
 	assert_almost_eq(cycle.shown_hour(), start, 0.001, "Nada saltó todavía")
-	cycle.step(DayCycle.BLEND_SECONDS)
-	assert_false(cycle.is_blending())
+	assert_almost_eq(sun.light_energy, start_energy, 0.0001, "El sol tampoco")
+	await wait_process_frames(2)
+	assert_gt(cycle.shown_hour(), start, "Con los cuadros, va llegando")
+	assert_lte(cycle.shown_hour(), hour, "Sin pasarse de la hora del reloj")
+	await wait_seconds(DayCycle.BLEND_SECONDS + BLEND_MARGIN)
+	assert_false(cycle.is_blending(), "Terminó de mezclarse")
 	assert_almost_eq(cycle.shown_hour(), hour, 0.001, "Llegó a la hora del reloj")
+	assert_almost_eq(sun.light_energy, energy, 0.0001, "Con el sol de esa hora")
+
+
+## La luz nunca va por detrás del reloj: cada mezcla termina antes de que
+## llegue el minuto de juego siguiente (data/config.json, "time"). Si el
+## balance acorta el minuto, hay que acortar DayCycle.BLEND_SECONDS.
+func test_each_blend_ends_before_the_next_game_minute() -> void:
+	var minute: float = float(GameClock.SECONDS_PER_MINUTE) / float(Game.rules.game_seconds_per_real_second)
+	assert_lt(DayCycle.BLEND_SECONDS, minute, "La mezcla dura menos que un minuto de juego (%.2f s reales)" % minute)
 
 
 func test_the_desk_lamp_and_the_monitor_leave_a_halo_at_night() -> void:
@@ -126,6 +159,23 @@ func test_the_brim_of_the_base_glows_a_little_at_night() -> void:
 			found += 1
 			assert_almost_eq(uv2s[v].y, -RoomShell.BRIM_NIGHT_GLOW, 0.0001, "Luz propia solo de noche")
 	assert_gt(found, 0, "El brim está en la malla del cuarto")
+
+
+## Una partida guardada a las 22:00.
+func _night_game() -> GameState:
+	var state: GameState = GameState.new_game(Game.rules, SEED)
+	state.game_seconds = roundi(NIGHT_HOUR * GameClock.SECONDS_PER_HOUR)
+	return state
+
+
+## Lo que se ve de noche: halos, sin polvo en el haz, la noche por la
+## ventana y la luna en vez del sol.
+func _assert_night_is_shown() -> void:
+	assert_true(_room.halos.visible, "De noche se ven los halos")
+	assert_false(_room.decor.dust.visible, "Y no hay polvo en el haz")
+	assert_eq(WorldPalette.glow("ffffff", WorldPalette.WINDOW_VIEW).get_shader_parameter("mood"), Vector3(0.0, 0.0, 1.0), "Por la ventana, la noche")
+	var sun: DirectionalLight3D = _room.get_node("Sun")
+	assert_eq(sun.light_color, Color("9ab0ff"), "El sol es la luna")
 
 
 func _load(state: GameState) -> void:
