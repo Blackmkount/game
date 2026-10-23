@@ -610,6 +610,6 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 - Sube de nivel (con el menú de pruebas cuando exista, o jugando): la repisa de la pared de la ventana y el corcho se llenan.
 
 **Problemas conocidos**
-- Armar las tres decoraciones la primera vez tarda unos 17 ms en el computador; hay que medirlo en el teléfono (paso 15).
+- Armar las tres decoraciones la primera vez tarda unos 19 ms en el computador; hay que medirlo en el teléfono (paso 15).
 - La guirnalda y la tira LED de día se ven finas; de noche se calibran en el paso 13.
 - El polvo todavía se ve en cualquier calidad: "solo en calidad Alta" llega con el paso 15.
