@@ -196,10 +196,14 @@ func place_bubble(icon_name: String, anchor: Vector2) -> void:
 
 ## Pone el globo de diálogo sobre la cabeza (punta de abajo en `anchor`), sin
 ## salirse de la pantalla ni tapar la burbuja de cercanía (se pone después de
-## ella en cada cuadro).
+## ella en cada cuadro) ni una burbuja de estado (el aviso de una falla
+## tiene que verse mientras el personaje dice "¡Nooo!").
 func place_speech(anchor: Vector2) -> void:
 	var box: Vector2 = speech.size
 	var spot: Vector2 = keep_in_world(Rect2(anchor - Vector2(box.x / 2.0, box.y + SpeechBubble.LIFT), box))
+	var status: Rect2 = status_bubbles.visible_over(Rect2(spot, box).grow(SPEECH_GAP))
+	if status.has_area():
+		spot = _speech_clear_of(status.grow(SPEECH_GAP), spot, box, anchor.x)
 	if bubble.visible:
 		var avoid: Rect2 = Rect2(bubble.position, bubble.size).grow(SPEECH_GAP)
 		if avoid.intersects(Rect2(spot, box)):

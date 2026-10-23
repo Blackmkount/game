@@ -419,6 +419,7 @@ func _build_base_shadow() -> void:
 	quad.size = Vector2.ONE * RoomShell.SIZE * BASE_SHADOW_SCALE
 	var material: ShaderMaterial = ShaderMaterial.new()
 	material.shader = BASE_SHADOW_SHADER
+	material.set_shader_parameter("color", Color(LookPalette.BASE_SHADOW, LookPalette.BASE_SHADOW_ALPHA))
 	var shadow: MeshInstance3D = MeshInstance3D.new()
 	shadow.name = "BaseShadow"
 	shadow.mesh = quad

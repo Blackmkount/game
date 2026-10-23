@@ -1,5 +1,7 @@
 # Análisis gráfico: cómo llevar el pixel art a calidad comercial
 
+> **Superado (2026-10-23):** el dueño eligió dejar el pixel art por "Mundo Impreso" (Arte 2.0). La dirección de arte vigente está en `docs/BIBLIA_ARTE.md` y `docs/ESTILO.md`. Este análisis queda como historia.
+
 **Fecha:** 2026-10-21. **Estado:** análisis terminado y verificado. **No se cambió nada del juego**: esto es una propuesta y necesita decisiones del dueño antes de implementarse (ver "Decisiones pendientes").
 
 Pregunta del dueño: *"¿Qué necesitas para mejorar la calidad gráfica, y que se vea más como un juego triple A de estilo pixel art?"*

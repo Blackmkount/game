@@ -22,11 +22,13 @@ const XP_FILL_TIME: float = 0.4
 const DEBUG_TAPS: int = 5
 const DEBUG_TAP_WINDOW_MSEC: int = 2500
 ## Retrato: lado de la vista (px), ancho que muestra (m), punto que queda al
-## centro (la cabeza) y giro (grados).
+## centro (la cabeza), giro e inclinación (grados). Más de frente que el
+## mundo (−30°): así la cara no queda bajo el flequillo.
 const PORTRAIT_SIZE: float = 76.0
 const PORTRAIT_FRAME: float = 0.62
 const PORTRAIT_TARGET: Vector3 = Vector3(0.0, 1.15, 0.0)
 const PORTRAIT_YAW: float = 20.0
+const PORTRAIT_PITCH: float = -20.0
 
 var _level_label: Label
 var _xp_bar: ProgressBar
@@ -55,7 +57,7 @@ func _ready() -> void:
 	var frame: PanelContainer = UiKit.panel("IconTile")
 	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	frame.custom_minimum_size = Vector2(84, 84)
-	_portrait = ModelPreview.new(func(world: Node3D) -> void: _character = CharacterModel.build(world, "Character"), PORTRAIT_SIZE, PORTRAIT_FRAME, PORTRAIT_TARGET, PORTRAIT_YAW)
+	_portrait = ModelPreview.new(func(world: Node3D) -> void: _character = CharacterModel.build(world, "Character"), PORTRAIT_SIZE, PORTRAIT_FRAME, PORTRAIT_TARGET, PORTRAIT_YAW, PORTRAIT_PITCH)
 	frame.add_child(_portrait)
 	row.add_child(frame)
 	_face_timer = Timer.new()

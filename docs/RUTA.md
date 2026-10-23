@@ -2,6 +2,8 @@
 
 > **Versión 1.1 (2026-10-21), aprobada por el dueño.** Reemplaza la tabla de fases del GDD (sección 15), que ahora apunta aquí. Las respuestas del dueño están en la sección 11.
 >
+> **Nota del 2026-10-23 (Arte 2.0):** el dueño pidió la fase de diseño y aprobó dejar el pixel art por "Mundo Impreso" (GDD 2.4, `docs/BIBLIA_ARTE.md`). Con eso se adelantaron partes de la Fase 2 (sección 9) y quedó resuelto el riesgo del contorno (sección 1). El orden de las fases no cambió.
+>
 > - Qué es el juego: `docs/GDD.md`.
 > - En qué vamos: `docs/PROGRESO.md`.
 > - **Esta ruta:** hacia dónde vamos, en qué orden y por qué.
@@ -12,7 +14,7 @@
 
 ## Resumen en un minuto
 
-- **Dónde estamos:** el juego ya **se ve** bien: la habitación en pixel art, la interfaz completa y una tienda con precios reales. Pero todavía **no se puede jugar**: no se compra, no llegan pedidos, no se imprime y no se guarda la partida.
+- **Dónde estamos** (al escribir esta ruta, 2026-10-21; hoy, `docs/PROGRESO.md`): el juego ya **se ve** bien: la habitación en pixel art, la interfaz completa y una tienda con precios reales. Pero todavía **no se puede jugar**: no se compra, no llegan pedidos, no se imprime y no se guarda la partida.
 - **Qué propongo:**
   1. Llegar cuanto antes a un ciclo que se pueda jugar en el teléfono, con buenos controles desde el principio.
   2. Darle vida: personaje que camina y trabaja, sonidos, animaciones y vibración.
@@ -42,7 +44,7 @@
 
 ### Lo que ya está bien
 - **Arquitectura sana:** la lógica (`core/`) está separada de los gráficos, todos los números viven en `data/*.json`, hay un validador de datos y 50 pruebas automáticas.
-- **Estilo propio y coherente:** pixel art hecho con 3D, interfaz con un tema común y guía de estilo (`docs/ESTILO.md`).
+- **Estilo propio y coherente:** "Mundo Impreso", un diorama 3D impreso capa a capa (desde Arte 2.0; antes, pixel art hecho con 3D), interfaz con un tema común y guía de estilo (`docs/ESTILO.md`).
 - **Catálogo con precios reales** (`docs/REFERENCIAS.md`) e integración continua con versión web publicada.
 
 ### Lo que falta o hay que corregir
@@ -64,7 +66,7 @@ Revisé capturas de todas las pantallas de la versión actual:
 | Riesgo | Cómo se maneja |
 |---|---|
 | Querer hacer todo: es un proyecto de una persona | Cada fase tiene un criterio de terminado. Las ideas nuevas van a la Fase 7, no se cuelan en la fase actual |
-| El contorno pixel art dibuja cada objeto dos veces: con 40 impresoras en el garaje puede ir lento | Prueba de estrés en la Fase 4, antes de llenar el garaje, y optimización en la Fase 5 |
+| ~~El contorno pixel art dibuja cada objeto dos veces: con 40 impresoras en el garaje puede ir lento~~ | **Resuelto con Arte 2.0 (2026-10-23):** el mundo no tiene contorno (solo el personaje, sin sombra), una malla y un material por objeto, versión lejana de las impresoras y una prueba de presupuesto (el taller de 16 impresoras usa 133 llamadas de dibujo, 80 con el zoom lejos; antes 1.042). Queda la prueba de estrés del garaje de 40 en la Fase 4 (tope estimado de 350 llamadas) |
 | Mucho realismo puede aburrir | Regla de la sección 2: real en lo que se ve, generoso en lo que se espera |
 | Probar el juego avanzado toma horas | Menú de pruebas oculto desde la Fase 1 (sección 10) |
 | iOS necesita un Mac | Decidir antes de la Fase 5 (sección 11) |
@@ -104,7 +106,7 @@ El juego se basa en la impresión 3D real. Esta tabla dice qué se toma de la re
 | **Placas múltiples (FDM)** | Varias piezas a la vez ahorran preparación, pero un fallo puede arruinar toda la placa | Decisión de riesgo contra eficiencia | Fase 7 |
 | **Humedad** | El nylon se humedece en horas, el TPU en un día y el PETG en días; salen hilos y burbujas que suenan como tocino friéndose | Caja seca y secador | Fase 7 |
 | **Desgaste de la boquilla** | La de latón dura años con PLA, pero el PLA que brilla en la oscuridad la gasta en 0,5–2 kg | Mantenimiento y boquilla endurecida | Fase 7 |
-| **Día y noche** | Los clientes escriben de día | La ventana cambia de color. **Propuesta:** de noche llegan menos pedidos | Fase 2 y Fase 4 |
+| **Día y noche** | Los clientes escriben de día | La luz, la ventana y las lámparas siguen el reloj (hecho en Arte 2.0, solo visual). **Propuesta:** de noche llegan menos pedidos | Fase 4 |
 
 ### Los pagos actuales ya son realistas
 Un taller real cobra así: el material más 10% de desperdicio, de $3 a $5 por hora de máquina, unos $2 de trabajo por pieza y un 30% de margen. Con esa fórmula, los pagos del juego quedan dentro de lo real:
@@ -159,13 +161,13 @@ Se propusieron tres opciones (A: tocar y el personaje lo hace; B: joystick; C: p
 - **Sigue al personaje** y lo deja un poco arriba del centro de la parte visible, para que el pulgar no lo tape.
 - **Tres niveles de zoom:** normal (la vista de siempre), cerca (el doble) y lejos (todo el cuarto). Con el botón de abajo a la izquierda, pellizcando o con la rueda del mouse.
 - **No se sale del cuarto.** Con un panel abierto, encuadra el objeto encima del panel.
-- **Pixel art sin temblor:** la cámara y el personaje se mueven de píxel en píxel del dibujo, y la fracción que falta se compensa corriendo la imagen. El movimiento se ve suave y los bordes no tiemblan.
+- **Suave y sin temblor:** desde Arte 2.0 el mundo se dibuja a resolución alta con bordes suavizados, así que la cámara y el personaje se mueven sin redondeo a píxeles.
 
 ### 4.5 Notas técnicas (para Claude)
 - **Entrada:** `WorldControls` (`game/world/world_controls.gd`) es un Control de pantalla completa entre la vista del mundo y el HUD. Recibe los toques en `_gui_input`, porque `_unhandled_input` pierde los arrastres cuando el dedo pasa sobre un botón (comprobado en Godot 4.7.2). Ignora los eventos de mouse que el sistema inventa al tocar (`DEVICE_ID_EMULATION`) y trata al mouse real como un dedo más.
 - **Gestos:** `TouchTracker` (puro, con pruebas) decide si fue toque, joystick o pellizco.
 - **Personaje:** `CharacterController` con `WalkGrid` (choques círculo contra rectángulo y caminos con `AStarGrid2D`) y `ReachTracker` para la cercanía.
-- **Cámara:** `CameraRig`. Cada cuadro, `WorldControls` llama a `RoomView.step()`, que mueve al personaje, lo ajusta a los píxeles y después mueve la cámara.
+- **Cámara:** `CameraRig`. Cada cuadro, `WorldControls` llama a `RoomView.step()`, que mueve al personaje, lo anima y después mueve la cámara.
 - **Selección:** rayo contra las cajas de cada objeto (`PropBounds`, calculadas con las medidas de las formas), sin motor de física.
 - **Valores de sensación:** todos en `ControlsTuning`. Los principales los fijó el dueño probándolos en su teléfono: caminar a 2,2 m/s, joystick de 60 px, cámara de 0,10 s y resaltar a 0,60 m.
 
@@ -212,7 +214,7 @@ Son metas para el simulador, no reglas fijas. Aprobadas por el dueño y pasadas 
 | La pieza crece | Sube capa a capa, en escalones de un píxel | — | — | 1 |
 | Termina | Burbuja ✓, brillo y la pieza da un salto | "Ding" | Leve | 1 |
 | Entregar y cobrar | Monedas vuelan de la impresora al contador, que sube rodando; "+$6" flotante; la barra de XP se llena | Caja registradora | Media | 1 (básico) y 2 |
-| Subir de nivel | Celebración en pantalla con confeti pixel y tarjetas de lo desbloqueado ("¡Nuevo! Rayo X1") | Fanfarria corta | Fuerte | 2 |
+| Subir de nivel | Celebración en pantalla con confeti y tarjetas de lo desbloqueado ("¡Nuevo! Rayo X1") | Fanfarria corta | Fuerte | 2 |
 | Fallo | Nido de espagueti o pieza curvada; el personaje se agarra la cabeza; frase de Don Ernesto | Trombón triste corto | Doble | 1 (básico) y 2 |
 | Llega un envío | Caja en la puerta; al tocarla se abre y lo comprado vuela a su lugar | Toc-toc | Leve | 1 (básico) y 2 |
 | Nuevo mueble | Cae desde arriba con rebote y una nubecita de polvo | Golpe de madera | Media | 2 |
@@ -258,7 +260,7 @@ Inicio·Taller·Inventario·Tienda·Perfil   Inicio·Pedidos·Tienda·Inventario
 - La duración de un pedido muestra las dos: "≈ 5 min (2 h de juego)".
 
 ### 7.3 Pantallas
-- **Pedidos como app de mensajería:** lista de chats con avatar pixel del cliente, burbujas con humor, tarjeta de requisitos con iconos y "Llega un pedido nuevo en 2 min".
+- **Pedidos como app de mensajería:** lista de chats con avatar del cliente, burbujas con humor, tarjeta de requisitos con iconos y "Llega un pedido nuevo en 2 min".
 - **Tienda:** filtro "lo que puedo comprar", "Te faltan $49", fecha de llegada antes de pagar, opción exprés, comparar dos impresoras lado a lado y confirmación solo en compras grandes.
 - **Primera experiencia con Don Ernesto (Fase 3):** de 5 a 8 minutos guiados y que se pueden saltar. Presenta la impresora, llega el primer llavero, se imprime, se cobra y aparece el objetivo de comprar la mesa. Usa un foco que ilumina el botón siguiente. Después solo da pistas la primera vez que pasa algo (primer fallo, primer envío, primer nivel).
 - **Siempre hay un siguiente paso:** si no hay nada imprimiéndose, una pista lo dice ("Tu impresora está libre: revisa tus pedidos").
@@ -274,7 +276,7 @@ Inicio·Taller·Inventario·Tienda·Perfil   Inicio·Pedidos·Tienda·Inventario
 | Tipo | Hoy | Meta del MVP | Notas |
 |---|---|---|---|
 | Pedidos (plantillas) | 12 | Unos 36 | Más **variantes** automáticas: cantidad, color, plazo y pago ±15% |
-| Clientes con nombre | 0 (6 tipos) | 12, dos por tipo | Avatar pixel, personalidad y de 3 a 5 frases cada uno |
+| Clientes con nombre | 0 (6 tipos) | 12, dos por tipo | Avatar, personalidad y de 3 a 5 frases cada uno |
 | Frases de Don Ernesto | 0 | Unas 40 | Tutorial, consejos reales y reacciones a los fallos |
 | Objetivos | 12 | Unos 30 | Cadena hasta el garaje y la resina |
 | Logros (GDD 5.13) | 0 | Unos 20 | Primera venta, primer espagueti, 100 pedidos... |
@@ -346,6 +348,8 @@ Proyecto Godot, pruebas, integración continua y versión web en GitHub Pages.
 | 4 | **Mundo vivo:** animación de cada familia de impresoras (cabezal, cama, resina), carrete que gira, burbujas de estado, día y noche en la ventana y la lámpara, rutinas del personaje | El cuarto se mueve solo | M |
 | 5 | **Grandes momentos:** celebración al subir de nivel, unboxing de impresoras, muebles que caen con rebote, primera venta | Subir de nivel se siente como un premio | M |
 
+**Adelantado con Arte 2.0 (2026-10-23, decisión D8 del dueño):** de la tarea 3, las emociones y reacciones del personaje (feliz al cobrar, manos a la cabeza con un espagueti, salto al subir de nivel, mirar el celular, saludar) y sus gestos sueltos; de la tarea 4, la animación de cada familia de impresoras (cabezal, cama que baja, placa de resina), el día y la noche en la ventana, las lámparas y todo el cuarto, y las rutinas del personaje quieto; de la tarea 5, que lo que se compra aparece **imprimiéndose** en su lugar (en vez de "caer con rebote"). Falta: sonido, vibración, el kit de respuesta, las animaciones de acciones (retirar la pieza, limpiar, abrir cajas), los muebles que se vuelven transparentes, el carrete que gira y la celebración de subir de nivel en pantalla.
+
 **Criterio de terminado:** tabla de la sección 6 cumplida (cada acción tiene imagen, sonido y, donde aplica, vibración en menos de 0,1 s), 60 fps en un teléfono de gama media en la versión web, y tú notas la diferencia.
 
 ### Fase 3 — UX/UI y primera experiencia
@@ -384,7 +388,7 @@ Proyecto Godot, pruebas, integración continua y versión web en GitHub Pages.
 | 2 | Build de iOS (Mac o servicio en la nube; cuenta de Apple Developer) | L |
 | 3 | Áreas seguras del notch, botón "atrás" de Android, pausa y reanudar, guardado al salir, ahorro de batería (menos cuadros por segundo cuando nada se mueve) | M |
 | 4 | Notificaciones locales ("Tu pedido terminó"). Necesitan un plugin: te preguntaré antes | M |
-| 5 | Rendimiento en gama baja: mediciones, `MultiMesh`, costo del contorno y texturas | M |
+| 5 | Rendimiento en gama baja: mediciones en teléfonos reales (el panel `#debug` de Arte 2.0 ya muestra cuadros por segundo, llamadas y calidad), ajustar el umbral de la calidad automática y, si el primer arranque pasa de 1 s, armar las mallas durante una pantalla de carga | M |
 | 6 | Inglés completo y revisión de todos los textos | S |
 
 **Criterio de terminado:** al menos 30 fps en un Android de gama baja y fluido en un iPhone. Empieza a reunir a los 12 testers.

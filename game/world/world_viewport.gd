@@ -66,6 +66,14 @@ static func scale_for(physical_width: float, ui_width: float, max_width: float) 
 	return minf(physical_width, max_width) / ui_width
 
 
+## k para lo 3D que se dibuja dentro de la interfaz de `viewport` (las vistas
+## de la tienda y los retratos, ModelPreview): la misma cuenta que el mundo,
+## con el ancho de su pantalla y el tope `max_width`.
+static func scale_in(viewport: Viewport, max_width: float) -> float:
+	var ui_width: float = viewport.get_visible_rect().size.x
+	return scale_for(ui_width * viewport.get_final_transform().get_scale().x, ui_width, max_width)
+
+
 ## Punto de la interfaz (coordenadas globales del lienzo) → píxel del dibujo.
 func ui_to_view(ui_point: Vector2) -> Vector2:
 	return get_global_transform().affine_inverse() * ui_point

@@ -169,8 +169,10 @@ func test_shop_lists_all_printers_and_furniture() -> void:
 	_hud.open_screen("shop")
 	var shop: ShopScreen = _hud.get_node("ScreenHost/Screen")
 	assert_eq(_cards(shop).size(), (Game.catalog.files["printers"] as Array).size())
+	assert_eq(_views(shop).size(), 7, "Cada impresora con su vista 3D (biblia de arte §11)")
 	shop.show_category("furniture")
 	assert_eq(_cards(shop).size(), 6, "La mesa del computador no se vende")
+	assert_eq(_views(shop).size(), 6, "Cada mueble con su vista 3D")
 
 
 func test_closing_a_screen_goes_back_home() -> void:
@@ -201,6 +203,14 @@ func test_every_screen_opens() -> void:
 
 func _cards(screen: ScreenBase) -> Array[Node]:
 	return screen.content.get_children().filter(func(child: Node) -> bool: return child is ItemCard)
+
+
+## Las vistas 3D de las tarjetas que se ven (ModelPreview).
+func _views(screen: ScreenBase) -> Array[Node]:
+	var views: Array[Node] = []
+	for card: Node in _cards(screen):
+		views.append_array(card.find_children("*", "", true, false).filter(func(node: Node) -> bool: return node is ModelPreview))
+	return views
 
 
 func _label_texts(root: Node) -> Array[String]:

@@ -201,6 +201,30 @@ func test_the_speech_never_covers_the_nearby_bubble() -> void:
 	assert_almost_eq(_hud.speech.position.x + _hud.speech.size.x / 2.0, head.x, 0.5)
 
 
+func test_the_speech_never_covers_a_status_bubble() -> void:
+	_hud.speech.say(tr("SPEECH_NEW_MESSAGE"))
+	await wait_process_frames(1)
+	var head: Vector2 = Vector2(360.0, 700.0)
+	var item: WorldInteractable = WorldInteractable.new(WorldInteractable.Kind.PRINTER, 2, AABB(Vector3.ZERO, Vector3.ONE))
+	var bubbles: StatusBubbles = _hud.status_bubbles
+	var index: int = bubbles.add(item)
+	bubbles.bubble(index).set_state("warning", "", UiPalette.BADGE, true)
+	# El aviso de la impresora, al lado de la cabeza (como en la captura 23a).
+	bubbles.place(index, Vector2(470.0, 560.0))
+	bubbles.set_visible_for(index, true)
+	await wait_process_frames(1)
+	_hud.bubble.hide_bubble()
+	_hud.place_speech(head)
+	var status: Rect2 = bubbles.bubble(index).get_rect()
+	assert_false(Rect2(_hud.speech.position, _hud.speech.size).intersects(status), "No tapa el aviso")
+	var middle: float = _hud.speech.position.x + _hud.speech.size.x / 2.0
+	assert_lt(absf(middle - head.x), _hud.speech.size.x / 2.0, "Sigue sobre la cabeza")
+	# Oculta, no cuenta: va sobre la cabeza como siempre.
+	bubbles.set_visible_for(index, false)
+	_hud.place_speech(head)
+	assert_almost_eq(_hud.speech.position.x + _hud.speech.size.x / 2.0, head.x, 0.5)
+
+
 func test_a_toast_never_covers_the_objectives_or_the_side_buttons() -> void:
 	# El agradecimiento llega justo cuando el objetivo cambia a (1/3): debe verse.
 	_hud.feedback.toast("Amigos y familia: «¡Quedó genial! Ya todos me preguntan dónde lo hice.»")

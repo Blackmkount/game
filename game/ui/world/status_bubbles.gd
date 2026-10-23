@@ -51,6 +51,18 @@ func set_visible_for(index: int, shown: bool) -> void:
 	_bubbles[index].visible = shown
 
 
+## Rectángulo (coordenadas de la capa) de la primera burbuja visible que
+## toca `area`, o un rectángulo vacío si ninguna: el globo de diálogo se
+## corre para no taparla.
+func visible_over(area: Rect2) -> Rect2:
+	if not visible:
+		return Rect2()
+	for status: StatusBubble in _bubbles:
+		if status.visible and status.get_rect().intersects(area):
+			return status.get_rect()
+	return Rect2()
+
+
 ## Objeto de la burbuja visible que está bajo `global_point`, o null. Si dos
 ## se tapan, gana la de encima (la última agregada).
 func hit(global_point: Vector2) -> WorldInteractable:

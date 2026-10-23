@@ -19,7 +19,6 @@ const BASE_SHADOW_ALPHA: float = 0.6
 # Cuarto (§4.2).
 const FLOOR_TILE: String = "e8c49c"
 const FLOOR_TILE_B: String = "e2bb91"
-const FLOOR_GROUT: String = "f2e2cb"
 const WALL_WINDOW: String = "bfd8c2"
 const WALL_BACK: String = "f2dcbc"
 const TRIM: String = "f4ede2"

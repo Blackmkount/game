@@ -1097,3 +1097,60 @@ Las tres fallan si `place_light()` escribe en el lugar de otra luz (probado romp
 ### Pruebas nuevas
 `tests/unit/test_user_settings.gd` (4), `test_world_viewport.gd` (con pantalla, cada cuadro llega al automático y un teléfono lento pasa a Baja; sin pantalla no mide), `test_printer_families.gd` (la pantallita lejana sigue al estado y se ve el primer bloquecito de la bandeja), `test_room_sync.gd` (alejar el zoom no corta lo que se imprime; el tiempo de armado de `sync_models`), `test_debug_tools.gd` (`busy_workshop`).
 **Comprobado con 9 mutantes** (guardar la copia entera, `WorldViewport` sin pasar los cuadros, el zoom que no espera a lo que se imprime, `set_far` sin volver a poner la pieza, la pieza de la resina escondida, `DisplayField` que nunca se ve, la del piso que pasa a lejana, sin bandeja lejana, la pantallita lejana que no cambia de estado): cada uno hace fallar al menos una prueba.
+
+## 2026-10-22 — Arte 2.0, paso 16: la interfaz (vistas de la tienda y retratos), documentos y cierre
+
+### Las vistas 3D de la interfaz se dibujan como el mundo (`ModelPreview`)
+**Decisión:** `ModelPreview` pasa a ser un `Control` que dibuja detrás el disco de luz y adentro tiene un `SubViewportContainer` ("View") que no acomoda ningún contenedor: mide la vista × k y se dibuja con escala 1/k, como `WorldViewport`. k sale de la misma cuenta que el mundo (`WorldViewport.scale_in`: el ancho físico de la pantalla, con el tope del nivel de calidad, entre el ancho de la interfaz): en un teléfono de 1.080 px la tarjeta de 92 px se dibuja a 138; en Baja, a 92. MSAA 4× siempre (biblia §11; se dibuja una sola vez, no cuesta). Se vuelve a ajustar y a dibujar si cambia la pantalla o la calidad; fuera del árbol no hace nada y al volver se ajusta otra vez.
+**Motivo:** antes se dibujaba en píxeles de la interfaz y se estiraba 1,5× en un teléfono de 1.080 px: el retrato del HUD (76 px) se veía borroso (informe del paso 10). Un contenedor dentro de un `Container` no puede tener escala propia (el contenedor la vuelve a 1), por eso el `SubViewportContainer` va dentro de un `Control` simple.
+
+### Luz de estudio con un uniform del material, no con un instance uniform
+**Decisión:** `preview_light` es un `uniform` de todos los sombreadores del kit (antes, un `instance uniform` solo del personaje). `WorldPalette.preview_of(material)` da, en caché, una copia del material con todos sus parámetros y `preview_light = 1`; `ModelPreview` se la pone a cada malla al armar. Los materiales del mundo no cambian. Con `preview_light` el sombreador usa la luz de estudio en vez de la del cuarto, sin la oclusión del cuarto (rincones, mapa del piso, mancha del personaje) y sin lo que brilla solo de noche. El personaje usa el mismo mecanismo (un solo camino).
+**Motivo:** la biblia (§3.2 y §11) pedía un instance uniform, pero cada malla con uno cuesta 16 lugares de un búfer de 1.024 en la web y en muchos teléfonos: la tienda abierta (7 impresoras de ~8 mallas, o 6 muebles) más los tres personajes pasaba de 1.600. Antes de esto las vistas de la tienda se iluminaban con la luz del cuarto en el origen: de noche se veían azules y con la lámpara encendida (comprobado en el laboratorio: con la luz de estudio la hoja de vistas da exactamente igual de día y de noche; sin ella cambia hasta 102/255).
+
+### La luz de estudio de los objetos suma como la mañana del cuarto
+**Decisión:** `studio_key` vale (0,13; 0,11; 0,09) en lo que no es el personaje (el retrato sigue con 0,36; 0,32; 0,25). Con el sol de la vista (0,5) un techo suma ≈ 1,05, un frente al sol ≈ 0,95 y un costado a la sombra ≈ 0,6: lo mismo que la mañana del cuarto (1,05; 0,97; 0,59).
+**Motivo:** biblia §2.4: la tienda y el mundo deben verse igual. Con la llave del retrato los techos sumaban 1,25 y la melamina blanca se quemaba.
+
+### Cámara de las vistas: −30° para los objetos, −20° para los retratos
+**Decisión:** las vistas de impresoras y muebles usan la inclinación del mundo (`CameraRig.PITCH`, −30°, biblia §11) y se encuadran con lo que ocupan las cajas de sus mallas vistas desde la cámara (centradas, con 8 % de aire), en vez del lado más largo × 1,3 alrededor del centro de la caja del modelo. Los dos retratos (`ProfileCard.PORTRAIT_PITCH`, también el del Perfil) se quedan en −20°.
+**Motivo:** así cada modelo llena su tarjeta y se ve desde arriba como en el cuarto (la estantería metálica y la mesa de trabajo ya no se ven chiquitas). En el retrato, −30° dejaba los ojos bajo el flequillo y la cara "mirando al suelo" (captura de laboratorio); la biblia §7.9 pide que la cara nunca quede tapada.
+
+### Disco de luz detrás de cada vista
+**Decisión:** `ModelPreview` dibuja detrás de su vista un `GradientTexture2D` radial de `UiPalette.PREVIEW_DISC` (`#2a3a66`, biblia §11) opaco en el centro, al 70 % a media distancia y transparente en el borde; uno compartido por todas.
+**Motivo:** el plan lo ponía en `item_card.gd` y `bottom_sheet.gd`; dibujándolo la propia vista llega también al retrato del HUD, al Perfil y al Inventario, en un solo lugar. Lo oscuro (marco de la Cubo Uno, estantería, buzo) se separa del azul de la tarjeta.
+
+### El globo de diálogo no tapa las burbujas de estado
+**Decisión:** `Hud.place_speech` también se corre (al costado, sobre la cabeza, o arriba) si tapa una burbuja de estado visible (`StatusBubbles.visible_over`).
+**Motivo:** en la captura 23a el "¡Nooo! Un espagueti." tapaba el aviso rojo de la impresora (pendiente del paso 11).
+
+### Colores de la paleta que no se usaban
+**Decisión:** la capa caliente toma su color de `LookPalette.HOT_LAYER` (uniform `hot_layer` de `kit_printing`, lo pone `WorldPalette.printing`; antes una constante repetida en el sombreador); la sombra bajo la base, de `LookPalette.BASE_SHADOW` y `BASE_SHADOW_ALPHA` (`RoomView`). Se borró `LookPalette.FLOOR_GROUT`: la junta la calcula el sombreador de la baldosa (≈ `#f2e2cb`, comentado ahí).
+**Motivo:** código muerto (constantes que nadie leía) y un mismo color en dos lugares.
+
+### La biblia de arte entra al repositorio
+**Decisión:** `docs/BIBLIA_ARTE.md` es la biblia final con una nota de estado (decisiones del dueño y dónde quedó distinta). `docs/ESTILO.md` se reescribió: §1 (idea y pilares), §2 limpia de notas de transición y con "Disciplina del cian", "La firma del juego" y "Presupuesto", §3 solo la línea de las vistas 3D y el color del disco, §5 y §6 desde la biblia (§14 y §15). GDD 2.4 (§3, §5.10, §8 y el historial con D1–D8), `docs/RUTA.md` (riesgo del contorno resuelto, lo adelantado de la Fase 2) y `assets/CREDITS.md` (todo procedural). `docs/analisis_grafico/README.md` queda marcado como superado.
+**Motivo:** el código y los documentos citan "biblia de arte §N" en cientos de lugares; sin el documento esas citas no llevaban a ninguna parte.
+
+### Pruebas ampliadas (misma intención, más estrictas)
+1. `tests/integration/test_main_scene.gd`, `test_shop_lists_all_printers_and_furniture`: además de las tarjetas, cuenta las vistas 3D (7 impresoras y 6 muebles: el contrato del paso).
+2. `tests/integration/test_look_shaders.gd`: `kit_printing.gdshader` debe exponer `hot_layer`.
+Ninguna prueba se debilitó ni se quitó.
+
+### Pruebas nuevas
+`tests/integration/test_model_preview.gd` (6): toda malla del kit de cada vista (7 impresoras, 7 muebles y el retrato) lleva `preview_light = 1` y lo mismo armado en el mundo no; la copia conserva todos los demás parámetros y lo que no usa la luz del cuarto queda igual; el dibujo mide la vista × k (la k del mundo) en cuatro pantallas y en Alta y Baja, con MSAA 4×, se ve del tamaño de la vista y se vuelve a dibujar; fuera del árbol no se ajusta (sin errores) y al volver sí; la cámara tiene la inclinación del mundo y el modelo entra entero y llena la vista; el disco es radial, del azul del disco y transparente en el borde. `tests/integration/test_hud.gd`: el globo no tapa una burbuja de estado y sigue sobre la cabeza.
+**Comprobado con 10 mutantes** (sin cambiar los materiales, k fija en 1, el ajuste viejo de la cámara, el encuadre con 30 % de aire, el encuadre sin centrar, sin volver a dibujar al cambiar de tamaño, inclinación de −20°, sin la guarda fuera del árbol, sin volver a ajustar al volver al árbol, la copia con `preview_light = 0`): cada uno hace fallar al menos una prueba (el último, el laboratorio: la hoja de vistas cambia de noche).
+
+### Resumen de Arte 2.0 (pasos 1 a 16)
+| Decisión del dueño | Respuesta | Dónde se ve |
+|---|---|---|
+| D1 Dejar el pixel art por "Mundo Impreso" | Sí | Paso 2 en adelante; GDD 2.4 §8 |
+| D2 Hasta 2 luces omni sin sombra de noche | No (opción por defecto) | Paso 13: lámparas, monitor y tira LED en el sombreador; la prueba de presupuesto exige 0 omni y 0 spot |
+| D3 Personaje rediseñado, buzo gris carbón con mostaza | Sí | Pasos 10 y 11; GDD 2.4 §3 y §5.10 |
+| D4 Hornear mallas si el arranque pasa de 1 s | No hizo falta (≈ 0,2 s sin pantalla); falta medir en el teléfono | Paso 15; panel `#debug`, línea "Armado del cuarto" |
+| D5 Estantería de 2,40 m y pie propio | Se aplicó (se informó) | Paso 9 |
+| D6 Decoración que crece con el nivel | Se aplicó (se informó) | Paso 12 |
+| D7 "Calidad gráfica" en Ajustes | Sí | Paso 15 |
+| D8 Adelantar día y noche y reacciones | Sí, solo lo visual | Pasos 11 y 13; RUTA Fase 2 |
+
+Las decisiones técnicas de cada paso están arriba, en su entrada (pasos 1 a 15 y sus rondas de arreglos).

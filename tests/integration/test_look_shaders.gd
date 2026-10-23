@@ -9,7 +9,7 @@ extends GutTest
 const SHADERS: Dictionary[String, Array] = {
 	"res://game/world/look/kit.gdshader": ["toon", "rim"],
 	"res://game/world/look/kit_tinted.gdshader": ["albedo", "surface", "gloss", "layer", "emit"],
-	"res://game/world/look/kit_printing.gdshader": ["albedo", "surface", "gloss", "layer", "emit"],
+	"res://game/world/look/kit_printing.gdshader": ["albedo", "surface", "gloss", "layer", "emit", "hot_layer"],
 	"res://game/world/look/kit_glass.gdshader": ["albedo", "surface", "gloss", "layer", "emit", "alpha"],
 	"res://game/world/look/kit_reveal.gdshader": ["toon", "rim", "reveal_cut", "reveal_preview"],
 	"res://game/world/look/kit_reveal_tinted.gdshader": ["albedo", "surface", "gloss", "layer", "emit", "reveal_cut", "reveal_preview"],

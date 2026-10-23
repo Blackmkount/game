@@ -43,6 +43,12 @@ const REVEAL_SHADERS: Dictionary[Shader, Shader] = {
 	TINTED_SHADER: preload("res://game/world/look/kit_reveal_tinted.gdshader"),
 }
 
+## Los sombreadores que se iluminan con la luz del cuarto: en las vistas 3D
+## de la interfaz llevan su versión de vista previa (preview_of).
+const STUDIO_LIT_SHADERS: Array[Shader] = [KIT_SHADER, TINTED_SHADER, PRINTING_SHADER, GLASS_SHADER, CHARACTER_SHADER, HEAD_SHADER]
+## Uniform que cambia la luz del cuarto por la de estudio (kit_body.gdshaderinc).
+const PREVIEW_LIGHT: StringName = &"preview_light"
+
 ## Lo que muestra cada pantalla (screen.gdshader, uniform `mode`).
 const SCREEN_MODES: Dictionary[String, int] = {
 	"crt_screen": 0,
@@ -65,6 +71,7 @@ const CHARACTER_RIM: float = 0.35
 
 static var _cache: Dictionary[String, Material] = {}
 static var _reveal: Dictionary[Material, ShaderMaterial] = {}
+static var _preview: Dictionary[Material, ShaderMaterial] = {}
 
 
 ## Material de las mallas del kit: color, superficie, capas y luz propia en
@@ -131,7 +138,9 @@ static func solid(hex: String) -> ShaderMaterial:
 static func printing(hex: String) -> ShaderMaterial:
 	var key: String = "printing:" + hex
 	if not _cache.has(key):
-		_cache[key] = _tinted(hex, Surface.SMOOTH, PRINTED_GLOSS, PieceModel.LAYER_STEP, 0.0, PRINTING_SHADER)
+		var material: ShaderMaterial = _tinted(hex, Surface.SMOOTH, PRINTED_GLOSS, PieceModel.LAYER_STEP, 0.0, PRINTING_SHADER)
+		material.set_shader_parameter("hot_layer", Color(LookPalette.HOT_LAYER))
+		_cache[key] = material
 	return _cache[key]
 
 
@@ -235,6 +244,25 @@ static func reveal_of(material: Material) -> ShaderMaterial:
 		reveal.set_shader_parameter("reveal_preview", Color(LookPalette.REVEAL_PREVIEW))
 		_reveal[source] = reveal
 	return _reveal[source]
+
+
+## La versión para las vistas 3D de la interfaz (biblia de arte §11 y §7.9,
+## ModelPreview) de un material que se ilumina con la luz del cuarto: una
+## copia con todos sus parámetros y preview_light = 1 (luz de estudio fija).
+## Una por material (en caché). Lo demás (pantallas, contorno) no depende de
+## la luz del cuarto y se devuelve igual.
+static func preview_of(material: Material) -> Material:
+	var source: ShaderMaterial = material as ShaderMaterial
+	if source == null or source.shader not in STUDIO_LIT_SHADERS:
+		return material
+	if not _preview.has(source):
+		var preview: ShaderMaterial = ShaderMaterial.new()
+		preview.shader = source.shader
+		for uniform: Dictionary in source.shader.get_shader_uniform_list():
+			preview.set_shader_parameter(uniform["name"], source.get_shader_parameter(uniform["name"]))
+		preview.set_shader_parameter(PREVIEW_LIGHT, 1.0)
+		_preview[source] = preview
+	return _preview[source]
 
 
 static func _character_material(shader: Shader) -> ShaderMaterial:

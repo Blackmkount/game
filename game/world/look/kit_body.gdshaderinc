@@ -15,8 +15,11 @@
 // con la capa caliente arriba. kit_glass.gdshader (además KIT_GLASS) es
 // transparente y se ve de los dos lados (la tapa ámbar de la impresora de
 // resina). kit_character.gdshader (KIT_CHARACTER) es el cuerpo del
-// personaje: más relleno de cámara y, en los retratos, una luz de estudio;
-// kit_head.gdshader (además KIT_HEAD), su cabeza con la cara pintada.
+// personaje: más relleno de cámara; kit_head.gdshader (además KIT_HEAD), su
+// cabeza con la cara pintada. En las vistas 3D de la interfaz (la tienda,
+// los paneles y los retratos) todos llevan una copia del material con
+// preview_light = 1 (WorldPalette.preview_of): luz de estudio fija en vez de
+// la del cuarto.
 // kit_reveal.gdshader y kit_reveal_tinted.gdshader (REVEAL, sin o con
 // KIT_TINTED) son lo que se compra mientras aparece imprimiéndose (PrintIn).
 //
@@ -48,6 +51,9 @@ uniform float alpha = 0.5;
 // Borde de arriba de la pieza que se imprime, en el espacio de la malla: ahí
 // va la capa caliente. -100 = no hay.
 instance uniform float hot_top = -100.0;
+// Color de la capa caliente (se ve tal cual, brilla sola). Lo pone
+// WorldPalette.printing desde LookPalette.HOT_LAYER.
+uniform vec4 hot_layer = vec4(1.0, 0.5412, 0.2392, 1.0);
 #endif
 #ifdef REVEAL
 // Lo que se compra aparece imprimiéndose (biblia §12.2). reveal_y es el alto
@@ -72,26 +78,39 @@ const float CC_REVEAL_CUT_MIN = 0.012;
 // Relleno de adentro: lado de la cuadrícula (m).
 const float CC_REVEAL_INFILL = 0.035;
 #endif
+// 1 en las vistas 3D de la interfaz (biblia de arte §11 y §7.9): una luz de
+// estudio fija en vez de la luz del cuarto, así ni la hora, ni las lámparas,
+// ni el personaje cambian cómo se ve lo que se compra o el retrato. Es un
+// uniform del material, no de cada malla: WorldPalette.preview_of le da a
+// cada material una copia con 1 (un instance uniform en todas las mallas del
+// kit no cabría en el búfer de globales).
+uniform float preview_light = 0.0;
+// Luz de estudio (espacio de la pantalla): ambiente de arriba y de abajo,
+// llave cálida desde arriba a la izquierda, relleno frío desde la derecha y
+// borde desde atrás. Direcciones en el espacio de la cámara.
+uniform vec3 studio_sky = vec3(0.39, 0.42, 0.49);
+uniform vec3 studio_ground = vec3(0.36, 0.29, 0.23);
 #ifdef KIT_CHARACTER
-// 1 en las vistas previas (retratos): una luz de estudio fija en vez de la
-// luz del mundo (ModelPreview la pone en cada malla).
-instance uniform float preview_light = 0.0;
+// El retrato: llave fuerte, la cara nunca queda oscura.
+uniform vec3 studio_key = vec3(0.36, 0.32, 0.25);
+#else
+// Lo demás (la tienda, los paneles): llave suave, así con el sol de la vista
+// (ModelPreview) suma como la mañana del cuarto: arriba ≈ 1,05, el frente al
+// sol ≈ 0,95 y el costado a la sombra ≈ 0,6 (biblia §2.4: la tienda se ve
+// como el mundo).
+uniform vec3 studio_key = vec3(0.13, 0.11, 0.09);
+#endif
+uniform vec3 studio_fill = vec3(0.11, 0.13, 0.17);
+uniform vec3 studio_rim = vec3(0.45, 0.43, 0.40);
+const vec3 CC_STUDIO_KEY_DIR = vec3(-0.55, 0.62, 0.56);
+const vec3 CC_STUDIO_FILL_DIR = vec3(0.86, 0.05, 0.5);
+#ifdef KIT_CHARACTER
 // Movimiento secundario (CharacterAnimator, biblia §7.7): lo que cuelga
 // (UV.y = su peso) se mueve con inercia en vez de mecerse con el viento. En
 // el cuerpo, `swing` es un corrimiento en metros (cordones y capucha); en la
 // cabeza, giros chicos (radianes alrededor de x, y, z) del pelo alrededor de
 // hair_pivot. outline_character.gdshader hace lo mismo con el contorno.
 instance uniform vec3 swing = vec3(0.0);
-// Luz de estudio (espacio de la pantalla): ambiente de arriba y de abajo,
-// llave cálida desde arriba a la izquierda, relleno frío desde la derecha y
-// borde desde atrás. Direcciones en el espacio de la cámara.
-uniform vec3 studio_sky = vec3(0.39, 0.42, 0.49);
-uniform vec3 studio_ground = vec3(0.36, 0.29, 0.23);
-uniform vec3 studio_key = vec3(0.36, 0.32, 0.25);
-uniform vec3 studio_fill = vec3(0.11, 0.13, 0.17);
-uniform vec3 studio_rim = vec3(0.45, 0.43, 0.40);
-const vec3 CC_STUDIO_KEY_DIR = vec3(-0.55, 0.62, 0.56);
-const vec3 CC_STUDIO_FILL_DIR = vec3(0.86, 0.05, 0.5);
 #endif
 #ifdef KIT_HEAD
 // La cara (FacePainter): atlas de expresiones en celdas, proyectado
@@ -145,9 +164,7 @@ const float CC_WALL_WRAP = 0.35;
 // de aquí, junto con `rim` y CC_FILL_SPREAD (world_light.gdshaderinc).
 const float CC_SUN_WRAP = 0.35;
 const float CC_SUN_TERMINATOR = 0.18;
-// Capa caliente: color (se ve tal cual, brilla sola) y grosor mínimo
-// (PieceModel.LAYER_STEP).
-const vec3 CC_HOT_COLOR = vec3(1.0, 0.5412, 0.2392);
+// Capa caliente: grosor mínimo (PieceModel.LAYER_STEP).
 const float CC_HOT_MIN = 0.01;
 
 varying vec3 v_world;
@@ -221,6 +238,8 @@ vec3 cc_tile(vec3 base, inout vec3 n, inout float shine) {
 	vec2 side = to_edge.x < to_edge.y ? vec2(f.x < 0.5 ? -1.0 : 1.0, 0.0) : vec2(0.0, f.y < 0.5 ? -1.0 : 1.0);
 	n = normalize(n + vec3(side.x, 0.0, side.y) * 0.55 * bevel);
 	float grout = 1.0 - smoothstep(CC_GROUT_HALF, CC_GROUT_HALF + fw, edge);
+	// La junta clara (biblia §4.2, ≈ #f2e2cb): el color de la baldosa
+	// mezclado con un blanco cálido.
 	c = mix(c, mix(base, vec3(1.0, 0.973, 0.922), 0.55), grout);
 	shine = mix(shine, 0.0, grout);
 	return c;
@@ -312,9 +331,8 @@ vec3 cc_face(vec3 skin, int kind) {
 #endif
 
 // La luz de la pasada base: la del mundo (ver world_light.gdshaderinc) o, en
-// los retratos del personaje, la de estudio.
+// las vistas de la interfaz, la de estudio.
 vec3 cc_base_light(vec3 n, float ao, mat4 view) {
-#ifdef KIT_CHARACTER
 	if (preview_light > 0.5) {
 		vec3 nv = normalize((view * vec4(n, 0.0)).xyz);
 		vec3 ambient = mix(studio_ground, studio_sky, clamp(nv.y * 0.5 + 0.5, 0.0, 1.0));
@@ -323,6 +341,7 @@ vec3 cc_base_light(vec3 n, float ao, mat4 view) {
 		float back_light = pow(1.0 - clamp(nv.z, 0.0, 1.0), 3.0) * smoothstep(-0.2, 0.4, nv.y);
 		return (ambient + studio_key * key_light + studio_fill * fill_light) * cc_ao_color(ao) + studio_rim * back_light;
 	}
+#ifdef KIT_CHARACTER
 	return cc_world_light(v_world, n, ao, 1.0);
 #else
 	return cc_world_light(v_world, n, ao, 0.0);
@@ -385,8 +404,9 @@ void fragment() {
 	// se imprime, arriba. Mide al menos 2 píxeles (se ve con cualquier zoom) y
 	// brilla sola con su color exacto: ni el sol ni el parche la queman.
 	float hot = 0.0;
-	vec3 hot_color = CC_HOT_COLOR;
+	vec3 hot_color = vec3(0.0);
 #ifdef HOT_LAYER
+	hot_color = hot_layer.rgb;
 	if (hot_top > -50.0) {
 		float band = max(CC_HOT_MIN, 2.0 * cc_px_m);
 		float depth = hot_top - v_local.y;
@@ -415,7 +435,10 @@ void fragment() {
 	}
 #endif
 	if (emit_amount != 0.0) {
-		float lit = emit_amount > 0.0 ? emit_amount : -emit_amount * cc_night;
+		// En una vista de la interfaz siempre es de día (luz de estudio): lo
+		// que brilla solo de noche queda apagado.
+		float night = preview_light > 0.5 ? 0.0 : cc_night;
+		float lit = emit_amount > 0.0 ? emit_amount : -emit_amount * night;
 		// Un balanceo negativo marca lo que parpadea (los focos de la
 		// guirnalda, KitMesh.night_glow con twinkle).
 		if (v_attr.y < 0.0) {
@@ -424,7 +447,9 @@ void fragment() {
 		glow += base * lit;
 	}
 
-	float ao = v_color.a * cc_occlusion(v_world, n);
+	// La oclusión del cuarto (rincones, mapa del piso, mancha del personaje)
+	// no va en las vistas de la interfaz: ahí el modelo está solo.
+	float ao = v_color.a * (preview_light > 0.5 ? 1.0 : cc_occlusion(v_world, n));
 	v_wall_wrap = kind == CC_PAINT ? CC_WALL_WRAP : 0.0;
 	v_albedo = base * (1.0 - hot);
 	v_base = clamp(mix(base * cc_base_light(n, ao, VIEW_MATRIX) + glow, hot_color, hot), 0.0, 1.0);

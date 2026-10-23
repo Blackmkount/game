@@ -3,16 +3,16 @@
 ## Estado actual
 
 - **Fase actual:** 1. Ciclo jugable, en curso (ruta aprobada por el dueño en `docs/RUTA.md`).
-- **Diseño:** GDD versión 2.3, guía de estilo en `docs/ESTILO.md` y ruta en `docs/RUTA.md`.
-- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 15 de 16: rendimiento. Calidad gráfica Alta y Baja con la opción "Calidad gráfica: Automática / Alta / Baja" en Ajustes, versión lejana de las impresoras con el zoom lejos (el taller lleno usa un 40 % menos de llamadas y en todas las impresoras se sigue viendo la pieza que crece) y panel de depuración `#debug` para medir en el teléfono (2026-10-23, con su ronda de arreglos). Antes: paso 14, la firma (lo que se compra se imprime en su lugar).
-- **Siguiente paso sugerido:** que el dueño mida en su teléfono con el panel `#debug` (lista en la entrada del paso 15, abajo). Después, Arte 2.0, paso 16: interfaz, documentos y cierre. Luego la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes; el panel de depuración ya existe) y la tarea 5 (tienda: su comando de compra solo tiene que agregar el mueble o la impresora al estado y pedir `RoomView.sync_models()`).
+- **Diseño:** GDD versión 2.4, guía de estilo en `docs/ESTILO.md` (dirección de arte en `docs/BIBLIA_ARTE.md`) y ruta en `docs/RUTA.md`.
+- **Última tarea:** **Arte 2.0 ("Mundo Impreso") terminado: paso 16 de 16** (2026-10-23): las vistas 3D de la tienda, los paneles y los retratos se dibujan a la resolución del teléfono, con luz de estudio y un disco de luz detrás; documentos al día (`docs/ESTILO.md` reescrita, `docs/BIBLIA_ARTE.md` en el repositorio, GDD 2.4, ruta y créditos). Antes: paso 15, rendimiento (calidad gráfica, zoom lejos y panel `#debug`).
+- **Siguiente paso sugerido:** que el dueño revise Arte 2.0 en su teléfono con la lista de la entrada del paso 16 (abajo) y mida con el panel `#debug` (lista del paso 15); con eso se decide el umbral de la calidad automática y si hace falta armar las mallas durante una pantalla de carga (D4). Después, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes) y la tarea 5 (tienda: su comando de compra solo tiene que agregar el mueble o la impresora al estado y pedir `RoomView.sync_models()`).
 - **Diseño del ciclo:** aprobado por el dueño (GDD, versión 2.3 en la sección 16).
 
 | Fase | Estado |
 |---|---|
 | 0. Base | Completada (2026-10-21) |
 | 1. Ciclo jugable | En curso: tareas 1, 2, 6 y 7 terminadas; 4, 5 y 8 en parte |
-| 2. Personaje vivo y game feel | Sin empezar (se adelantaron el estilo visual y, con D8, la animación y las reacciones del personaje) |
+| 2. Personaje vivo y game feel | Sin empezar como fase; con Arte 2.0 (D8) se adelantaron las reacciones y gestos del personaje, la animación de cada familia de impresoras, el día y la noche y las compras que aparecen imprimiéndose (detalle en `docs/RUTA.md`, Fase 2) |
 | 3. UX/UI y primera experiencia | Sin empezar |
 | 4. Contenido y MVP completo | Sin empezar |
 | 5. Móvil y rendimiento | Sin empezar |
@@ -737,4 +737,40 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 - Sigue sin medirse nada en un teléfono.
 
 **Siguiente paso sugerido:** que el dueño mida con el panel `#debug` (lista del paso 15). Después, Arte 2.0, paso 16.
+
+### 2026-10-23 — Arte 2.0, paso 16: la interfaz (vistas de la tienda y retratos), documentos y cierre
+
+**Qué se hizo**
+- **Las vistas 3D de la interfaz se ven nítidas en el teléfono.** Las impresoras y los muebles de la tienda, del inventario y de los paneles, y los dos retratos del personaje, se dibujan a la misma resolución que el cuarto (en un teléfono de 1.080 px, un píxel del modelo es un píxel de la pantalla; antes se dibujaban más chicas y se estiraban, por eso el retrato de arriba a la izquierda se veía borroso). En Baja siguen al nivel.
+- **Luz de estudio fija.** Antes, lo que se veía en la tienda se iluminaba con la luz del cuarto: de noche las impresoras de la tienda se veían azules y con la lámpara prendida. Ahora tienen una luz propia que suma como la mañana del cuarto: se ven igual a cualquier hora y del mismo color que en el cuarto.
+- **Un disco de luz azul detrás de cada vista**, para que lo oscuro (el marco negro de la Cubo Uno, la estantería metálica, el buzo del personaje) se lea sobre el fondo de la tarjeta.
+- **La cámara de las vistas es la del cuarto** (inclinada −30°) y cada modelo llena su tarjeta: la estantería metálica y la mesa de trabajo ya no se ven chiquitas. Los retratos miran un poco más de frente para que el flequillo no tape los ojos.
+- **El globo de diálogo ya no tapa el aviso de la impresora** (al fallar, "¡Nooo! Un espagueti." se corre y el triángulo rojo se ve).
+- **Documentos:** la guía de estilo reescrita para "Mundo Impreso" (idea y pilares, disciplina del cian, la firma del juego, el presupuesto, qué evitar y la lista para agregar algo nuevo), la biblia de arte guardada en `docs/BIBLIA_ARTE.md`, el GDD pasa a la versión 2.4 (sección 8 de arte, el personaje y el historial con tus decisiones D1 a D8), la ruta (el riesgo del contorno quedó resuelto y lo que se adelantó de la Fase 2) y los créditos (todo el arte es procedural, sin recursos de terceros). Se borró un color que nadie usaba y dos colores que estaban repetidos ahora salen de la paleta.
+
+**Verificado**
+- `check.sh`, `run_tests.sh` (755 pruebas, todas pasan; antes 748) y `screenshots.sh` (50 capturas) pasan. 7 pruebas nuevas; 2 pruebas se ampliaron (más estrictas) y ninguna se debilitó (detalle en `docs/DECISIONES.md`). Comprobado rompiendo el código a propósito de 10 maneras: cada vez falla una prueba (o el laboratorio).
+- Capturas revisadas: 11 y 46 (tienda), 06 (panel de la impresora), 47 (Perfil), 01 (retrato del HUD) y 23a (el globo y el aviso). Una hoja de laboratorio con todas las vistas a 720 y a 1.080 px muestra la diferencia de nitidez; la misma hoja de día y de noche sale igual píxel a píxel.
+
+**Qué revisar en el teléfono** (versión web; Arte 2.0 completo)
+1. **A las 08:00 (al empezar una partida):** el sol entra por la ventana con las rayas de las rejas y cruza la impresora del piso; las motas de polvo en el haz; el personaje se lee bien (cara, ojos con brillo, buzo gris carbón con la capucha mostaza); nada se ve "pixelado".
+2. **De noche** (espera a las 20:15 del juego o usa el panel `#debug` → "Noche"): la lámpara del escritorio, el monitor y la lámpara de la cama alumbran; la guirnalda parpadea suave; afuera hay estrellas, luna y ventanas encendidas; el piso lejos de las luces no se ve negro con el brillo del teléfono bajo.
+3. **Al fallar una impresión:** el nido de espagueti del color del filamento sobre la cama, la pantallita roja, el personaje con las manos en la cabeza, el globo "¡Nooo!" sin tapar el triángulo rojo, y el retrato de arriba con cara de preocupado.
+4. **Al cobrar:** el personaje feliz con el puño arriba, "+$" y "+XP" que vuelan, y el retrato de arriba feliz.
+5. **En el taller lleno** (panel `#debug` → "Taller lleno", de día y de noche, con el zoom normal y lejos): las siete familias se distinguen; de noche cada impresora tiene su halo del color de su estado.
+6. **En la tienda** (Impresoras y Muebles), el Inventario y el Perfil: las vistas se ven nítidas, con el disco azul detrás; el marco negro de la Cubo Uno y la estantería metálica se leen; se ven igual de día y de noche. El retrato de arriba a la izquierda se ve nítido y cambia de cara al cobrar o fallar.
+7. Las mediciones del paso 15 con el panel `#debug` (cuadros por segundo, llamadas, `ColorProbe` y el tiempo de armado) siguen pendientes: sin ellas no se puede cerrar la calidad automática ni D4.
+
+**Problemas conocidos**
+- Nada medido todavía en un teléfono (todo en el computador sin tarjeta de video).
+- Los destellos de "pieza lista" se leen poco sobre el piso al sol (se suman a un piso ya claro); la burbuja verde ✓ sí se lee.
+- Del personaje quedan detalles para una revisión futura: el pliegue del hombro con el brazo arriba, la mano (el pulgar es chico) y la cara feliz vista desde arriba.
+- Un taller muy ocupado con muchos colores usa más materiales que los que pide la biblia (cada pieza lleva su color); con el zoom lejos, el carrete de las impresoras de las estanterías es del color del primer carrete.
+
+**Propuesta para `CLAUDE.md`** (no se cambió: necesita tu visto bueno):
+- En la tabla de scripts, `tools/screenshots.sh` con sus opciones: `--only=all|art|char` (todas, solo las de arte o solo las del personaje), `--resolution=ANCHOxALTO` (por ejemplo 1080x1920 para ver la nitidez de un teléfono), `--quality=auto|high|low` y `--locale=en`; además de las capturas deja `manifest.txt` (las que se pidieron) y `budget.csv` (lo que costó dibujar cada una).
+- En la lista de documentos, `docs/BIBLIA_ARTE.md` (la dirección de arte con sus números).
+- En "Rendimiento móvil", cambiar "Una luz direccional más luz ambiental" por "Un solo sol con sombra; el ambiente, las lámparas y las pantallas se calculan en el sombreador (cero luces extra del motor)", y sumar "la prueba `test_scene_budget.gd` vigila llamadas, triángulos y materiales".
+
+**Siguiente paso sugerido:** que el dueño revise y mida en su teléfono (listas de arriba y del paso 15). Después, la Fase 1: tareas 3, 4 y 5.
 
