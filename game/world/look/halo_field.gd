@@ -1,13 +1,16 @@
 class_name HaloField
 extends MultiMeshInstance3D
-## Los halos de noche en el piso (biblia de arte §9.2 y §5.3): una mancha de
-## luz bajo cada impresora, del color de su estado (imprimiendo cálido, lista
-## verde, falla rojo; sin trabajo, apagada). Así el taller lleno se lee de
-## noche. Todos son UN MultiMesh: una llamada de dibujo para todos.
+## Los halos de noche (biblia de arte §9.2 y §5.3): una mancha de luz bajo
+## cada impresora, del color de su estado (imprimiendo cálido, lista verde,
+## falla rojo; sin trabajo, apagada), y las de la decoración (los focos de la
+## guirnalda en la pared, el gatito que brilla, el celular, la lámpara de la
+## cama). Así el taller lleno se lee de noche. Todos son UN MultiMesh: una
+## llamada de dibujo para todos.
 ##
 ## Cada impresora pide su halo con add() y le cambia el color con
-## set_color(). El sombreador (halo_field.gdshader) los multiplica por
-## cc_night; de día, además, el nodo se esconde (set_night): no cuesta nada.
+## set_color(); la decoración pone los suyos con add_glow(). El sombreador
+## (halo_field.gdshader) los multiplica por cc_night; de día, además, el nodo
+## se esconde (set_night): no cuesta nada.
 
 ## Copias que se reservan de una vez (se agranda si hace falta).
 const START_CAPACITY: int = 16
@@ -46,16 +49,22 @@ func _init() -> void:
 ## espacio del padre de este nodo (la base, en el piso o en la tabla) y
 ## `footprint` el ancho y fondo de su huella. Devuelve su número.
 func add(base: Transform3D, footprint: Vector2) -> int:
-	var size: Vector2 = footprint * SPREAD
-	var at: Transform3D = base * Transform3D(Basis.from_scale(Vector3(size.x, 1.0, size.y)), Vector3(0.0, LIFT, 0.0))
-	_transforms.append(at)
-	_colors.append(OFF)
+	return add_glow(base * Transform3D(Basis.IDENTITY, Vector3(0.0, LIFT, 0.0)), footprint * SPREAD, OFF)
+
+
+## Agrega un halo de `size` (ancho y fondo) en el plano de `at` (en el
+## espacio del padre: su +Y mira hacia afuera de la superficie) y de ese
+## color. Devuelve su número.
+func add_glow(at: Transform3D, size: Vector2, color: Color) -> int:
+	var placed: Transform3D = at * Transform3D(Basis.from_scale(Vector3(size.x, 1.0, size.y)), Vector3.ZERO)
+	_transforms.append(placed)
+	_colors.append(color)
 	var index: int = _transforms.size() - 1
 	if index >= multimesh.instance_count:
 		_grow()
 	else:
-		multimesh.set_instance_transform(index, at)
-		multimesh.set_instance_color(index, OFF)
+		multimesh.set_instance_transform(index, placed)
+		multimesh.set_instance_color(index, color)
 	multimesh.visible_instance_count = _transforms.size()
 	_refresh()
 	return index

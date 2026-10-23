@@ -2,7 +2,8 @@ class_name RoomView
 extends Node3D
 ## Escena 3D del espacio actual, armada a partir del estado de la partida:
 ## muebles en sus lugares, impresoras (en muebles o en el suelo), marcas de
-## lugares libres, el rincón de despacho junto a la puerta y el personaje.
+## lugares libres, el rincón de despacho junto a la puerta, el personaje y la
+## decoración del dormitorio (RoomDecor, que crece con el nivel).
 ##
 ## Lo que cambia con el ciclo de pedidos (la pieza que crece, la pantalla del
 ## computador, las cajas del rincón) lo muestran las vistas PrinterView,
@@ -79,12 +80,15 @@ var floor_ao: ImageTexture
 ## Con la tienda abierta todas las marcas de lugares libres se encienden (lo
 ## avisa WorldControls).
 var markers_emphasis: bool = false
-## La caja que tapa el parche de sol de la ventana (cc_occ_a): el tablero del
-## escritorio, que está bajo la ventana. Vacía si no hay mueble.
+## Las cajas que tapan el parche de sol de la ventana: el tablero del
+## escritorio, que está bajo la ventana (cc_occ_a; vacía si no hay mueble), y
+## la cama (cc_occ_b).
 var window_occluder: AABB = AABB()
-## Lo que adorna el cuarto y no se toca (biblia §5.4): por ahora, la
-## baldosa y el cable de la impresora del piso.
-var decor: Node3D
+var bed_occluder: AABB = AABB()
+## Lo que adorna el cuarto y no se toca (biblia §5.4 y §8.8): la decoración
+## del dormitorio, que crece con el nivel, y la baldosa y el cable de la
+## impresora del piso.
+var decor: RoomDecor
 ## Los halos de noche de las impresoras, del color de su estado (biblia
 ## §9.2): un MultiMesh para todos, que DayCycle muestra solo de noche.
 var halos: HaloField
@@ -120,10 +124,14 @@ func _ready() -> void:
 	RoomShell.build(self)
 	_build_base_shadow()
 	grid = WalkGrid.new(Rect2(-RoomShell.SIZE / 2.0, -RoomShell.SIZE / 2.0, RoomShell.SIZE, RoomShell.SIZE))
-	decor = PropBuilder.group(self, "Decor")
 	halos = HaloField.new()
 	add_child(halos)
 	day_cycle.halos = halos
+	# La decoración registra sus obstáculos antes de que se arme la grilla.
+	decor = RoomDecor.build(self, grid, _level())
+	day_cycle.dust = decor.dust
+	day_cycle.led_strip_on = decor.has_led_strip()
+	day_cycle.place_light("bed_lamp", DecorItems.BED_LAMP_BULB)
 	_highlight = HighlightFrame.build(self, "Highlight")
 	_build_destination()
 	_publish_window_occluders(null)
@@ -131,6 +139,8 @@ func _ready() -> void:
 		_build_contents()
 		# La cámara empieza ya encuadrando al personaje.
 		camera.follow_point = character_focus_point()
+	# Los halos de la decoración, después de los de las impresoras.
+	decor.add_night_lights(halos)
 	# Manchas de oclusión bajo los muebles, las impresoras y el rincón (sin
 	# partida, un piso limpio).
 	floor_ao = FloorAO.publish(grid.bounds, grid.obstacles())
@@ -445,7 +455,7 @@ func _setup_animator() -> void:
 	animator.watch_points = _print_heads
 	Events.order_delivered.connect(_on_order_delivered)
 	Events.print_failed.connect(_on_print_failed)
-	Events.level_up.connect(_on_level_up.unbind(1))
+	Events.level_up.connect(_on_level_up)
 	Events.offer_arrived.connect(_on_offer_arrived.unbind(1))
 	Events.printer_changed.connect(_on_printer_changed)
 	Events.computer_changed.connect(_on_computer_changed)
@@ -464,8 +474,25 @@ func _on_print_failed(printer_uid: int, _failure_type: String) -> void:
 	character.animator.react(CharacterAnimator.Reaction.PRINT_FAILED, _print_head_of(printer_uid))
 
 
-func _on_level_up() -> void:
+## Sube de nivel: el personaje salta y la decoración crece (la grilla de
+## caminar no cambia).
+func _on_level_up(level: int) -> void:
 	character.animator.react(CharacterAnimator.Reaction.LEVEL_UP)
+	_show_decor_level(level)
+
+
+## La decoración del nivel `level`. La tira LED del taller enciende o apaga
+## su luz del sombreador.
+func _show_decor_level(level: int) -> void:
+	decor.set_level(level)
+	if day_cycle.led_strip_on != decor.has_led_strip():
+		day_cycle.led_strip_on = decor.has_led_strip()
+		day_cycle.apply_hour(Game.state.game_minutes / 60.0)
+
+
+## Nivel del juego (sin partida, el primero).
+func _level() -> int:
+	return OrderQueries.level(Game.state, Game.rules) if Game.state != null else RoomDecor.TIER_LEVELS[0]
 
 
 func _on_offer_arrived() -> void:
@@ -496,8 +523,10 @@ func _on_time_changed(game_minutes: float) -> void:
 	character.animator.game_minutes = game_minutes
 
 
-## Partida nueva o cargada: el animador sin reacciones pendientes y al día.
+## Partida nueva o cargada: el animador sin reacciones pendientes y al día, y
+## la decoración de su nivel.
 func _on_game_loaded() -> void:
+	_show_decor_level(_level())
 	character.animator.reset()
 	_on_computer_changed()
 	_on_time_changed(Game.state.game_minutes)
@@ -602,19 +631,22 @@ func _update_markers() -> void:
 
 ## Cajas que tapan el parche de sol de la ventana (biblia §6.3, cc_occ_a y
 ## cc_occ_b): el mueble del lugar 0, que está bajo la ventana (del escritorio,
-## su tablero), y la cama (llega con la decoración; por ahora no hay). Sin
-## mueble, ninguna caja.
+## su tablero; sin mueble, ninguna caja), y la cama de la decoración.
 func _publish_window_occluders(under_window: Node3D, furniture_id: String = "") -> void:
 	window_occluder = AABB()
 	if under_window != null:
 		var local: AABB = ComputerDeskModel.table_box() if furniture_id == DeskSheet.FURNITURE_ID else PropBounds.local_aabb(under_window)
 		window_occluder = under_window.transform * local
-	var center: Vector3 = window_occluder.get_center()
-	var half: Vector3 = window_occluder.size / 2.0
-	RenderingServer.global_shader_parameter_set(&"cc_occ_a_c", Vector4(center.x, center.y, center.z, 0.0))
-	RenderingServer.global_shader_parameter_set(&"cc_occ_a_h", Vector4(half.x, half.y, half.z, 0.0))
-	RenderingServer.global_shader_parameter_set(&"cc_occ_b_c", Vector4.ZERO)
-	RenderingServer.global_shader_parameter_set(&"cc_occ_b_h", Vector4.ZERO)
+	bed_occluder = RoomDecor.BED_BOX
+	_publish_box(&"cc_occ_a_c", &"cc_occ_a_h", window_occluder)
+	_publish_box(&"cc_occ_b_c", &"cc_occ_b_h", bed_occluder)
+
+
+static func _publish_box(center_name: StringName, half_name: StringName, box: AABB) -> void:
+	var center: Vector3 = box.get_center()
+	var half: Vector3 = box.size / 2.0
+	RenderingServer.global_shader_parameter_set(center_name, Vector4(center.x, center.y, center.z, 0.0))
+	RenderingServer.global_shader_parameter_set(half_name, Vector4(half.x, half.y, half.z, 0.0))
 
 
 ## Dónde está el personaje para los sombreadores: su mancha en el piso y la

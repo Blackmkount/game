@@ -13,6 +13,7 @@ const SHADERS: Dictionary[String, Array] = {
 	"res://game/world/look/screen.gdshader": ["mode", "tint"],
 	"res://game/world/look/window_view.gdshader": ["mood", "view_dir"],
 	"res://game/world/look/window_shaft.gdshader": ["strength"],
+	"res://game/world/look/dust.gdshader": ["strength", "size", "brightness", "reach", "drift"],
 	"res://game/world/look/halo.gdshader": ["color", "falloff", "aspect"],
 	"res://game/world/look/backdrop.gdshader": ["center_color", "edge_color", "glow_color"],
 	"res://game/world/look/base_shadow.gdshader": ["color"],

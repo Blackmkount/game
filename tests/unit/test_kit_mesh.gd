@@ -238,6 +238,47 @@ func test_what_hangs_sways_more_the_lower_it_is() -> void:
 	assert_eq(kit.sway_top, INF, "paint quita lo que cuelga")
 
 
+func test_what_grows_from_a_pot_sways_more_the_higher_it_is() -> void:
+	var kit: KitMesh = KitMesh.new()
+	kit.paint("3f8f4f")
+	kit.rooted(0.8, 0.3, 1.0)
+	kit.box(Vector3(0.1, 1.6, 0.1), Vector3(0.0, 1.0, 0.0), 0.0)
+	var arrays: Array = kit.commit().surface_get_arrays(0)
+	var positions: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	var uvs: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV]
+	for i: int in positions.size():
+		var expected: float = 0.8 * clampf((positions[i].y - 0.3) / 1.0, 0.0, 1.0)
+		assert_almost_eq(uvs[i].y, expected, 0.0001, "Balanceo a y = %.2f" % positions[i].y)
+	assert_almost_eq(uvs[_index_at_height(positions, 0.2)].y, 0.0, 0.0001, "En la maceta no se mueve")
+	assert_almost_eq(uvs[_index_at_height(positions, 1.8)].y, 0.8, 0.0001, "Arriba, todo el balanceo")
+	kit.paint("3f8f4f")
+	assert_false(kit.sway_up, "paint quita lo que crece")
+	assert_eq(kit.sway_top, INF)
+
+
+func test_a_copy_goes_on_by_itself() -> void:
+	var kit: KitMesh = KitMesh.new()
+	kit.detail = 0.6
+	kit.bevel_cutoff = 0.004
+	kit.printed("f28c28", 0.003)
+	kit.box(Vector3.ONE * 0.1, Vector3.ZERO, 0.0)
+	var copy: KitMesh = kit.copy()
+	assert_eq(copy.triangle_count(), kit.triangle_count(), "Empieza con lo mismo")
+	assert_eq(copy.color, kit.color)
+	assert_almost_eq(copy.layer, 0.003, 0.0001, "Y sigue pintando lo mismo")
+	assert_almost_eq(copy.detail, 0.6, 0.0001)
+	assert_almost_eq(copy.bevel_cutoff, 0.004, 0.0001)
+	copy.box(Vector3.ONE * 0.1, Vector3(1.0, 0.0, 0.0), 0.0)
+	assert_eq(copy.triangle_count(), 24, "La copia suma lo suyo")
+	assert_eq(kit.triangle_count(), 12, "Sin cambiar al original")
+	kit.cylinder(0.05, 0.1, Vector3.ZERO)
+	assert_eq(copy.triangle_count(), 24, "Ni el original a la copia")
+	var a: AABB = kit.commit().get_aabb()
+	var b: AABB = copy.commit().get_aabb()
+	assert_lt(a.end.x, 0.1, "Cada una con sus formas")
+	assert_gt(b.end.x, 1.0)
+
+
 func test_the_cache_builds_once_and_returns_the_same_mesh() -> void:
 	var calls: Array[int] = [0]
 	var build: Callable = func() -> ArrayMesh:

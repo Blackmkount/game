@@ -54,11 +54,15 @@ const WINDOW_SHAFT_STRENGTH: float = 0.22
 const LIGHT_GLOBALS: Array[StringName] = [&"cc_pl0", &"cc_pl1", &"cc_pl2", &"cc_pl3"]
 const LIGHT_COLOR_GLOBALS: Array[StringName] = [&"cc_pl0_col", &"cc_pl1_col", &"cc_pl2_col", &"cc_pl3_col"]
 
-## El sol del cuarto, el material del fondo y los halos de noche de las
-## impresoras (los arma RoomView).
+## El sol del cuarto, el material del fondo, los halos de noche y el polvo
+## del haz de la ventana (los arma RoomView).
 var sun: DirectionalLight3D
 var backdrop: ShaderMaterial
 var halos: HaloField
+var dust: DustField
+## La tira LED de la pared del fondo solo existe en el taller (la decoración
+## de nivel 5+, RoomDecor): sin ella no alumbra aunque sea de noche.
+var led_strip_on: bool = false
 
 ## Dónde está cada luz del sombreador (nombre de LIGHTS → posición). Las que
 ## no tienen lugar no alumbran.
@@ -120,6 +124,8 @@ func apply_hour(hour: float) -> void:
 	WorldPalette.glow("ffffff", WorldPalette.WINDOW_VIEW).set_shader_parameter("mood", values["view_mood"])
 	WorldPalette.window_shaft().set_shader_parameter("strength", values["window_shaft"])
 	var factors: Dictionary = values["lights"]
+	if dust != null:
+		dust.set_strength(float(factors["window_shaft"]))
 	for light_name: String in LIGHTS:
 		var light: Dictionary = LIGHTS[light_name]
 		var slot: int = light["slot"]
@@ -128,7 +134,8 @@ func apply_hour(hour: float) -> void:
 		var color: Vector3 = _scaled(light["color"], float(light["intensity"]) * float(factors[light_name]))
 		_publish(LIGHT_GLOBALS[slot], Vector4(place.x, place.y, place.z, reach))
 		_publish(LIGHT_COLOR_GLOBALS[slot], Vector4(color.x, color.y, color.z, 1.0))
-	var strip: Vector3 = _scaled(LED_STRIP_COLOR, LED_STRIP_INTENSITY * float(factors["led_strip"]))
+	var strip_factor: float = float(factors["led_strip"]) if led_strip_on else 0.0
+	var strip: Vector3 = _scaled(LED_STRIP_COLOR, LED_STRIP_INTENSITY * strip_factor)
 	_publish(&"cc_strip_a", LED_STRIP_FROM)
 	_publish(&"cc_strip_b", LED_STRIP_TO)
 	_publish(&"cc_strip_col", Vector4(strip.x, strip.y, strip.z, LED_STRIP_RANGE))

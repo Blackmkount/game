@@ -22,14 +22,16 @@ const SceneBudget: GDScript = preload("res://tests/helpers/scene_budget.gd")
 const FullRoom: GDScript = preload("res://tests/helpers/full_room.gd")
 const SEED: int = 1234
 
-## Cuarto inicial. Medido el 2026-10-22 en el paso 10 de Arte 2.0 (el
-## personaje nuevo: una malla con piel y la cabeza, cada una con su sombra y
-## su contorno, 6 llamadas; antes eran 48): 33 llamadas, 13 materiales, 8
-## mallas con sombra y 8 superficies transparentes (5 marcas, el marco de
-## resalte, el haz de la ventana y la sombra bajo la base). Antes: 75
-## llamadas, 18 materiales y 30 mallas con sombra (pasos 7 a 9); 120 (paso
-## 6); 136 (paso 5); 177 (paso 3); 334 (paso 1).
-const START_MAX_DRAW_CALLS: int = 37
+## Cuarto inicial. Medido el 2026-10-22 en el paso 12 de Arte 2.0 (la
+## decoración del dormitorio: 6 llamadas, ver DECOR_*): 38 llamadas, 14
+## materiales, 9 mallas con sombra y 9 superficies transparentes (5 marcas,
+## el marco de resalte, el haz de la ventana, la sombra bajo la base y el
+## polvo del haz). El tope de llamadas sube de 37 a 41 (medido + 10 %): la
+## decoración que pide la biblia no cabía en el anterior (anotado en
+## docs/DECISIONES.md; la meta final sigue en 70). Antes: 33 llamadas, 13
+## materiales y 8 mallas con sombra (pasos 10 y 11, el personaje nuevo); 75
+## (pasos 7 a 9); 120 (paso 6); 136 (paso 5); 177 (paso 3); 334 (paso 1).
+const START_MAX_DRAW_CALLS: int = 41
 const START_MAX_VISIBLE_TRIANGLES: int = 45000
 const START_MAX_TOTAL_TRIANGLES: int = 80000
 const START_MAX_MATERIALS: int = 15
@@ -39,14 +41,20 @@ const START_MAX_TRANSPARENT: int = 9
 ## los triángulos de sus mallas (el contorno comparte la malla).
 const CHARACTER_MAX_DRAW_CALLS: int = 6
 const CHARACTER_MAX_TRIANGLES: int = 8000
+## Toda la decoración (Room/Decor, biblia §5.2): lo sólido del piso con su
+## sombra, lo de las paredes, lo plano, la baldosa de la impresora y el
+## polvo. Medido en el paso 12: 6 llamadas.
+const DECOR_MAX_DRAW_CALLS: int = 7
+const DECOR_MAX_TRIANGLES: int = 9000
 
-## Cuarto lleno. Medido el 2026-10-22 en el paso 10 (el personaje nuevo):
-## 128 llamadas, 13 materiales, 28 mallas con sombra y 5 superficies
-## transparentes (las 2 tapas ámbar de las Gota R1 y 3 más; sin lugares
-## libres no hay marcas: el tope de transparentes es el final del cuarto
-## inicial). Antes: 170 llamadas, 18 materiales y 50 mallas con sombra (paso
-## 9); 230 (paso 8); 395 (paso 7); 440 (paso 6); 519 (paso 5); 535 (paso 3);
-## 1.042 (paso 1).
+## Cuarto lleno. Medido el 2026-10-22 en el paso 12 (con la decoración):
+## 133 llamadas, 14 materiales, 29 mallas con sombra y 6 superficies
+## transparentes (las 2 tapas ámbar de las Gota R1, el polvo y 3 más; sin
+## lugares libres no hay marcas: el tope de transparentes es el final del
+## cuarto inicial). Los topes no cambian (medido + 10 % pasaría el anterior).
+## Antes: 128 llamadas, 13 materiales y 28 mallas con sombra (pasos 10 y
+## 11); 170 (paso 9); 230 (paso 8); 395 (paso 7); 440 (paso 6); 519 (paso
+## 5); 535 (paso 3); 1.042 (paso 1).
 const FULL_MAX_DRAW_CALLS: int = 141
 const FULL_MAX_VISIBLE_TRIANGLES: int = 60000
 const FULL_MAX_TOTAL_TRIANGLES: int = 99999
@@ -87,7 +95,20 @@ func test_the_starting_room_fits_the_mobile_budget() -> void:
 	assert_lte(budget.get("transparent_surfaces"), START_MAX_TRANSPARENT, "Superficies transparentes")
 	assert_lte(budget.call("child_draw_calls", "Character"), CHARACTER_MAX_DRAW_CALLS, "Llamadas del personaje")
 	assert_lte(budget.call("child_geometry", "Character"), CHARACTER_MAX_TRIANGLES, "Triángulos del personaje")
+	assert_lte(budget.call("child_draw_calls", "Decor"), DECOR_MAX_DRAW_CALLS, "Llamadas de la decoración")
+	assert_lte(budget.call("child_geometry", "Decor"), DECOR_MAX_TRIANGLES, "Triángulos de la decoración")
 	_assert_one_sun_and_everything_measured(budget)
+
+
+func test_the_decor_fits_its_budget_at_every_level() -> void:
+	await _measure()
+	var decor: RoomDecor = _main.get_node("WorldView/SubViewport/Room/Decor")
+	for level: int in RoomDecor.TIER_LEVELS:
+		decor.set_level(level)
+		var budget: RefCounted = SceneBudget.measure(_main.get_node("WorldView/SubViewport/Room"))
+		gut.p("Decoración del nivel %d: %d llamadas, %d triángulos" % [level, budget.call("child_draw_calls", "Decor"), budget.call("child_geometry", "Decor")])
+		assert_lte(budget.call("child_draw_calls", "Decor"), DECOR_MAX_DRAW_CALLS, "Llamadas de la decoración (nivel %d)" % level)
+		assert_lte(budget.call("child_geometry", "Decor"), DECOR_MAX_TRIANGLES, "Triángulos de la decoración (nivel %d)" % level)
 
 
 func test_a_full_room_fits_the_mobile_budget() -> void:

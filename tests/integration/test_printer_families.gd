@@ -253,7 +253,9 @@ func test_each_printer_has_a_night_halo_of_its_state_color() -> void:
 	state.printers.append(OwnedPrinter.new(state.take_uid(), "rayo_x1", table.uid))
 	await _load(state)
 	var halos: HaloField = _room.halos
-	assert_eq(halos.count(), 2, "Un halo por impresora")
+	# Los de las impresoras van primero; detrás, las luces de noche de la
+	# decoración (RoomDecor).
+	assert_eq(halos.count(), 2 + DecorWall.night_lights().size(), "Un halo por impresora (y los de la decoración)")
 	assert_false(halos.visible, "De día no se dibujan")
 	assert_eq(halos.color_of(0), HaloField.OFF, "Sin trabajo, apagado")
 	halos.set_night(1.0)

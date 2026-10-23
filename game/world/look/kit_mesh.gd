@@ -65,10 +65,12 @@ var emit: float = 0.0
 ## Peso del balanceo (plantas, cortina, cobija colgando).
 var sway: float = 0.0
 ## Lo que cuelga (una cortina, una hoja): con `sway_top` el balanceo es 0 a
-## esa altura y crece hasta `sway` `sway_length` metros más abajo. Sin él
-## (INF), todo se balancea igual.
+## esa altura y crece hasta `sway` `sway_length` metros más abajo (más
+## arriba con `sway_up`: lo que crece de una maceta). Sin él (INF), todo se
+## balancea igual.
 var sway_top: float = INF
 var sway_length: float = 1.0
+var sway_up: bool = false
 ## Altura del contacto (el piso, la mesa) para la oclusión horneada.
 var ao_base: float = 0.0
 ## Sin oclusión de contacto (lo que cuelga de la pared). Las caras que miran
@@ -118,6 +120,7 @@ func paint(hex: String, p_surface: WorldPalette.Surface = WorldPalette.Surface.S
 	emit = 0.0
 	sway = 0.0
 	sway_top = INF
+	sway_up = false
 	return self
 
 
@@ -128,6 +131,18 @@ func hanging(weight: float, top: float, length: float) -> KitMesh:
 	sway = weight
 	sway_top = top
 	sway_length = length
+	sway_up = false
+	return self
+
+
+## Lo que sigue crece desde `bottom` (una planta en su maceta): se balancea
+## con peso 0 abajo y `weight` desde `length` metros más arriba. Va después
+## de paint().
+func rooted(weight: float, bottom: float, length: float) -> KitMesh:
+	sway = weight
+	sway_top = bottom
+	sway_length = length
+	sway_up = true
 	return self
 
 
@@ -465,6 +480,34 @@ func is_empty() -> bool:
 	return _indices.is_empty()
 
 
+## Otro KitMesh con lo agregado hasta ahora y lo que se está pintando: desde
+## ahí cada uno sigue por su lado (las variantes de una malla que comparten
+## casi todo, como la decoración en cada nivel, se arman una sola vez).
+func copy() -> KitMesh:
+	var other: KitMesh = KitMesh.new()
+	other._positions = _positions.duplicate()
+	other._normals = _normals.duplicate()
+	other._colors = _colors.duplicate()
+	other._uvs = _uvs.duplicate()
+	other._uv2s = _uv2s.duplicate()
+	other._indices = _indices.duplicate()
+	other.color = color
+	other.surface = surface
+	other.gloss = gloss
+	other.layer = layer
+	other.emit = emit
+	other.sway = sway
+	other.sway_top = sway_top
+	other.sway_length = sway_length
+	other.sway_up = sway_up
+	other.ao_base = ao_base
+	other.ao_enabled = ao_enabled
+	other.detail = detail
+	other.bevel_cutoff = bevel_cutoff
+	other.origin = origin
+	return other
+
+
 func triangle_count() -> int:
 	return _indices.size() / 3
 
@@ -542,7 +585,8 @@ func _vertex(p: Vector3, n: Vector3) -> int:
 	_colors.append(Color(color.r, color.g, color.b, ao))
 	var swing: float = sway
 	if sway_top < INF:
-		swing *= clampf((sway_top - at.y) / maxf(sway_length, 0.001), 0.0, 1.0)
+		var reach: float = at.y - sway_top if sway_up else sway_top - at.y
+		swing *= clampf(reach / maxf(sway_length, 0.001), 0.0, 1.0)
 	_uvs.append(Vector2(float(surface) + gloss, swing))
 	_uv2s.append(Vector2(layer, emit))
 	return _positions.size() - 1

@@ -839,3 +839,63 @@ Personaje: **7.831 triángulos** (cuerpo 4.288, cabeza 3.543; antes 6.775; tope 
 ### Pruebas nuevas
 - `tests/unit/test_character_animator.gd`, `test_the_first_reaction_of_a_game_needs_no_new_memory`: suelta la tabla de gestos (como al abrir el juego; otra prueba pudo haberla armado), arma un personaje y, para cada una de las 9 reacciones, la primera `react()` + `step()` suma 0 bytes de memoria estática, y también los 4 s que siguen (gesto, cara y mirada). Con la tabla armada en el primer gesto falla (25.600 bytes); sin escribir los instance uniforms al armarse, también (728).
 - `test_character_animator.gd`, `test_a_sudden_stop_settles_but_a_wall_does_not_tip_the_body_forward`: soltar el joystick corriendo inclina un poco más hacia adelante en el cuadro en que para; contra la pared, la inclinación solo baja cuadro a cuadro y termina por debajo de 0,05. Falla con la condición de antes (al soltar no se asienta) y sin mirar el joystick (en la pared sube).
+
+## 2026-10-22 — Arte 2.0, paso 12: la decoración del dormitorio (D6, se informa)
+
+### La decoración vive en Room/Decor y no se toca
+**Decisión:** `RoomDecor` (`game/world/decor/room_decor.gd`) es el nodo `Room/Decor`: lo sólido del piso (`DecorItems`: cama con cobija de tigre, puf con control y zapatillas, librero, costilla de Adán, basurero de impresiones fallidas, cajas de filamento), lo de las paredes y estantes (`DecorWall`: tres pósters, guirnalda de 14 focos, bufanda, reloj, calendario, diploma, corcho, foto familiar, plano, guitarra, repisa de las primeras impresiones, banderín, enchufe de F5, alféizar) y lo plano (tapete andino, felpudo, cable del escritorio, un barquito fallido). Ningún `WorldInteractable` sale de ahí y ningún nodo se llama `Printer*`, `Furniture*` ni `FreeSlot*`. La baldosa de la impresora del piso (`PaverModel`) sigue como `Decor/Paver`.
+**Motivo:** biblia §5.4 y §8.8 y los contratos A.7 del plan (zonas de toque intactas).
+
+### Mallas y presupuesto
+**Decisión:** con el material del kit, `FloorN` (sólido, con sombra: 2 llamadas), `WallN` (pared, estantes y lo que cambia con el nivel, sin sombra: 1), `Flat` (≤ 4 mm, sin sombra: 1), `Paver` (1) y `Dust` (MultiMesh, solo de día: 1) = **6 llamadas** de día; de noche el polvo se esconde y sus luces van en el MultiMesh de los halos. Medido: 7.745 / 8.333 / 8.643 triángulos en los niveles 1 / 3 / 5 (biblia: ≤ 7 llamadas y ≤ 9.000; la prueba de presupuesto lo exige en los tres niveles). Lo redondo con detalle 0,6 (biblia §5.1) y sin biseles de menos de 4 mm, salvo el reloj y el puf (detalle 1,0: grandes y redondos).
+**Motivo:** biblia §5.2.
+
+### El tope de llamadas del cuarto inicial sube de 37 a 41
+**Decisión:** `START_MAX_DRAW_CALLS` pasa de 37 a 41 (medido 38 + 10 %). Los demás topes no cambian: materiales 14 ≤ 15, mallas con sombra 9 ≤ 9, transparentes 9 ≤ 9 (el polvo suma una), y en el cuarto lleno todo queda bajo los topes del paso 10 (133 llamadas ≤ 141).
+**Motivo:** la regla A.10 dice "nunca por encima del tope anterior", pero la decoración que pide la biblia (≤ 7 llamadas) no cabía en 37: el informe del paso 10 ya lo había avisado. La meta final de la biblia (≤ 70) sigue lejos.
+
+### Lo que está en el piso: su rectángulo entero es obstáculo y queda lejos de los lugares
+**Decisión:** cada cosa del piso tiene en `RoomDecor.FLOOR` el rectángulo que ocupa **entero** (con las hojas de la planta, la cobija que cae, la lámpara de la cabecera) y su alto. Ese rectángulo, agrandado 5 cm como los muebles, se registra en la grilla **antes** de `grid.build()` (así también deja su mancha en `FloorAO`). Está a ≥ 0,15 m de la huella de todos los lugares de muebles (≥ 0,30 m si mide más de 0,6 m), fuera del paso de la puerta y a ≥ 0,5 m de los puntos que usan las pruebas y las capturas. La huella de un lugar es la de todo lo que puede ir ahí (cada mueble de la tienda, con su pared, y su marca; en el lugar 0, el escritorio que no se vende).
+**Motivo:** biblia §5.4 y §8.8. Para cumplirlo con las medidas reales de los muebles, algunas cosas se corrieron de lo que dice la biblia:
+- Costilla de Adán: centro (−2,70; −2,40) y no (−2,70; −2,25): a −2,25 quedaba a 0,20 m de la huella del lugar 0 (mide 1,35 m: pide 0,30).
+- Basurero: centro (−2,80; −0,25), Ø 0,27 (biblia (−2,80; −0,30), Ø 0,30): el hueco entre los lugares 0 y 1 mide 0,597 m; con 0,30 de ancho no quedan 0,15 m a cada lado.
+- Cajas de filamento (F4): x 2,755…2,995 (biblia 2,75…2,97): a 2,75 quedaban a 0,147 m del lugar 4.
+- Corcho: z −2,55…−2,05 (biblia −2,85…−2,00): el librero del rincón (x −2,95…−2,45 contra la pared del fondo) tapaba la mitad.
+- Guitarra: centro z −0,22 (biblia −0,25) y 0,32 m de ancho: así no toca los pliegues de la cortina (z ≥ −0,40) ni el interruptor.
+- Repisa de las primeras impresiones: 0,14 m de fondo (biblia 0,16): con 0,16 chocaba con los postes de la estantería metálica si va en el lugar 1.
+- Lugares que la biblia no da: el billete enmarcado (nivel 3+) sobre el librero (x −2,70, y 2,15), la placa del taller (nivel 5+) sobre el diploma (x 2,82, y 1,95) y un enchufe nuevo bajo el interruptor (z 0,0, y 0,30) para el cable del escritorio.
+
+### Crece con el nivel sin cambiar la grilla y sin armar nada al subir
+**Decisión:** tres niveles de decoración (`RoomDecor.TIER_LEVELS` = niveles 1, 3 y 5 del juego: "recién empiezo", "ya vendo", "taller"). Cambian la repisa (2 piezas → 5: el gatito que brilla, un dragón y un jarrón), el corcho (2 notas → 5 notas y 3 fotos), el billete enmarcado, la placa, la tira LED, lo que hay en el basurero (medio lleno → desbordado) y las cajas de filamento de F4 (1 → 2 → 4). Las cajas y el basurero están en el piso, pero siempre dentro de su mismo rectángulo: los obstáculos son iguales en todos los niveles (la prueba lo exige). Las tres variantes de `FloorN` y `WallN` se arman y se ponen al armar el cuarto: lo que no cambia se arma una vez y se copia (`KitMesh.copy()`, nuevo); subir de nivel (`Events.level_up`, y al cargar una partida) solo cambia cuál se ve. Medido: cambiar de nivel pide 0 bytes y no arma ninguna malla. Armar las tres variantes la primera vez tarda ~17 ms sin pantalla (paso 15: medirlo en el teléfono). Los niveles son números de presentación (como los de `DayCycle`), no de balance: no cambian nada del juego.
+**Motivo:** biblia §8.8 ("la decoración crece con el nivel, solo con cosas de pared y estante, para que la grilla de caminar nunca cambie") y la regla de no armar nada dentro de un cuadro (la subida de nivel llega dentro del `_process` de `Game`). El plan pedía "solo pared y estante"; el basurero y las cajas también crecen porque no tocan la grilla.
+
+### La tira LED solo existe en el taller
+**Decisión:** `DayCycle.led_strip_on` (nuevo): la luz del sombreador de la tira LED solo alumbra si la tira está puesta (`RoomDecor.has_led_strip()`, nivel 5+). RoomView lo actualiza al subir de nivel y al cargar.
+**Motivo:** biblia §8.8 (nivel 5+: "tira LED encendida de noche"). De día no cambia nada (factor 0 en la mañana); el paso 13 la usa de noche.
+
+### La cama tapa el parche de sol y lleva la lámpara de cc_pl2
+**Decisión:** `cc_occ_b` = `RoomDecor.BED_BOX` (el colchón con la cobija: x 1,95…2,92, y 0…0,5, z −1,85…0,17), expuesto como `RoomView.bed_occluder`. `cc_pl2` ("bed_lamp") sale del foco de la lámpara de hongo impresa de la cabecera, `DecorItems.BED_LAMP_BULB` = (2,45; 0,85; −1,80) (biblia §6.2).
+**Motivo:** biblia §6.3. En la mañana el parche no llega a la cama (cae en x −1,4…−0,2); en la tarde dorada (paso 13) sí.
+
+### Las luces de noche de la decoración van en el MultiMesh de los halos
+**Decisión:** `HaloField.add_glow(at, size, color)` (nuevo; `add()` lo usa): un halo en cualquier plano. La decoración pone 17 (los 14 focos de la guirnalda sobre la pared, el gatito de la repisa, el celular de la cabecera y la lámpara de la cama) **después** de los de las impresoras, apagados los de un nivel que no se ve. Los focos, el gatito, el celular, la pantalla de la lámpara y la tira LED tienen además luz propia de noche (`night_glow`). De día no se ve nada de esto.
+**Motivo:** biblia §5.3 (un MultiMesh para todos los halos: 0 llamadas más). Los valores de noche los calibra el paso 13.
+
+### Polvo del haz de la ventana
+**Decisión:** `DustField` (`game/world/look/dust_field.gd`, `MultiMesh` de 40 cuadritos, 1 llamada, 80 triángulos) con `dust.gdshader`: cada mota trae en `INSTANCE_CUSTOM` dónde está dentro del haz (u, v en el hueco y t a lo largo de la luz) y su fase, salidos de una semilla (`DustField.motes(seed)`, puro; `RoomDecor.DUST_SEED`). El sombreador las pone en la dirección de la ventana de esa hora (`cc_window_dir`, como el haz), las mueve con `cc_anim_time`, las hace mirar a la cámara y suma la luz de la ventana. `DayCycle` le pone la fuerza del factor "haz y polvo" de la hora; en 0 el nodo se esconde.
+**Motivo:** biblia §8.9. Siguen al haz cuando cambie la hora (paso 13) sin moverlas por código. "Solo nivel Alto" llega con los niveles de calidad (paso 15).
+
+### Balanceo de lo que crece de una maceta
+**Decisión:** `KitMesh.rooted(peso, abajo, largo)` (nuevo, como `hanging` pero al revés): el balanceo es 0 en la maceta y crece hacia arriba. Lo usan los tallos y las hojas de la costilla de Adán; las guías del potus cuelgan (`hanging`).
+**Motivo:** con un balanceo parejo las hojas se despegaban de los tallos y los tallos de la tierra.
+
+### Prueba adaptada (misma intención)
+- `tests/integration/test_printer_families.gd`, `test_each_printer_has_a_night_halo_of_its_state_color`: "un halo por impresora" cuenta ahora `2 + DecorWall.night_lights().size()` (los de la decoración van detrás, en el mismo MultiMesh). Lo demás (colores por estado en los halos 0 y 1, dónde queda el de la impresora del piso, solo de noche) igual.
+- `tests/integration/test_scene_budget.gd`: tope de llamadas del cuarto inicial 37 → 41 (ver arriba) y pruebas nuevas de la decoración.
+
+### Pruebas nuevas
+- `tests/integration/test_room_decor.gd` (9): cada cosa del piso, armada sola en cada nivel, cabe en su rectángulo, no se mete bajo el piso ni pasa de su alto, y su rectángulo queda a ≥ 0,15 m (≥ 0,30 m si mide más de 0,6 m) de la huella de cada lugar de muebles; deja libre el paso de la puerta y queda a ≥ 0,5 m de los puntos de las pruebas y las capturas (y de la caminata de 04–05), que siguen libres en la grilla; es obstáculo registrado antes de armar la grilla (el camino de A* no la atraviesa); la decoración no suma nada que se toque (10 objetos en una partida nueva, ninguno donde está la decoración; tocar la cama o el puf no abre nada) y no tiene nodos `Printer*`, `Furniture*` ni `FreeSlot*`; lo plano mide ≤ 4 mm y el cable del escritorio no pisa ningún lugar libre y llega a la pared; subir a los niveles 3 y 5 no cambia los obstáculos ni los 5 lugares libres, muestra solo la variante de su nivel, con más cosas cada vez, y enciende la tira LED en el taller; cambiar de nivel no pide memoria ni arma mallas; el polvo es el mismo con la misma semilla (y otro con otra), está dentro del haz, se ve de mañana y se esconde sin luz; la cama es la caja `cc_occ_b` y `cc_pl2` está en su lámpara.
+- `tests/integration/test_scene_budget.gd`, `test_the_decor_fits_its_budget_at_every_level` y dos asserts en el cuarto inicial: la decoración ≤ 7 llamadas y ≤ 9.000 triángulos en los tres niveles.
+- `tests/unit/test_kit_mesh.gd`: `test_what_grows_from_a_pot_sways_more_the_higher_it_is` y `test_a_copy_goes_on_by_itself`.
+- `tests/unit/test_day_cycle.gd`, `test_the_dust_of_the_window_shaft_follows_the_hour`.
+- `tests/integration/test_look_shaders.gd`: `dust.gdshader` compila y expone sus parámetros.

@@ -84,6 +84,18 @@ func test_every_shader_light_has_a_slot_of_its_own() -> void:
 		assert_true(light_name in LIGHT_FACTORS, "La mañana dice cuánto alumbra " + light_name)
 
 
+func test_the_dust_of_the_window_shaft_follows_the_hour() -> void:
+	var cycle: DayCycle = DayCycle.new()
+	var dust: DustField = DustField.new(1)
+	cycle.dust = dust
+	add_child_autofree(cycle)
+	add_child_autofree(dust)
+	assert_false(dust.visible, "Sin hora, escondido")
+	cycle.apply_hour(8.0)
+	assert_true(dust.visible, "De mañana el polvo flota en el haz (factor %.1f)" % LIGHT_FACTORS["window_shaft"])
+	assert_almost_eq(float((dust.material_override as ShaderMaterial).get_shader_parameter("strength")), LIGHT_FACTORS["window_shaft"], 0.0001)
+
+
 func _scaled(hex: String, energy: float) -> Vector3:
 	var color: Color = Color(hex)
 	return Vector3(color.r, color.g, color.b) * energy

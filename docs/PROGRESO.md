@@ -4,8 +4,8 @@
 
 - **Fase actual:** 1. Ciclo jugable, en curso (ruta aprobada por el dueño en `docs/RUTA.md`).
 - **Diseño:** GDD versión 2.3, guía de estilo en `docs/ESTILO.md` y ruta en `docs/RUTA.md`.
-- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 11 de 16: el personaje vivo (trota con rodillas y codos, respira, parpadea, mira, hace gestos sueltos, cambia de cara y reacciona a lo que pasa: cobrar, una falla, subir de nivel, un mensaje, una impresora que termina, tocarlo), con dos rondas de arreglos (pulgar arriba de frente, celular con las dos manos, capturas; nada de memoria nueva en el primer gesto de la partida) (2026-10-22). Antes: paso 10, el personaje nuevo.
-- **Siguiente paso sugerido:** Arte 2.0, paso 12: la decoración del dormitorio que crece con el nivel. Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
+- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 12 de 16: la decoración del dormitorio (cama con cobija de tigre, puf, librero, costilla de Adán, guitarra, pósters, guirnalda, tapete andino, polvo en el haz de la ventana...), que crece con el nivel sin quitar piso para muebles (2026-10-22). Antes: paso 11, el personaje vivo.
+- **Siguiente paso sugerido:** Arte 2.0, paso 13: el día y la noche completos (los seis momentos del día, luces de noche, la guirnalda y la tira LED encendidas). Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
 - **Diseño del ciclo:** aprobado por el dueño (GDD, versión 2.3 en la sección 16).
 
 | Fase | Estado |
@@ -586,3 +586,30 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 - El pulgar del mitón es chico: a zoom normal, de frente, el pulgar arriba puede leerse como "hola" (paso 16). El puño arriba es un mitón abierto, no un puño cerrado (paso 16).
 - En 23a el globo del personaje tapa el ícono de aviso de la impresora; y en 22 lo cobrado que vuela se cruza con el globo del cliente (interfaz, paso 16).
 - "Reducir movimiento" todavía no existe en Ajustes (RUTA Fase 2).
+
+### 2026-10-22 — Arte 2.0, paso 12: la decoración del dormitorio
+
+**Qué se hizo** (decisión D6: se aplica y se informa; no cambia nada del juego)
+- **El cuarto ya parece habitado:** del lado derecho (antes vacío) hay una cama de una plaza con una cobija de tigre (de color apagado a propósito) doblada, sábana, almohada celeste, un dragón articulado morado impreso y, en la repisa de la cabecera, una lámpara de hongo impresa y el celular; un puf verde azulado con un control de videojuegos encima y las zapatillas tiradas al lado.
+- **En el rincón del fondo:** un librero alto con libros, cajas con etiqueta (sin letras), un jarrón en espiral impreso, un dragón y un potus que cuelga; al lado, una costilla de Adán en maceta de barro que se mece suave.
+- **En las paredes:** tres pósters inventados (atardecer en los cerros, una boquilla imprimiendo un barquito capa a capa y un teleférico sobre el valle), una guirnalda de 14 focos, la bufanda de un club inventado, un reloj, el calendario de la tienda del barrio, un diploma; en la pared de la ventana, el corcho con notas y la foto familiar encima, el plano de una impresora sobre la cortina, la guitarra colgada, la repisa con sus primeras impresiones y un banderín sobre la puerta. En el alféizar: una suculenta en una lata, un cactus en una maceta impresa, el barquito de prueba naranja y una alcancía.
+- **En el piso:** un tapete andino tejido con flecos, un felpudo en la puerta, el basurero de impresiones fallidas con espaguetis de colores (y un barquito que falló a las dos capas al lado) y el cable del escritorio que va por la pared hasta un enchufe nuevo bajo el interruptor.
+- **Polvo en el rayo de sol:** 40 motas que flotan en el haz de la ventana de día.
+- **Crece contigo:** al empezar, la repisa tiene 2 piezas, el corcho 2 notas y hay una caja de filamento en el rincón derecho. En el nivel 3 ("ya vendo") la repisa se llena (aparecen el gatito que brilla en la oscuridad, un dragón y un jarrón), el corcho tiene más notas y fotos, aparece el billete enmarcado de la primera venta y el basurero se llena más. En el nivel 5 ("taller") hay una pila de cajas de filamento, una placa enmarcada y una tira LED arriba de la pared del fondo que se enciende de noche. Nada de esto cambia por dónde se camina ni quita lugares para muebles.
+- **De noche** (cuando llegue el paso 13): los focos de la guirnalda, el gatito, el celular y la lámpara de la cama brillan y dejan su halo; ya está todo puesto.
+- Todo cabe en 6 llamadas de dibujo (la biblia permite 7) y unos 8.600 triángulos como mucho.
+
+**Verificado**
+- `check.sh` y `run_tests.sh` pasan: 678 pruebas (antes 665): 9 de la decoración (lejos de los lugares de muebles, de la puerta y de los puntos que usan las pruebas; nada se toca; lo plano es plano; subir de nivel no cambia la grilla ni pide memoria; el polvo sale de una semilla; la cama tapa el sol y lleva su lámpara), 1 del presupuesto en cada nivel, 2 del kit de formas, 1 del polvo con la hora y el sombreador del polvo. Una prueba adaptada y el tope de llamadas del cuarto inicial sube de 37 a 41 (detalle en `docs/DECISIONES.md`).
+- `screenshots.sh` saca las 42 capturas. Revisé 01, 02, 03, 05, 26, 30, 31, 34 y 37, y aparte (laboratorio) cada cosa de cerca, los tres niveles y una noche puesta a mano.
+
+**Qué revisar en el teléfono** (versión web)
+- Con el zoom lejos: el lado derecho del cuarto ya no se ve vacío (la cama, el puf, los pósters y la guirnalda).
+- Acércate a la cama, al puf y al rincón del librero: nada de eso se abre al tocarlo y el personaje camina alrededor.
+- Mira el rayo de sol de la ventana: hay motas de polvo que flotan.
+- Sube de nivel (con el menú de pruebas cuando exista, o jugando): la repisa de la pared de la ventana y el corcho se llenan.
+
+**Problemas conocidos**
+- Armar las tres decoraciones la primera vez tarda unos 17 ms en el computador; hay que medirlo en el teléfono (paso 15).
+- La guirnalda y la tira LED de día se ven finas; de noche se calibran en el paso 13.
+- El polvo todavía se ve en cualquier calidad: "solo en calidad Alta" llega con el paso 15.

@@ -74,6 +74,14 @@ const CLAY_POT: String = "c2683f"
 const TIN_CAN: String = "c9ced6"
 const PAINT_BUCKET: String = "f2f0ea"
 const PAINT_BUCKET_STRIPE: String = "2f8f8f"
+## PLA que brilla en la oscuridad (el gatito de la repisa): el verde claro
+## del brote.
+const GLOW_IN_DARK: String = PLANT_SPROUT
+## Pósters inventados, sin letras ni marcas: atardecer en los cerros,
+## boquilla imprimiendo un barquito y teleférico sobre el valle.
+const POSTER_SUNSET: Array[String] = ["f28c28", "c4553b", "2f3a57"]
+const POSTER_NOZZLE: Array[String] = ["38d6ff", "2f3a57"]
+const POSTER_CABLE_CAR: Array[String] = ["e0a43a", "3f8f4f", "cfe1f2"]
 
 # Impresoras (§4.5): cuerpo, acento y detalles de cada familia.
 const CUBE_FRAME: String = "2c2f3d"
