@@ -17,6 +17,16 @@ extends Node3D
 ## El personaje reacciona a lo que pasa (biblia de arte §7.8): RoomView
 ## escucha las señales de Events y se lo cuenta a su CharacterAnimator (qué
 ## impresora falló o terminó, si está cerca, si se modela, la hora).
+##
+## Lo que hay en el cuarto sigue al estado (sync_models, biblia §12.2): al
+## cargar otra partida (Events.game_loaded) se arma lo que falta y se quita
+## lo que sobra; lo que se compre (Fase 1, tarea 5) aparecerá imprimiéndose
+## en su lugar (PrintIn).
+
+## Cambió lo que hay en el cuarto (sync_models): muebles, impresoras o
+## lugares libres. Lo escuchan WorldControls y las burbujas de estado, que
+## guardan objetos que se tocan.
+signal models_changed
 
 const BACKDROP_SHADER: Shader = preload("res://game/world/look/backdrop.gdshader")
 const BASE_SHADOW_SHADER: Shader = preload("res://game/world/look/base_shadow.gdshader")
@@ -32,6 +42,11 @@ const PICK_MARGIN: float = 0.08
 const OBSTACLE_MARGIN: float = 0.05
 ## Alto de la zona que se toca en un lugar libre (la marca es casi plana).
 const SLOT_TOUCH_HEIGHT: float = 0.2
+## Lo que no deja pasar al personaje (y oscurece el piso, FloorAO).
+const BLOCKING: Array[WorldInteractable.Kind] = [WorldInteractable.Kind.FURNITURE, WorldInteractable.Kind.PRINTER, WorldInteractable.Kind.DISPATCH]
+## El lugar de muebles que queda bajo la ventana (su mueble tapa el parche de
+## sol).
+const WINDOW_SLOT: int = 0
 ## Altura del punto del personaje que sigue la cámara.
 const CHARACTER_FOCUS_HEIGHT: float = 0.7
 ## Hora de la luz cuando no hay partida (la mañana del inicio).
@@ -94,6 +109,22 @@ var decor: RoomDecor
 var halos: HaloField
 
 var _character_item: WorldInteractable
+var _door_item: WorldInteractable
+## Los muebles y las impresoras del cuarto (por uid) y las marcas de los
+## lugares libres (por lugar), con lo que se toca de cada uno.
+var _furniture: Dictionary[int, Placed] = {}
+var _printers: Dictionary[int, Placed] = {}
+var _slots: Dictionary[int, Placed] = {}
+## La impresora del piso (la primera, sobre su baldosa) y la baldosa.
+var _floor_printer: Node3D
+var _paver: MeshInstance3D
+## La mesa del computador (sus luces y sus halos de noche), si hay.
+var _desk: Node3D
+## Lo que no se mueve nunca del piso (la decoración): la grilla de caminar
+## empieza con esto cada vez que se vuelve a armar.
+var _fixed_obstacles: Array[Rect2] = []
+## Lo que se está imprimiendo en el cuarto (las compras que llegan).
+var _print_ins: Array[PrintIn] = []
 ## Lo que el animador del personaje necesita del cuarto: el escritorio (para
 ## la cara concentrada), los cabezales de las impresoras (para mirarlos; ver
 ## _watched_part) y qué impresoras tenían una pieza lista (para el pulgar
@@ -117,6 +148,20 @@ var _marker_material: ShaderMaterial
 var _marker_lit_material: ShaderMaterial
 
 
+## Un mueble, una impresora o una marca de lugar libre del cuarto: su nodo,
+## con qué se armó (si eso cambia en el estado, se arma de nuevo) y lo que se
+## toca de él.
+class Placed:
+	var node: Node3D
+	var key: String
+	var item: WorldInteractable
+
+	func _init(p_node: Node3D, p_key: String, p_item: WorldInteractable) -> void:
+		node = p_node
+		key = p_key
+		item = p_item
+
+
 func _ready() -> void:
 	ColorProbe.run(self, WorldViewport.MSAA_HIGH)
 	_build_environment()
@@ -129,6 +174,7 @@ func _ready() -> void:
 	day_cycle.halos = halos
 	# La decoración registra sus obstáculos antes de que se arme la grilla.
 	decor = RoomDecor.build(self, grid, _level())
+	_fixed_obstacles = grid.obstacles()
 	day_cycle.dust = decor.dust
 	day_cycle.led_strip_on = decor.has_led_strip()
 	day_cycle.place_light("bed_lamp", DecorItems.BED_LAMP_BULB)
@@ -139,11 +185,10 @@ func _ready() -> void:
 		_build_contents()
 		# La cámara empieza ya encuadrando al personaje.
 		camera.follow_point = character_focus_point()
-	# Los halos de la decoración, después de los de las impresoras.
-	decor.add_night_lights(halos)
-	# Manchas de oclusión bajo los muebles, las impresoras y el rincón (sin
-	# partida, un piso limpio).
-	floor_ao = FloorAO.publish(grid.bounds, grid.obstacles())
+	else:
+		# Sin partida: los halos de la decoración y un piso limpio.
+		decor.add_night_lights(halos)
+		floor_ao = FloorAO.publish(grid.bounds, grid.obstacles())
 	day_cycle.set_hour(Game.state.game_minutes / GameClock.MINUTES_PER_HOUR if Game.state != null else NO_GAME_HOUR)
 	camera.snap_to_goal()
 	_publish_character()
@@ -356,81 +401,31 @@ func _fitted_camera_size() -> float:
 	return CAMERA_SIZE * clampf(sqrt(BASE_ASPECT / aspect), MIN_ZOOM, 1.0)
 
 
+## Arma lo que sale del estado (muebles, impresoras, lugares libres), lo
+## que está siempre (la puerta y el rincón de despacho) y al personaje, en el
+## orden en que van los nodos, lo que se toca y los obstáculos.
 func _build_contents() -> void:
 	var state: GameState = Game.state
 	var layout: RoomLayout = RoomLayout.for_space(state.space_id)
-	var furniture_nodes: Dictionary[int, Node3D] = {}
-	var used_slots: Array[int] = []
-	var desk: Node3D = null
-	for item: OwnedFurniture in state.furniture:
-		var node: Node3D = FurnitureModel.build(self, "Furniture%d" % item.uid, item.furniture_id, layout.wall_gaps[item.slot])
-		node.transform = layout.slots[item.slot]
-		furniture_nodes[item.uid] = node
-		used_slots.append(item.slot)
-		var furniture_item: WorldInteractable = _register(WorldInteractable.Kind.FURNITURE, item.uid, node, true)
-		if item.slot == 0:
-			_publish_window_occluders(node, item.furniture_id)
-		if item.furniture_id == DeskSheet.FURNITURE_ID:
-			_add_view(node, DeskView.new())
-			_place_desk_lights(node)
-			_desk_area = furniture_item.footprint()
-			desk = node
-
-	var spool_color: String = _first_spool_color(state)
-	var floor_index: int = 0
-	var spot_index: Dictionary[int, int] = {}
-	for printer: OwnedPrinter in state.printers:
-		# La del piso, con todo su detalle; las de los muebles, con menos (y
-		# solo su cuerpo da sombra).
-		var detail: float = PrinterParts.FLOOR_DETAIL if printer.is_on_floor() else PrinterParts.FURNITURE_DETAIL
-		var node: Node3D = PrinterModel.build(self, "Printer%d" % printer.uid, printer.printer_id, spool_color, detail)
-		if printer.is_on_floor():
-			node.transform = layout.floor_printer_spots[mini(floor_index, layout.floor_printer_spots.size() - 1)]
-			if floor_index == 0:
-				PaverModel.build(decor, node.transform)
-				_place_printer_led(node)
-			floor_index += 1
-		else:
-			var furniture: Node3D = furniture_nodes[printer.furniture_uid]
-			var index: int = spot_index.get(printer.furniture_uid, 0)
-			spot_index[printer.furniture_uid] = index + 1
-			var spot: Node3D = furniture.get_node("PrinterSpot%d" % index)
-			node.transform = furniture.transform * spot.transform
-		_register(WorldInteractable.Kind.PRINTER, printer.uid, node, true)
-		_print_heads.append(_watched_part(node))
-		var view: PrinterView = PrinterView.new(printer.uid, printer.printer_id)
-		view.halos = halos
-		_add_view(node, view)
-	# Los halos del escritorio, después de los de las impresoras.
-	if desk != null:
-		_add_desk_halos(desk)
-
 	# Las marcas de lugares libres laten suavemente para invitar a llenarlos.
 	_marker_material = WorldPalette.glow_transparent(WorldPalette.SLOT_MARK, MARKER_ALPHA, MARKER_ALPHA_LOW, MARKER_PULSE_PERIOD)
 	_marker_lit_material = WorldPalette.glow_transparent(WorldPalette.SLOT_MARK, MARKER_LIT_ALPHA, MARKER_LIT_ALPHA_LOW, MARKER_PULSE_PERIOD)
-	for slot: int in layout.slots.size():
-		if slot not in used_slots:
-			var marker: Node3D = SlotMarker.build(self, "FreeSlot%d" % slot, _marker_material)
-			marker.transform = layout.slots[slot]
-			# Se toca la marca que se ve, con un poco de alto para el rayo.
-			var touch_area: AABB = PropBounds.local_aabb(marker)
-			touch_area.size.y = SLOT_TOUCH_HEIGHT
-			var item: WorldInteractable = WorldInteractable.new(WorldInteractable.Kind.SLOT, slot, touch_area, marker.global_transform)
-			interactables.append(item)
-			_markers.append(marker.get_node("Mark"))
-			_marker_areas.append(item.footprint())
+	var new_furniture: Dictionary[int, Node3D] = {}
+	var new_printers: Dictionary[Node3D, float] = {}
+	_sync_furniture(state, layout, new_furniture)
+	_sync_printers(state, layout, new_furniture, new_printers)
+	_sync_slots(state, layout)
 
 	var door: Node3D = get_node("RoomShell/Door")
-	_register(WorldInteractable.Kind.DOOR, 0, door, false)
-
+	_door_item = _make_item(WorldInteractable.Kind.DOOR, 0, door)
 	var corner: Node3D = DispatchCornerModel.build(self, "DispatchCorner")
 	corner.transform = layout.dispatch_spot
 	# La vista arma las cajas y los paquetes (escondidos) antes de registrar el
 	# rincón: así la zona que se toca incluye los paquetes apilados.
 	_add_view(corner, DispatchView.new())
-	dispatch_item = _register(WorldInteractable.Kind.DISPATCH, 0, corner, true)
+	dispatch_item = _make_item(WorldInteractable.Kind.DISPATCH, 0, corner)
+	_rebuild_room(state)
 
-	grid.build()
 	var model: Node3D = CharacterModel.build(self, "Character")
 	character = CharacterController.new()
 	character.name = "CharacterController"
@@ -443,6 +438,281 @@ func _build_contents() -> void:
 	_speech_anchor = model.get_node("Body/Head/SpeechAnchor")
 	_character_item = WorldInteractable.new(WorldInteractable.Kind.CHARACTER, 0, PropBounds.local_aabb(model), model.global_transform)
 	interactables.append(_character_item)
+
+
+## Deja el cuarto igual al estado de la partida (biblia de arte §12.2): arma
+## los muebles y las impresoras que faltan, quita los que ya no están y vuelve
+## a armar los que cambiaron (de tipo, de lugar o de carrete), con las marcas
+## de los lugares que quedan libres. Después rehace lo que depende de dónde
+## está cada cosa: lo que se toca, la grilla de caminar, el mapa de oclusión
+## del piso, los halos de noche y las luces del escritorio y de la impresora
+## del piso. Si nada cambió, no hace nada.
+##
+## Con `animate`, lo nuevo aparece imprimiéndose en su lugar (PrintIn; las
+## impresoras de un mueble nuevo, cuando el mueble ya terminó): así lo
+## mostrará el comando de compra (Fase 1, tarea 5). Al cargar una partida
+## (Events.game_loaded) el cuarto queda igual al estado de una vez.
+func sync_models(animate: bool = true) -> void:
+	var state: GameState = Game.state
+	if state == null:
+		return
+	var layout: RoomLayout = RoomLayout.for_space(state.space_id)
+	var new_furniture: Dictionary[int, Node3D] = {}
+	var new_printers: Dictionary[Node3D, float] = {}
+	var changed: bool = _sync_furniture(state, layout, new_furniture)
+	changed = _sync_printers(state, layout, new_furniture, new_printers) or changed
+	changed = _sync_slots(state, layout) or changed
+	if not changed:
+		return
+	_rebuild_room(state)
+	day_cycle.refresh()
+	if character != null:
+		# Lo nuevo puede quedar donde estaba el personaje o en su camino.
+		character.stop_path()
+		character.floor_position = grid.resolve(character.floor_position)
+		character.animator.desk_area = _desk_area
+		character.animator.watch_points = _print_heads
+	if animate:
+		_print_in(new_furniture, new_printers)
+	models_changed.emit()
+
+
+## Termina ya lo que se está imprimiendo en el cuarto (un toque en el mundo:
+## WorldControls).
+func finish_print_ins() -> void:
+	if _print_ins.is_empty():
+		return
+	for effect: PrintIn in _print_ins:
+		effect.finish()
+	_print_ins.clear()
+
+
+## Lo que muestra cómo se imprime `node` ahora, o null si no se está
+## imprimiendo (pruebas y capturas).
+func print_in_of(node: Node3D) -> PrintIn:
+	for effect: PrintIn in _print_ins:
+		if effect.is_running() and effect.node == node:
+			return effect
+	return null
+
+
+## Los muebles del estado: arma los que faltan y los que cambiaron de tipo o
+## de lugar (en `appeared`, por uid) y quita los que ya no están. Devuelve si
+## cambió algo.
+func _sync_furniture(state: GameState, layout: RoomLayout, appeared: Dictionary[int, Node3D]) -> bool:
+	var keys: Dictionary[int, String] = {}
+	for item: OwnedFurniture in state.furniture:
+		keys[item.uid] = "%s@%d" % [item.furniture_id, item.slot]
+	var changed: bool = false
+	for uid: int in _furniture.keys():
+		if keys.get(uid, "") != _furniture[uid].key:
+			_drop(_furniture[uid].node)
+			_furniture.erase(uid)
+			changed = true
+	for item: OwnedFurniture in state.furniture:
+		if _furniture.has(item.uid):
+			continue
+		var node: Node3D = FurnitureModel.build(self, "Furniture%d" % item.uid, item.furniture_id, layout.wall_gaps[item.slot])
+		node.transform = layout.slots[item.slot]
+		if item.furniture_id == DeskSheet.FURNITURE_ID:
+			_add_view(node, DeskView.new())
+		_furniture[item.uid] = Placed.new(node, keys[item.uid], _make_item(WorldInteractable.Kind.FURNITURE, item.uid, node))
+		appeared[item.uid] = node
+		changed = true
+	return changed
+
+
+## Las impresoras del estado, cada una en su lugar: en el piso (la primera,
+## sobre su baldosa) o en el lugar que le toca de su mueble. Arma las que
+## faltan y las que cambiaron de modelo, de lugar o de carrete (en
+## `appeared`, con lo que esperan para imprimirse: las de un mueble nuevo,
+## lo que tarda el mueble) y quita las que ya no están. Devuelve si cambió
+## algo.
+func _sync_printers(state: GameState, layout: RoomLayout, new_furniture: Dictionary[int, Node3D], appeared: Dictionary[Node3D, float]) -> bool:
+	var spool_color: String = _first_spool_color(state)
+	var keys: Dictionary[int, String] = {}
+	var places: Dictionary[int, Transform3D] = {}
+	var floor_index: int = 0
+	var spot_index: Dictionary[int, int] = {}
+	for printer: OwnedPrinter in state.printers:
+		var place: String = "floor%d" % floor_index
+		var at: Transform3D
+		if printer.is_on_floor():
+			at = layout.floor_printer_spots[mini(floor_index, layout.floor_printer_spots.size() - 1)]
+			floor_index += 1
+		else:
+			var index: int = spot_index.get(printer.furniture_uid, 0)
+			spot_index[printer.furniture_uid] = index + 1
+			var furniture: Placed = _furniture.get(printer.furniture_uid)
+			var spot: Node3D = furniture.node.get_node_or_null("PrinterSpot%d" % index) if furniture != null else null
+			if spot == null:
+				# Su mueble no está o no tiene ese lugar: no se ve.
+				continue
+			at = furniture.node.transform * spot.transform
+			place = "%d:%s/%d" % [printer.furniture_uid, furniture.key, index]
+		keys[printer.uid] = "%s|%s|%s" % [printer.printer_id, place, spool_color]
+		places[printer.uid] = at
+	var changed: bool = false
+	for uid: int in _printers.keys():
+		if keys.get(uid, "") != _printers[uid].key:
+			_drop(_printers[uid].node)
+			_printers.erase(uid)
+			changed = true
+	_floor_printer = null
+	for printer: OwnedPrinter in state.printers:
+		if not keys.has(printer.uid):
+			continue
+		if not _printers.has(printer.uid):
+			# La del piso, con todo su detalle; las de los muebles, con menos (y
+			# solo su cuerpo da sombra).
+			var detail: float = PrinterParts.FLOOR_DETAIL if printer.is_on_floor() else PrinterParts.FURNITURE_DETAIL
+			var node: Node3D = PrinterModel.build(self, "Printer%d" % printer.uid, printer.printer_id, spool_color, detail)
+			node.transform = places[printer.uid]
+			_add_view(node, PrinterView.new(printer.uid, printer.printer_id))
+			_printers[printer.uid] = Placed.new(node, keys[printer.uid], _make_item(WorldInteractable.Kind.PRINTER, printer.uid, node))
+			appeared[node] = PrintIn.FURNITURE_SECONDS if new_furniture.has(printer.furniture_uid) else 0.0
+			changed = true
+		if _floor_printer == null and printer.is_on_floor():
+			_floor_printer = _printers[printer.uid].node
+	# La baldosa (con su cable) va con la impresora del piso.
+	if _floor_printer == null and _paver != null:
+		_drop(_paver)
+		_paver = null
+	elif _floor_printer != null and _paver == null:
+		_paver = PaverModel.build(decor, _floor_printer.transform)
+	return changed
+
+
+## Una marca en cada lugar sin mueble (FreeSlot<lugar>). Devuelve si cambió
+## algo.
+func _sync_slots(state: GameState, layout: RoomLayout) -> bool:
+	var used: Array[int] = []
+	for item: OwnedFurniture in state.furniture:
+		used.append(item.slot)
+	var changed: bool = false
+	for slot: int in layout.slots.size():
+		var free: bool = slot not in used
+		if free == _slots.has(slot):
+			continue
+		changed = true
+		if not free:
+			_drop(_slots[slot].node)
+			_slots.erase(slot)
+			continue
+		var marker: Node3D = SlotMarker.build(self, "FreeSlot%d" % slot, _marker_material)
+		marker.transform = layout.slots[slot]
+		# Se toca la marca que se ve, con un poco de alto para el rayo.
+		var touch_area: AABB = PropBounds.local_aabb(marker)
+		touch_area.size.y = SLOT_TOUCH_HEIGHT
+		_slots[slot] = Placed.new(marker, "", WorldInteractable.new(WorldInteractable.Kind.SLOT, slot, touch_area, marker.global_transform))
+	return changed
+
+
+## Lo que depende de dónde está cada cosa, después de armar o quitar
+## muebles, impresoras o marcas.
+func _rebuild_room(state: GameState) -> void:
+	_collect_interactables(state)
+	grid.clear_obstacles()
+	for rect: Rect2 in _fixed_obstacles:
+		grid.add_obstacle(rect)
+	for item: WorldInteractable in interactables:
+		if item.kind in BLOCKING:
+			grid.add_obstacle(item.footprint().grow(OBSTACLE_MARGIN))
+	grid.build()
+	# Manchas de oclusión bajo los muebles, las impresoras y el rincón.
+	floor_ao = FloorAO.publish(grid.bounds, grid.obstacles())
+	_place_lights(state)
+	# Los halos de noche en orden: impresoras, escritorio y decoración.
+	halos.clear()
+	for printer: OwnedPrinter in state.printers:
+		if _printers.has(printer.uid):
+			(_printers[printer.uid].node.get_node("View") as PrinterView).attach_halo(halos)
+	if _desk != null:
+		_add_desk_halos(_desk)
+	decor.add_night_lights(halos)
+
+
+## Lo que se toca, en orden: los muebles, las impresoras, los lugares libres,
+## la puerta, el rincón de despacho y el personaje. Los objetos que ya
+## estaban son los mismos (WorldControls y las burbujas los guardan).
+func _collect_interactables(state: GameState) -> void:
+	interactables.clear()
+	for item: OwnedFurniture in state.furniture:
+		if _furniture.has(item.uid):
+			interactables.append(_furniture[item.uid].item)
+	for printer: OwnedPrinter in state.printers:
+		if _printers.has(printer.uid):
+			interactables.append(_printers[printer.uid].item)
+	_markers.clear()
+	_marker_areas.clear()
+	var slots: Array[int] = _slots.keys()
+	slots.sort()
+	for slot: int in slots:
+		var placed: Placed = _slots[slot]
+		interactables.append(placed.item)
+		_markers.append(placed.node.get_node("Mark"))
+		_marker_areas.append(placed.item.footprint())
+	for item: WorldInteractable in [_door_item, dispatch_item, _character_item]:
+		if item != null:
+			interactables.append(item)
+
+
+## Las luces que salen de los muebles y de la impresora del piso, y lo que
+## sabe de ellos el personaje: el escritorio (su lámpara, su monitor, su
+## lugar), el mueble bajo la ventana (tapa el parche de sol), la luz de la
+## cama de la impresora del piso y los cabezales que se miran.
+func _place_lights(state: GameState) -> void:
+	_desk = null
+	_desk_area = Rect2()
+	var under_window: Node3D = null
+	var under_window_id: String = ""
+	for item: OwnedFurniture in state.furniture:
+		if not _furniture.has(item.uid):
+			continue
+		var placed: Placed = _furniture[item.uid]
+		if item.slot == WINDOW_SLOT:
+			under_window = placed.node
+			under_window_id = item.furniture_id
+		if item.furniture_id == DeskSheet.FURNITURE_ID and _desk == null:
+			_desk = placed.node
+			_desk_area = placed.item.footprint()
+	_publish_window_occluders(under_window, under_window_id)
+	if _desk != null:
+		_place_desk_lights(_desk)
+	else:
+		day_cycle.clear_light("desk_lamp")
+		day_cycle.clear_light("monitor")
+	if _floor_printer != null:
+		_place_printer_led(_floor_printer)
+	else:
+		day_cycle.clear_light("printer_led")
+	_print_heads.clear()
+	for printer: OwnedPrinter in state.printers:
+		if _printers.has(printer.uid):
+			_print_heads.append(_watched_part(_printers[printer.uid].node))
+
+
+## Pone a imprimirse lo que acaba de aparecer: los muebles y después las
+## impresoras (las de un mueble nuevo esperan a que termine).
+func _print_in(new_furniture: Dictionary[int, Node3D], new_printers: Dictionary[Node3D, float]) -> void:
+	var running: Array[PrintIn] = []
+	for effect: PrintIn in _print_ins:
+		if effect.is_running():
+			running.append(effect)
+	_print_ins = running
+	for node: Node3D in new_furniture.values():
+		_print_ins.append(PrintIn.play(node, PrintIn.FURNITURE_SECONDS))
+	for node: Node3D in new_printers:
+		_print_ins.append(PrintIn.play(node, PrintIn.PRINTER_SECONDS, new_printers[node]))
+
+
+## Quita del cuarto un modelo que ya no está, de una vez (su nombre queda
+## libre para el que lo reemplaza). Si se estaba imprimiendo, termina.
+func _drop(node: Node3D) -> void:
+	for effect: PrintIn in _print_ins:
+		if effect.is_running() and effect.node == node:
+			effect.finish()
+	node.free()
 
 
 ## Si el personaje está a CharacterAnimator.NEAR metros o menos de ese
@@ -533,9 +803,11 @@ func _on_time_changed(game_minutes: float) -> void:
 	character.animator.game_minutes = game_minutes
 
 
-## Partida nueva o cargada: la luz de su hora de una vez (sin mezcla), el
-## animador sin reacciones pendientes y al día, y la decoración de su nivel.
+## Partida nueva o cargada: el cuarto igual a su estado (sin efecto de
+## impresión), la luz de su hora de una vez (sin mezcla), el animador sin
+## reacciones pendientes y al día, y la decoración de su nivel.
 func _on_game_loaded() -> void:
+	sync_models(false)
 	day_cycle.set_hour(Game.state.game_minutes / GameClock.MINUTES_PER_HOUR)
 	_show_decor_level(_level())
 	character.animator.reset()
@@ -562,14 +834,12 @@ func _print_head_of(printer_uid: int) -> Vector3:
 	return _watched_part(printer).global_position if printer != null else character.model.position
 
 
-## Agrega un objeto que se puede tocar y, si ocupa lugar, lo marca como
+## Lo que se toca de un modelo: la caja de sus mallas (no depende de su
+## material ni de lo que se ve: es la misma mientras se imprime) y dónde
+## está. Si ocupa lugar en el piso (BLOCKING), _rebuild_room lo vuelve
 ## obstáculo para caminar.
-func _register(kind: WorldInteractable.Kind, ref: int, node: Node3D, blocks: bool) -> WorldInteractable:
-	var item: WorldInteractable = WorldInteractable.new(kind, ref, PropBounds.local_aabb(node), node.global_transform)
-	interactables.append(item)
-	if blocks:
-		grid.add_obstacle(item.footprint().grow(OBSTACLE_MARGIN))
-	return item
+func _make_item(kind: WorldInteractable.Kind, ref: int, node: Node3D) -> WorldInteractable:
+	return WorldInteractable.new(kind, ref, PropBounds.local_aabb(node), node.global_transform)
 
 
 ## Cuelga la vista de un modelo como su hijo "View".
@@ -633,7 +903,6 @@ func _first_spool_color(state: GameState) -> String:
 		return WorldPalette.PLASTIC_BEIGE
 	var color: Dictionary = DataLookup.config_entry(Game.catalog, "filament_colors", state.spools[0].color_id)
 	return color.get("hex", WorldPalette.PLASTIC_BEIGE)
-
 
 
 ## Las marcas de lugares libres se encienden con el personaje cerca o con la

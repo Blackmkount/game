@@ -95,7 +95,7 @@ const CHARACTER_SHOTS: Array[String] = [
 ]
 const ART_SHOTS: Array[String] = [
 	"00_calibracion", "30_heroe_sin_hud", "31_normal_sin_hud", "34_impresora_y_escritorio", "45_pieza_creciendo_lejos",
-	"36_impresora_cerca", "46_tienda_impresoras", "42_tarde_sin_hud", "41_tarde_con_hud", "35_noche_sin_hud",
+	"36_impresora_cerca", "46_tienda_impresoras", "39_compra_imprimiendose", "42_tarde_sin_hud", "41_tarde_con_hud", "35_noche_sin_hud",
 	"36b_noche", "44_alba_sin_hud", "26_familias_de_impresoras", "37_taller_lleno_sin_hud", "38_impresoras_de_cerca",
 	"43_taller_lleno_noche",
 ]
@@ -129,6 +129,24 @@ const STARS_FRAME: float = 3.4
 ## queda al centro (sobre la impresora, espacio de la impresora) y el ancho.
 const PRINTER_POINT: Vector3 = Vector3(0.0, 0.3, 0.0)
 const PRINTER_FRAME: float = 1.5
+## La firma (39, biblia §12.2): lo que se compra aparece imprimiéndose. Una
+## estantería de cubos en un lugar libre del fondo y, en el de al lado, una
+## mesita (ya impresa) con una impresora, quietas en ese avance (0 a 1). El
+## personaje mira desde el medio del cuarto; el encuadre, con el zoom normal.
+const PURCHASE_SHELF_ID: String = "estanteria_cubos"
+const PURCHASE_SHELF_SLOT: int = 2
+const PURCHASE_SHELF_PROGRESS: float = 0.55
+const PURCHASE_TABLE_ID: String = "mesa_auxiliar"
+const PURCHASE_TABLE_SLOT: int = 3
+const PURCHASE_PRINTER_ID: String = "rayo_x1"
+const PURCHASE_PRINTER_PROGRESS: float = 0.5
+const PURCHASE_SPOT: Vector2 = Vector2(0.35, -1.45)
+const PURCHASE_LOOK: Vector2 = Vector2(-0.6, -2.6)
+const PURCHASE_POINT: Vector3 = Vector3(-0.55, 0.85, -2.45)
+const PURCHASE_FRAME: float = 2.8
+## La pieza lista (19): los destellos quietos en este momento (s) de los
+## DURATION de ReadySparkles, cuando se ven las tres estrellitas.
+const SPARKLES_SHOT_TIME: float = 0.3
 ## Las siete familias: la del piso más dos por mesa de trabajo en los lugares
 ## de la pared del fondo (de frente a la cámara, para comparar siluetas).
 const FAMILY_TABLE_ID: String = "mesa_trabajo"
@@ -222,6 +240,7 @@ func _run() -> void:
 	if _only != ONLY_CHARACTER:
 		await _calibration()
 		await _art_room_shots()
+		await _purchase_printing_in()
 		await _day_and_night()
 		await _families_room()
 		await _full_room()
@@ -453,7 +472,12 @@ func _failed_piece() -> void:
 	# la cámara y mira la impresora de reojo).
 	_advance_character(CharacterGestures.Gesture.THUMBS_UP)
 	await _seconds(1.0)
+	# Los destellos de "lista" duran 0,6 s reales y ya pasaron: se muestran
+	# quietos en su mejor momento, donde salieron.
+	var sparkles: ReadySparkles = _room.get_node("Printer%d/PieceSpot/Sparkles" % PRINTER_UID)
+	sparkles.hold(SPARKLES_SHOT_TIME)
 	await _capture("19_pieza_lista")
+	sparkles.stop()
 	_zoom(CameraRig.DEFAULT_ZOOM_INDEX)
 
 
@@ -558,6 +582,35 @@ func _art_room_shots() -> void:
 	await _frames(10)
 	await _capture("46_tienda_impresoras")
 	_hud.open_screen("home")
+
+
+## 39: lo que se compra aparece imprimiéndose en su lugar (biblia §12.2). Se
+## agregan al estado como lo hará el comando de compra (Fase 1, tarea 5) y el
+## cuarto los arma con su efecto (RoomView.sync_models); la mesita termina y
+## la estantería y la impresora quedan quietas a mitad (PURCHASE_*). La
+## partida nueva que sigue los quita (también con sync_models, sin efecto).
+func _purchase_printing_in() -> void:
+	await _new_game(PURCHASE_SPOT)
+	var base: float = _base_size()
+	var state: GameState = Game.state
+	var shelf: OwnedFurniture = OwnedFurniture.new(state.take_uid(), PURCHASE_SHELF_ID, PURCHASE_SHELF_SLOT)
+	state.furniture.append(shelf)
+	var table: OwnedFurniture = OwnedFurniture.new(state.take_uid(), PURCHASE_TABLE_ID, PURCHASE_TABLE_SLOT)
+	state.furniture.append(table)
+	var printer: OwnedPrinter = OwnedPrinter.new(state.take_uid(), PURCHASE_PRINTER_ID, table.uid)
+	state.printers.append(printer)
+	_room.sync_models()
+	_room.print_in_of(_room.get_node("Furniture%d" % shelf.uid)).hold(PURCHASE_SHELF_PROGRESS)
+	_room.print_in_of(_room.get_node("Furniture%d" % table.uid)).finish()
+	_room.print_in_of(_room.get_node("Printer%d" % printer.uid)).hold(PURCHASE_PRINTER_PROGRESS)
+	_hud.visible = false
+	_room.character.face(PURCHASE_LOOK)
+	_room.camera.set_base_size(PURCHASE_FRAME)
+	_camera_point = PURCHASE_POINT
+	await _frames(40)
+	await _capture("39_compra_imprimiendose")
+	_room.finish_print_ins()
+	await _back_to_game(base)
 
 
 ## 42, 41, 35, 36b y 44: el cuarto inicial a otras horas (biblia §6). La

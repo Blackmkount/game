@@ -98,3 +98,26 @@ func test_the_shaders_number_the_surfaces_like_the_palette() -> void:
 				found += 1
 				assert_eq(constant.get_string(2).to_int(), WorldPalette.Surface[surface_name], "%s: CC_%s" % [file, surface_name])
 		assert_eq(found, expected[file], "%s numera sus superficies" % file)
+
+
+## Biblia §12.2: lo que se compra aparece imprimiéndose. Cada material del kit
+## (el de los vértices y los de un color) tiene una versión "imprimiéndose",
+## siempre la misma, con lo mismo que el original y los colores del corte y
+## de la vista previa de la paleta. Lo que no es del kit no tiene (PrintIn lo
+## esconde hasta que pasa el corte).
+func test_each_kit_material_has_one_printing_in_version() -> void:
+	var kit: ShaderMaterial = WorldPalette.reveal_of(WorldPalette.kit())
+	assert_not_null(kit)
+	assert_eq(kit.shader, WorldPalette.REVEAL_SHADERS[WorldPalette.KIT_SHADER])
+	assert_same(WorldPalette.reveal_of(WorldPalette.kit()), kit, "Siempre la misma")
+	assert_eq(kit.get_shader_parameter("reveal_cut"), Color(LookPalette.REVEAL_CUT))
+	assert_eq(kit.get_shader_parameter("reveal_preview"), Color(LookPalette.REVEAL_PREVIEW))
+	for source: ShaderMaterial in [WorldPalette.solid("e0453a"), WorldPalette.glow("7fe0a0"), WorldPalette.paint(LookPalette.CARDBOARD, WorldPalette.Surface.CARDBOARD, 0.1)]:
+		var reveal: ShaderMaterial = WorldPalette.reveal_of(source)
+		assert_eq(reveal.shader, WorldPalette.REVEAL_SHADERS[WorldPalette.TINTED_SHADER])
+		for parameter: String in ["albedo", "surface", "gloss", "layer", "emit"]:
+			assert_eq(reveal.get_shader_parameter(parameter), source.get_shader_parameter(parameter), parameter)
+		assert_same(WorldPalette.reveal_of(source), reveal)
+		assert_ne(reveal, kit, "Una por material")
+	for other: Material in [WorldPalette.glow("ffffff", "printer_display"), WorldPalette.printing("e0453a"), WorldPalette.glass(LookPalette.RESIN_LID, LookPalette.RESIN_LID_ALPHA), WorldPalette.halo(LookPalette.LAMP_HALO), null]:
+		assert_null(WorldPalette.reveal_of(other), "Sin versión: %s" % other)

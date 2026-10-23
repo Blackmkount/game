@@ -64,6 +64,14 @@ func stop() -> void:
 	visible = false
 
 
+## Los deja quietos como se ven a los `time` segundos de soltarlos, donde se
+## soltaron la última vez (capturas): ya no avanzan ni se apagan solos.
+func hold(time: float) -> void:
+	stop()
+	_set_time(time)
+	visible = true
+
+
 func is_playing() -> bool:
 	return _tween != null
 

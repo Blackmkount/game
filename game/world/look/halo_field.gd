@@ -9,7 +9,9 @@ extends MultiMeshInstance3D
 ##
 ## Cada impresora pide su halo con add() y le cambia el color con
 ## set_color(); la decoración y el escritorio ponen los suyos con
-## add_glow(). El sombreador (halo_field.gdshader) los multiplica por
+## add_glow(). Cuando cambia lo que hay en el cuarto, RoomView los quita
+## todos (clear) y los vuelve a pedir en el mismo orden: impresoras,
+## escritorio, decoración. El sombreador (halo_field.gdshader) los multiplica por
 ## cc_night; de día, además, el nodo se esconde (set_night): no cuesta nada.
 ## Los de la guirnalda parpadean suave (biblia §8.9), cada uno a su ritmo y
 ## al mismo que su foco (cc_twinkle): el alfa de la copia lo marca.
@@ -76,6 +78,16 @@ func add_glow(at: Transform3D, size: Vector2, color: Color, twinkle: bool = fals
 	multimesh.visible_instance_count = _transforms.size()
 	_refresh()
 	return index
+
+
+## Quita todos los halos (RoomView los vuelve a poner, en orden, cuando cambia
+## lo que hay en el cuarto). Las copias reservadas quedan para los nuevos.
+func clear() -> void:
+	_transforms.clear()
+	_colors.clear()
+	_twinkles.clear()
+	multimesh.visible_instance_count = 0
+	_refresh()
 
 
 ## Color del halo `index` (Color(0, 0, 0) = apagado).

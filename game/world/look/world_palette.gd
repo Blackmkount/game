@@ -36,6 +36,12 @@ const WINDOW_VIEW_SHADER: Shader = preload("res://game/world/look/window_view.gd
 const MARKER_SHADER: Shader = preload("res://game/world/look/marker.gdshader")
 const HALO_SHADER: Shader = preload("res://game/world/look/halo.gdshader")
 const WINDOW_SHAFT_SHADER: Shader = preload("res://game/world/look/window_shaft.gdshader")
+## Lo que se compra mientras aparece imprimiéndose (PrintIn): la versión de
+## kit y la de kit_tinted.
+const REVEAL_SHADERS: Dictionary[Shader, Shader] = {
+	KIT_SHADER: preload("res://game/world/look/kit_reveal.gdshader"),
+	TINTED_SHADER: preload("res://game/world/look/kit_reveal_tinted.gdshader"),
+}
 
 ## Lo que muestra cada pantalla (screen.gdshader, uniform `mode`).
 const SCREEN_MODES: Dictionary[String, int] = {
@@ -58,6 +64,7 @@ const CHARACTER_TOON: float = 0.8
 const CHARACTER_RIM: float = 0.35
 
 static var _cache: Dictionary[String, Material] = {}
+static var _reveal: Dictionary[Material, ShaderMaterial] = {}
 
 
 ## Material de las mallas del kit: color, superficie, capas y luz propia en
@@ -208,6 +215,26 @@ static func halo(hex: String, aspect: float = 1.0, intensity: float = 1.0) -> Sh
 		material.set_shader_parameter("intensity", intensity)
 		_cache[key] = material
 	return _cache[key]
+
+
+## La versión "imprimiéndose" de un material del kit (biblia de arte §12.2,
+## PrintIn): el mismo color, superficie y luz propia, cortada en el alto
+## reveal_y (instance uniform) con la línea caliente, el relleno por dentro y
+## la vista previa de las capas que faltan. Una por material (en caché). Lo
+## que no es del kit (pantallas, vidrio, la pieza que crece) no tiene: null.
+static func reveal_of(material: Material) -> ShaderMaterial:
+	var source: ShaderMaterial = material as ShaderMaterial
+	if source == null or not REVEAL_SHADERS.has(source.shader):
+		return null
+	if not _reveal.has(source):
+		var reveal: ShaderMaterial = ShaderMaterial.new()
+		reveal.shader = REVEAL_SHADERS[source.shader]
+		for uniform: Dictionary in source.shader.get_shader_uniform_list():
+			reveal.set_shader_parameter(uniform["name"], source.get_shader_parameter(uniform["name"]))
+		reveal.set_shader_parameter("reveal_cut", Color(LookPalette.REVEAL_CUT))
+		reveal.set_shader_parameter("reveal_preview", Color(LookPalette.REVEAL_PREVIEW))
+		_reveal[source] = reveal
+	return _reveal[source]
 
 
 static func _character_material(shader: Shader) -> ShaderMaterial:

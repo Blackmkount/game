@@ -331,6 +331,14 @@ func place_light(light_name: String, position: Vector3) -> void:
 	_lamp_place[LIGHTS.keys().find(light_name)] = Vector4(position.x, position.y, position.z, reach)
 
 
+## La luz `light_name` ya no está (se vendió o no hay escritorio o
+## impresora del piso): no alumbra. Se ve después de refresh() o de la
+## próxima hora.
+func clear_light(light_name: String) -> void:
+	if LIGHTS.has(light_name):
+		_lamp_place[LIGHTS.keys().find(light_name)] = Vector4.ZERO
+
+
 ## Lo que la luz `light_name` (nombre de LIGHTS) publica en su global cc_plN:
 ## su lugar (x, y, z) y su alcance (w; 0 = sin lugar o no es una luz: no
 ## alumbra).

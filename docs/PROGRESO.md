@@ -4,8 +4,8 @@
 
 - **Fase actual:** 1. Ciclo jugable, en curso (ruta aprobada por el dueño en `docs/RUTA.md`).
 - **Diseño:** GDD versión 2.3, guía de estilo en `docs/ESTILO.md` y ruta en `docs/RUTA.md`.
-- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 13 de 16: el día y la noche completos. El reloj del juego lleva la luz del cuarto por seis momentos (alba, mañana, mediodía, tarde dorada, atardecer y noche), siempre mezclándose; de noche se encienden la lámpara, el monitor, la guirnalda (que parpadea), la lámpara de la cama y los halos de las impresoras (2026-10-22). Antes: paso 12, la decoración del dormitorio.
-- **Siguiente paso sugerido:** Arte 2.0, paso 14: la firma (lo que se compra aparece imprimiéndose capa a capa) y el cuarto que se arma de nuevo al cargar otra partida. Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
+- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 14 de 16: la firma. Lo que aparece en el cuarto se imprime en su lugar, capa a capa (corte con la línea caliente naranja y, encima, la vista previa en cian de las capas que faltan), y el cuarto sigue al estado: al cargar otra partida se arma lo que falta y se quita lo que sobra (2026-10-22). Antes: paso 13, el día y la noche completos.
+- **Siguiente paso sugerido:** Arte 2.0, paso 15: rendimiento (niveles de calidad Alta y Baja con la opción en Ajustes, versión lejana de las impresoras, panel `#debug` para medir en el teléfono). Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda: su comando de compra solo tiene que agregar el mueble o la impresora al estado y pedir `RoomView.sync_models()`).
 - **Diseño del ciclo:** aprobado por el dueño (GDD, versión 2.3 en la sección 16).
 
 | Fase | Estado |
@@ -29,7 +29,7 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 | 2 | Controles del mundo con joystick: caminar, tocar objetos, paneles, cercanía, cámara y zoom | Terminada |
 | 3 | Navegación y HUD despejado | Pendiente |
 | 4 | Guardado, azar reproducible y menú de pruebas (con la versión visible en Ajustes) | En parte: guardado automático y azar guardado hechos; faltan la versión en Ajustes y el menú de pruebas |
-| 5 | Tienda y envíos | En parte: ferretería hecha |
+| 5 | Tienda y envíos | En parte: ferretería hecha; el cuarto ya muestra lo que se agregue imprimiéndose (Arte 2.0, paso 14), falta el comando de compra |
 | 6 | Pedidos tipo chat | Terminada |
 | 7 | Modelar, imprimir, retirar, embalar y despachar | Terminada |
 | 8 | Fallos y accesorios | En parte: los fallos se deciden al empezar cada pieza, con limpiar y reintentar, y ya se ven dibujados en las siete familias (espagueti, warping, la pieza de resina que cae; Arte 2.0, pasos 6 y 8); faltan el fin de filamento, los accesorios y el rescate |
@@ -661,3 +661,25 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 - `check.sh` y `run_tests.sh` pasan: 696 pruebas (tres nuevas y cuatro adaptadas, detalle en `docs/DECISIONES.md`). `screenshots.sh` saca las 48 capturas; las de la tarde, la noche y el alba son idénticas al píxel a las de antes.
 
 **Qué revisar en el teléfono:** lo mismo del paso 13 (nada visible cambió).
+
+
+### 2026-10-22 — Arte 2.0, paso 14: la firma (lo que se compra se imprime en su lugar)
+
+**Qué se hizo**
+- **Lo nuevo aparece imprimiéndose:** cuando en el cuarto aparece un mueble o una impresora, se imprime en su lugar de abajo hacia arriba: lo ya impreso es sólido, con sus capas y una línea caliente naranja en el corte; por el corte se ve el relleno en cuadrícula; y encima, solo las líneas de las capas que faltan, en cian, como la vista previa del programa de impresión. Un mueble tarda 1,6 segundos y una impresora 1,2; las impresoras de un mueble nuevo esperan a que termine su mueble. Tocar el mundo lo termina al instante (el toque igual hace lo suyo: caminar, abrir un panel). Al terminar vuelve el material de siempre: no cuesta nada después.
+- **El cuarto sigue al estado:** antes el cuarto se armaba una sola vez, al abrir el juego. Ahora `RoomView.sync_models()` compara la partida con lo que se ve: arma lo que falta, quita lo que sobra y vuelve a armar lo que cambió de modelo o de lugar, y rehace todo lo que depende de eso (lugares libres, lo que se toca, por dónde se camina, las manchas del piso, los halos de noche, las luces del escritorio y de la impresora del piso, las burbujas de estado). Al cargar otra partida el cuarto queda igual a ella, de una vez y sin efecto (antes se quedaba con los muebles de la anterior). Si se abría el panel de algo que ya no está, se cierra.
+- **Listo para la tienda:** todavía no existe el comando de compra (tarea 5). Cuando exista, solo tiene que agregar lo comprado al estado y pedir `sync_models()`: el efecto ya está.
+- Captura nueva: `39_compra_imprimiendose` (una estantería de cubos y una impresora a mitad de imprimirse, junto a la impresora del piso). En `19_pieza_lista` ahora se ven los destellos de "lista".
+
+**Verificado**
+- `check.sh` y `run_tests.sh` pasan: 709 pruebas (antes 696): 12 nuevas del cuarto que sigue al estado y 1 de los materiales "imprimiéndose". Ninguna prueba se adaptó (detalle en `docs/DECISIONES.md`). Comprobado rompiendo el código a propósito de 12 maneras (sin cargar el cuarto al cargar la partida, sin terminar con el toque, sin la espera de las impresoras, sin manchas del piso, sin efecto, sin devolver el material, sin obstáculos, sin burbujas, sin cerrar el panel, sin quitar la baldosa, sin sacar al personaje del mueble nuevo, sin halos): cada vez falla al menos una prueba.
+- `screenshots.sh` saca las 49 capturas. Las demás son iguales a las del paso 13 (salvo lo que se mueve solo: cabezales, la pista de caminar y un parpadeo del personaje).
+
+**Qué revisar en el teléfono** (versión web)
+- En el juego todavía no se puede ver el efecto: no hay compras (llegan con la tarea 5). Mientras, la captura `39_compra_imprimiendose` muestra cómo se verá.
+- Que nada cambió al jugar: el cuarto inicial, tocar objetos, caminar entre los muebles y "Nueva partida" en Ajustes funcionan igual que antes.
+
+**Problemas conocidos**
+- Los destellos de "pieza lista" se leen poco sobre el piso al sol (se ven mejor a la sombra o de noche); se revisa con la interfaz en el paso 16.
+- Si la compra llega con la tienda abierta, el efecto pasaría detrás de la tienda: la tarea 5 debería pedir `sync_models()` al volver al cuarto.
+

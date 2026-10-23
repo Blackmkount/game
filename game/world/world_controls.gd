@@ -78,6 +78,7 @@ func _setup() -> void:
 	hud.screen_changed.connect(_on_screen_changed)
 	hud.zoom_pressed.connect(_cycle_zoom)
 	hud.set_zoom_label(room.camera.zoom_index)
+	room.models_changed.connect(_on_models_changed)
 	_hints = HintFlow.new(UserSettings.load_settings())
 	hud.move_hint.set_mode(_hints.mode())
 	loop = OrderLoopController.new(self)
@@ -268,7 +269,10 @@ func _use_nearby() -> void:
 		open_sheet(highlighted)
 
 
+## Un dedo baja en el mundo. Si algo se está imprimiendo en el cuarto (una
+## compra que acaba de llegar), termina ya: el toque sigue haciendo lo suyo.
 func _press(index: int, position: Vector2) -> void:
+	room.finish_print_ins()
 	tracker.area = Rect2(tuning.edge_ignore_px, 0.0, size.x - tuning.edge_ignore_px * 2.0, size.y)
 	tracker.press(index, position)
 
@@ -355,6 +359,13 @@ func _update_hints() -> void:
 		hud.move_hint.set_mode(mode)
 	# El joystick fantasma de la pista no se dibuja sobre el de verdad.
 	hud.move_hint.modulate.a = 0.0 if tracker.is_joystick() else 1.0
+
+
+## Cambió lo que hay en el cuarto (RoomView.sync_models): si el panel abierto
+## era de algo que ya no está, se cierra.
+func _on_models_changed() -> void:
+	if sheet_item != null and sheet_item not in room.interactables:
+		hud.close_sheet()
 
 
 func _on_sheet_closed() -> void:

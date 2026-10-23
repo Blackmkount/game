@@ -136,10 +136,12 @@ func has_led_strip() -> bool:
 
 
 ## Pone las luces de noche de la decoración (DecorWall.night_lights) en el
-## MultiMesh de los halos; las del nivel que no se ve, apagadas.
+## MultiMesh de los halos; las del nivel que no se ve, apagadas. Se llama de
+## nuevo cada vez que RoomView vuelve a poner todos los halos.
 func add_night_lights(halos: HaloField) -> void:
 	_halos = halos
 	_lights = DecorWall.night_lights()
+	_light_index.clear()
 	for light: Dictionary in _lights:
 		_light_index.append(halos.add_glow(light["at"], light["size"], HaloField.OFF, light.get("twinkle", false)))
 	_color_lights()

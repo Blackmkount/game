@@ -17,11 +17,14 @@
 // resina). kit_character.gdshader (KIT_CHARACTER) es el cuerpo del
 // personaje: más relleno de cámara y, en los retratos, una luz de estudio;
 // kit_head.gdshader (además KIT_HEAD), su cabeza con la cara pintada.
+// kit_reveal.gdshader y kit_reveal_tinted.gdshader (REVEAL, sin o con
+// KIT_TINTED) son lo que se compra mientras aparece imprimiéndose (PrintIn).
 //
 // OJO: un "instance uniform" le cuesta a CADA instancia que use el material
 // 16 lugares del búfer de globales (en la web y en muchos teléfonos caben
-// 1.024 en total). Por eso solo los tienen la variante HOT_LAYER y las del
-// personaje (unas pocas instancias).
+// 1.024 en total). Por eso solo los tienen la variante HOT_LAYER, las del
+// personaje (unas pocas instancias) y las de REVEAL (solo las mallas que se
+// están imprimiendo, mientras dura).
 
 #include "res://game/world/look/world_light.gdshaderinc"
 
@@ -45,6 +48,29 @@ uniform float alpha = 0.5;
 // Borde de arriba de la pieza que se imprime, en el espacio de la malla: ahí
 // va la capa caliente. -100 = no hay.
 instance uniform float hot_top = -100.0;
+#endif
+#ifdef REVEAL
+// Lo que se compra aparece imprimiéndose (biblia §12.2). reveal_y es el alto
+// en el mundo hasta donde ya se imprimió: debajo, sólido y con sus capas, con
+// la línea caliente del corte (reveal_cut); por dentro (las caras de atrás,
+// que se ven por el corte) el relleno en cuadrícula; encima, solo las líneas
+// de las capas que faltan (reveal_preview), como la vista previa del programa
+// de impresión. Los colores los pone WorldPalette.reveal_of (LookPalette).
+instance uniform float reveal_y = 100.0;
+uniform vec4 reveal_cut = vec4(1.0, 0.502, 0.1882, 1.0);
+uniform vec4 reveal_preview = vec4(0.2196, 0.8157, 1.0, 1.0);
+// Mientras se imprime, todo muestra sus capas (al menos de este alto, m).
+const float CC_REVEAL_PRINTED_LAYER = 0.007;
+// Vista previa: separación de sus líneas (m), su grosor (fracción de la
+// separación, al menos ~1,4 píxeles) y cómo se apaga hacia arriba: hasta
+// esta fracción de su brillo, a esta distancia del corte (m).
+const float CC_REVEAL_PREVIEW_STEP = 0.028;
+const float CC_REVEAL_PREVIEW_LINE = 0.16;
+const vec2 CC_REVEAL_PREVIEW_FADE = vec2(0.55, 0.7);
+// Línea caliente del corte: al menos este alto (m) o 2 píxeles.
+const float CC_REVEAL_CUT_MIN = 0.012;
+// Relleno de adentro: lado de la cuadrícula (m).
+const float CC_REVEAL_INFILL = 0.035;
 #endif
 #ifdef KIT_CHARACTER
 // 1 en las vistas previas (retratos): una luz de estudio fija en vez de la
@@ -305,8 +331,9 @@ vec3 cc_base_light(vec3 n, float ao, mat4 view) {
 
 void fragment() {
 	vec3 n = normalize(v_wnormal);
-#ifdef KIT_GLASS
-	// Las caras de atrás de la tapa (adentro) miran hacia el otro lado.
+#if defined(KIT_GLASS) || defined(REVEAL)
+	// Las caras de atrás (adentro de la tapa, o lo que se ve por el corte de
+	// lo que se imprime) miran hacia el otro lado.
 	n = FRONT_FACING ? n : -n;
 #endif
 	vec3 base = v_color.rgb;
@@ -314,6 +341,18 @@ void fragment() {
 	float shine = fract(v_attr.x + 0.0001);
 	float layer_height = v_attr.z;
 	float emit_amount = v_attr.w;
+#ifdef REVEAL
+	// Encima del corte solo se ven las líneas de las capas que faltan, quietas
+	// en el mundo (el corte se las va comiendo) y de al menos ~1,4 píxeles.
+	// Son una vista previa: no dan sombra.
+	float preview_fw = fwidth(v_world.y);
+	bool preview = v_world.y > reveal_y;
+	float preview_line = max(CC_REVEAL_PREVIEW_LINE, 1.4 * preview_fw / CC_REVEAL_PREVIEW_STEP);
+	if (preview && (IN_SHADOW_PASS || fract(v_world.y / CC_REVEAL_PREVIEW_STEP) > preview_line)) {
+		discard;
+	}
+	layer_height = max(layer_height, CC_REVEAL_PRINTED_LAYER);
+#endif
 	base = cc_surface(kind, base, n, shine);
 #ifdef KIT_HEAD
 	base = cc_face(base, kind);
@@ -346,12 +385,33 @@ void fragment() {
 	// se imprime, arriba. Mide al menos 2 píxeles (se ve con cualquier zoom) y
 	// brilla sola con su color exacto: ni el sol ni el parche la queman.
 	float hot = 0.0;
+	vec3 hot_color = CC_HOT_COLOR;
 #ifdef HOT_LAYER
 	if (hot_top > -50.0) {
 		float band = max(CC_HOT_MIN, 2.0 * cc_px_m);
 		float depth = hot_top - v_local.y;
 		float side = 1.0 - smoothstep(0.5, 0.8, abs(normalize(v_wnormal).y));
 		hot = step(-0.0005, depth) * (1.0 - smoothstep(band * 0.7, band, depth)) * side;
+	}
+#endif
+#ifdef REVEAL
+	// Lo que se imprime: la línea caliente justo bajo el corte (con su color
+	// exacto, como la capa caliente) y, por dentro, el relleno en cuadrícula
+	// con un poco del calor del corte. Lejos, la cuadrícula se vuelve su tono
+	// medio (no centellea).
+	hot_color = reveal_cut.rgb;
+	if (!preview) {
+		float band = max(CC_REVEAL_CUT_MIN, 2.0 * cc_px_m);
+		hot = 1.0 - smoothstep(band * 0.6, band, reveal_y - v_world.y);
+	}
+	// (Las derivadas, fuera del if: así no dependen de por dónde pasó cada
+	// píxel.)
+	float infill_sharp = cc_aa_fade(max(fwidth(v_world.x), fwidth(v_world.z)), CC_REVEAL_INFILL);
+	if (!FRONT_FACING) {
+		vec2 cell = abs(fract(v_world.xz / CC_REVEAL_INFILL) - 0.5);
+		float grid = mix(0.25, smoothstep(0.38, 0.47, max(cell.x, cell.y)), infill_sharp);
+		base = mix(base * 0.35, base * 1.1, grid);
+		glow += reveal_cut.rgb * 0.35 * grid;
 	}
 #endif
 	if (emit_amount != 0.0) {
@@ -367,8 +427,19 @@ void fragment() {
 	float ao = v_color.a * cc_occlusion(v_world, n);
 	v_wall_wrap = kind == CC_PAINT ? CC_WALL_WRAP : 0.0;
 	v_albedo = base * (1.0 - hot);
-	v_base = clamp(mix(base * cc_base_light(n, ao, VIEW_MATRIX) + glow, CC_HOT_COLOR, hot), 0.0, 1.0);
+	v_base = clamp(mix(base * cc_base_light(n, ao, VIEW_MATRIX) + glow, hot_color, hot), 0.0, 1.0);
 	ALBEDO = base;
+#ifdef REVEAL
+	if (preview) {
+		// La vista previa brilla sola (ni el sol ni la sombra la tocan) y se
+		// apaga hacia arriba.
+		float fade = mix(1.0, CC_REVEAL_PREVIEW_FADE.x, clamp((v_world.y - reveal_y) / CC_REVEAL_PREVIEW_FADE.y, 0.0, 1.0));
+		v_albedo = vec3(0.0);
+		v_base = clamp(reveal_preview.rgb * fade, 0.0, 1.0);
+		ALBEDO = vec3(0.0);
+		shine = 0.0;
+	}
+#endif
 #ifdef KIT_GLASS
 	ALPHA = alpha;
 #endif

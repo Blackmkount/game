@@ -75,9 +75,6 @@ const WARP_ROLL_DEGREES: float = 7.0
 const RESIN_FALL_DEGREES: Vector3 = Vector3(16.0, 20.0, -22.0)
 
 var printer_uid: int
-## Los halos de noche del cuarto (RoomView lo pone antes de agregar la
-## vista; sin él, la impresora no tiene halo).
-var halos: HaloField
 
 var _scale: float
 var _mode: Mode = Mode.OPEN
@@ -107,6 +104,9 @@ var _piece: MeshInstance3D
 var _spaghetti: MeshInstance3D
 var _sparkles: ReadySparkles
 var _tray: Array[MeshInstance3D] = []
+## Los halos de noche del cuarto y el número del de esta impresora (-1: sin
+## halo; lo pone RoomView con attach_halo).
+var _halos: HaloField
 var _halo: int = -1
 var _job: PrintJob
 ## Lo que se mostró la última vez; -1 = todavía nada (no da el saltito).
@@ -151,8 +151,6 @@ func _ready() -> void:
 		_head_rest = _marker(model, "HeadRest")
 		_head_park_x = _marker(model, "HeadPark").x
 	_build_piece_parts(model)
-	if halos != null:
-		_add_halo(model)
 	Events.printer_changed.connect(_on_printer_changed)
 	Events.clock_ticked.connect(_on_clock_ticked)
 	Events.game_loaded.connect(_on_game_loaded)
@@ -177,13 +175,24 @@ func _build_piece_parts(model: Node3D) -> void:
 		_tray.append(block)
 
 
-## El halo de noche, bajo la huella de "Body" (en el espacio del padre de
-## los halos).
-func _add_halo(model: Node3D) -> void:
+## Pone el halo de noche de la impresora en `field`, bajo la huella de
+## "Body" (en el espacio del padre de los halos) y del color de su estado.
+## RoomView los vuelve a poner todos, en orden, cada vez que cambia lo que hay
+## en el cuarto.
+func attach_halo(field: HaloField) -> void:
+	_halos = field
+	var model: Node3D = get_parent()
 	var body: AABB = (model.get_node("Body") as MeshInstance3D).get_aabb()
 	var center: Vector3 = body.get_center()
-	var base: Transform3D = halos.get_parent_node_3d().global_transform.affine_inverse() * model.global_transform * Transform3D(Basis.IDENTITY, Vector3(center.x, 0.0, center.z))
-	_halo = halos.add(base, Vector2(body.size.x, body.size.z))
+	var base: Transform3D = field.get_parent_node_3d().global_transform.affine_inverse() * model.global_transform * Transform3D(Basis.IDENTITY, Vector3(center.x, 0.0, center.z))
+	_halo = field.add(base, Vector2(body.size.x, body.size.z))
+	_color_halo(_shown_for(_job))
+
+
+## El halo del color del estado (sin trabajo, apagado).
+func _color_halo(shown: Shown) -> void:
+	if _halo >= 0:
+		_halos.set_color(_halo, Color(STATE_COLORS[shown]) if STATE_COLORS.has(shown) else HaloField.OFF)
 
 
 ## Lugar de un marcador del modelo.
@@ -201,8 +210,7 @@ func _sync() -> void:
 		_filament.material_override = _idle_filament if _job == null else WorldPalette.solid(PieceModel.filament_hex(Game.rules, _job.color_id))
 	if _interior != null:
 		_interior.material_override = _interior_material(shown)
-	if _halo >= 0:
-		halos.set_color(_halo, Color(STATE_COLORS[shown]) if STATE_COLORS.has(shown) else HaloField.OFF)
+	_color_halo(shown)
 	_sync_piece(shown)
 	if shown == Shown.DONE and _shown == Shown.PRINTING:
 		_celebrate()

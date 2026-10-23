@@ -11,6 +11,8 @@ const SHADERS: Dictionary[String, Array] = {
 	"res://game/world/look/kit_tinted.gdshader": ["albedo", "surface", "gloss", "layer", "emit"],
 	"res://game/world/look/kit_printing.gdshader": ["albedo", "surface", "gloss", "layer", "emit"],
 	"res://game/world/look/kit_glass.gdshader": ["albedo", "surface", "gloss", "layer", "emit", "alpha"],
+	"res://game/world/look/kit_reveal.gdshader": ["toon", "rim", "reveal_cut", "reveal_preview"],
+	"res://game/world/look/kit_reveal_tinted.gdshader": ["albedo", "surface", "gloss", "layer", "emit", "reveal_cut", "reveal_preview"],
 	"res://game/world/look/screen.gdshader": ["mode", "tint"],
 	"res://game/world/look/window_view.gdshader": ["mood", "view_dir"],
 	"res://game/world/look/window_shaft.gdshader": ["strength"],
@@ -48,6 +50,7 @@ func test_every_palette_material_can_be_drawn_on_a_mesh() -> void:
 		WorldPalette.glow("ffffff", WorldPalette.WINDOW_VIEW), WorldPalette.glow_transparent(WorldPalette.SLOT_MARK, 0.6),
 		WorldPalette.halo(LookPalette.LAMP_HALO, 3.0), WorldPalette.window_shaft(),
 		WorldPalette.kit_character(), WorldPalette.kit_head(), WorldPalette.outline_character(),
+		WorldPalette.reveal_of(WorldPalette.kit()), WorldPalette.reveal_of(WorldPalette.solid("e0453a")),
 	]
 	for surface: int in WorldPalette.Surface.size():
 		materials.append(WorldPalette.paint("cccccc", surface as WorldPalette.Surface))
