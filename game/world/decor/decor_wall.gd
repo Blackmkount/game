@@ -101,18 +101,18 @@ static func add_story(kit: KitMesh, tier: int) -> void:
 
 
 ## Las luces de noche de la decoración (los halos de HaloField): dónde
-## (un plano: su +Y mira afuera), de qué tamaño, de qué color y desde qué
-## nivel de decoración se ven.
+## (un plano: su +Y mira afuera), de qué tamaño, de qué color, desde qué
+## nivel de decoración se ven y si parpadean (los focos de la guirnalda).
 static func night_lights() -> Array[Dictionary]:
 	var lights: Array[Dictionary] = []
 	var on_back: Basis = Basis(Vector3.RIGHT, PI / 2.0)
 	for bulb: Vector3 in garland_bulbs():
-		lights.append({"at": Transform3D(on_back, Vector3(bulb.x, bulb.y, BACK + 0.004)), "size": Vector2(0.24, 0.24), "color": Color(LookPalette.STRING_LIGHTS) * 0.6, "tier": 0})
+		lights.append({"at": Transform3D(on_back, Vector3(bulb.x, bulb.y, BACK + 0.004)), "size": Vector2(0.24, 0.24), "color": Color(LookPalette.STRING_LIGHTS) * 0.44, "tier": 0, "twinkle": true})
 	var on_left: Basis = Basis(Vector3.BACK, -PI / 2.0)
-	lights.append({"at": Transform3D(on_left, Vector3(LEFT + 0.004, SHELF_TOP + 0.05, _shelf_world_z(0.02))), "size": Vector2(0.22, 0.22), "color": Color(LookPalette.GLOW_IN_DARK) * 0.7, "tier": FULL_SHELF_TIER})
-	lights.append({"at": Transform3D(Basis.IDENTITY, DecorItems.PHONE_AT + Vector3(0.0, 0.012, 0.0)), "size": Vector2(0.22, 0.22), "color": Color(LookPalette.PHONE_SCREEN) * 0.45, "tier": 0})
+	lights.append({"at": Transform3D(on_left, Vector3(LEFT + 0.004, SHELF_TOP + 0.05, _shelf_world_z(0.02))), "size": Vector2(0.22, 0.22), "color": Color(LookPalette.GLOW_IN_DARK) * 0.51, "tier": FULL_SHELF_TIER})
+	lights.append({"at": Transform3D(Basis.IDENTITY, DecorItems.PHONE_AT + Vector3(0.0, 0.012, 0.0)), "size": Vector2(0.22, 0.22), "color": Color(LookPalette.PHONE_SCREEN) * 0.33, "tier": 0})
 	var lamp: Vector3 = DecorItems.BED_LAMP_BULB
-	lights.append({"at": Transform3D(Basis.IDENTITY, Vector3(lamp.x, DecorItems.BED_HEADBOARD + DecorItems.BED_LEDGE.x + 0.002, lamp.z)), "size": Vector2(0.55, 0.4), "color": Color(LookPalette.LAMP_HALO) * 0.6, "tier": 0})
+	lights.append({"at": Transform3D(Basis.IDENTITY, Vector3(lamp.x, DecorItems.BED_HEADBOARD + DecorItems.BED_LEDGE.x + 0.002, lamp.z)), "size": Vector2(0.55, 0.4), "color": Color(LookPalette.LAMP_HALO) * 0.44, "tier": 0})
 	return lights
 
 
@@ -214,7 +214,8 @@ static func _posters(kit: KitMesh) -> void:
 
 
 ## Guirnalda de focos entre cinco clavos, sobre los pósters. Los focos
-## brillan de noche (y dejan su halo en la pared, night_lights).
+## brillan de noche y parpadean suave (y dejan su halo en la pared, que
+## parpadea con ellos: night_lights).
 static func _garland(kit: KitMesh) -> void:
 	kit.paint(LookPalette.METAL_MID, WorldPalette.Surface.METAL, 0.4)
 	for x: float in GARLAND_ANCHORS:
@@ -228,7 +229,7 @@ static func _garland(kit: KitMesh) -> void:
 	for bulb: Vector3 in garland_bulbs():
 		kit.paint(LookPalette.METAL_DARK, WorldPalette.Surface.SMOOTH, 0.3)
 		kit.box(Vector3(0.008, 0.01, 0.008), bulb + Vector3(0.0, 0.021, 0.0), 0.0)
-		kit.night_glow(LookPalette.STRING_LIGHTS, 1.3)
+		kit.night_glow(LookPalette.STRING_LIGHTS, 1.3, true)
 		kit.cylinder(0.016, 0.032, bulb, Vector3.ZERO, 8, 0.0, 0.007)
 
 

@@ -22,6 +22,9 @@ const WALL_THICKNESS: float = 0.2
 const BASE_DEPTH: float = 0.3
 const BASE_LAYER: float = 0.024
 const BRIM_WIDTH: float = 0.04
+## De noche el brim apenas brilla con su azul (biblia §4.1 y §4.8): luz
+## propia de noche.
+const BRIM_NIGHT_GLOW: float = 0.45
 ## Capas de los cortes de las paredes.
 const CUT_LAYER: float = 0.012
 ## Piso: una losa fina de baldosa (su canto claro separa el piso de la base).
@@ -137,6 +140,7 @@ static func _base(kit: KitMesh) -> void:
 	kit.printed(LookPalette.BASE_PRINTED, BASE_LAYER, 0.3)
 	kit.box(Vector3(span, BASE_DEPTH, span), Vector3(center, -FLOOR_THICKNESS - BASE_DEPTH / 2.0, center), 0.02)
 	kit.printed(LookPalette.BASE_BRIM, BASE_LAYER, 0.0)
+	kit.emit = -BRIM_NIGHT_GLOW
 	var brim: float = span + BRIM_WIDTH * 2.0
 	kit.box(Vector3(brim, BASE_LAYER, brim), Vector3(center, BASE_BOTTOM + BASE_LAYER / 2.0, center), 0.006)
 	# La baldosa solo se dibuja arriba: el canto de la losa queda liso y claro.

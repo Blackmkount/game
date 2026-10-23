@@ -95,7 +95,9 @@ const CHARACTER_SHOTS: Array[String] = [
 ]
 const ART_SHOTS: Array[String] = [
 	"00_calibracion", "30_heroe_sin_hud", "31_normal_sin_hud", "34_impresora_y_escritorio", "45_pieza_creciendo_lejos",
-	"36_impresora_cerca", "46_tienda_impresoras", "26_familias_de_impresoras", "37_taller_lleno_sin_hud", "38_impresoras_de_cerca",
+	"36_impresora_cerca", "46_tienda_impresoras", "42_tarde_sin_hud", "41_tarde_con_hud", "35_noche_sin_hud",
+	"36b_noche", "44_alba_sin_hud", "26_familias_de_impresoras", "37_taller_lleno_sin_hud", "38_impresoras_de_cerca",
+	"43_taller_lleno_noche",
 ]
 ## Columnas de budget.csv. gl_*: lo que contó OpenGL al dibujar el mundo
 ## (WorldView/SubViewport); las llamadas suman las de color y las de sombra
@@ -140,6 +142,19 @@ const RACKS_POINT: Vector3 = Vector3(1.0, 0.9, -2.3)
 ## Donde está el personaje en el cuarto lleno: a la vista en 37 (al lado de
 ## la estantería del frente, no detrás) y fuera del encuadre de 38.
 const FULL_ROOM_SPOT: Vector2 = Vector2(-0.6, 1.6)
+## Las horas de las capturas del día (biblia §6.1): en medio de la tarde
+## dorada, de la noche y el alba del día siguiente.
+const GOLDEN_HOUR: float = 17.25
+const NIGHT_HOUR: float = 22.0
+const DAWN_HOUR: float = 5.75
+## El taller de noche (43): en el nivel del taller (la decoración con la
+## tira LED) y, una tras otra, impresoras imprimiendo, listas, con una falla
+## (espagueti o warping, alternados) y sin trabajo (-1). La pieza que se
+## imprime va por la mitad.
+const WORKSHOP_LEVEL: int = 5
+const WORKSHOP_JOBS: Array[int] = [PrintJob.Status.PRINTING, PrintJob.Status.DONE, PrintJob.Status.FAILED, -1]
+const WORKSHOP_FAILURES: Array[String] = [FailureRules.SPAGHETTI, FailureRules.WARPING]
+const WORKSHOP_HALF_PIECE_SECONDS: int = 1800
 
 var _out: String = ""
 var _only: String = ONLY_ALL
@@ -207,6 +222,7 @@ func _run() -> void:
 	if _only != ONLY_CHARACTER:
 		await _calibration()
 		await _art_room_shots()
+		await _day_and_night()
 		await _families_room()
 		await _full_room()
 	for shot: String in _planned:
@@ -491,7 +507,7 @@ func _calibration() -> void:
 	for problem: String in board.problems:
 		push_error("Capturas: calibración: " + problem)
 	board.queue_free()
-	_room.day_cycle.apply_hour(Game.state.game_minutes / 60.0)
+	_room.day_cycle.set_hour(Game.state.game_minutes / GameClock.MINUTES_PER_HOUR)
 	await _frames(2)
 
 
@@ -544,6 +560,49 @@ func _art_room_shots() -> void:
 	_hud.open_screen("home")
 
 
+## 42, 41, 35, 36b y 44: el cuarto inicial a otras horas (biblia §6). La
+## tarde dorada y la noche, enteras sin interfaz y con el zoom normal y la
+## interfaz (lo que ve el jugador, con el personaje junto al escritorio), y
+## el alba del día siguiente. El reloj avanza de verdad: en el camino llegan
+## mensajes.
+func _day_and_night() -> void:
+	await _new_game(_start_spot())
+	var base: float = _base_size()
+	await _advance_to_hour(GOLDEN_HOUR)
+	await _whole_room_shot("42_tarde_sin_hud", base)
+	await _capture("41_tarde_con_hud")
+	await _advance_to_hour(NIGHT_HOUR)
+	await _whole_room_shot("35_noche_sin_hud", base)
+	await _capture("36b_noche")
+	await _advance_to_hour(DAWN_HOUR)
+	await _whole_room_shot("44_alba_sin_hud", base)
+
+
+## El cuarto entero sin interfaz (como 30) y después de vuelta al juego.
+func _whole_room_shot(file_name: String, base_size: float) -> void:
+	_hud.visible = false
+	_zoom(ZOOM_FAR)
+	_camera_point = ROOM_CENTER
+	await _frames(40)
+	await _capture(file_name)
+	await _back_to_game(base_size)
+
+
+## Adelanta la partida hasta la próxima vez que el reloj marque `hour` (lo
+## que pasa en el camino pasa: llegan mensajes) y deja la luz de esa hora de
+## una vez, sin esperar su mezcla. El personaje vuelve a donde empieza y,
+## como el jugador que lee los avisos, se espera a que se vayan.
+func _advance_to_hour(hour: float) -> void:
+	var minutes: float = fposmod(hour * GameClock.MINUTES_PER_HOUR - Game.state.game_minutes, GameClock.MINUTES_PER_DAY)
+	Game.advance(minutes * GameClock.SECONDS_PER_MINUTE / Game.rules.game_seconds_per_real_second)
+	_room.day_cycle.set_hour(Game.state.game_minutes / GameClock.MINUTES_PER_HOUR)
+	_hud.speech.hush()
+	await _wait_quiet()
+	_place_character(_start_spot())
+	_turn_character(CHARACTER_TURNS[0])
+	await _frames(30)
+
+
 ## 26: una impresora de cada familia en el cuarto (la del piso y dos por mesa
 ## de trabajo en la pared del fondo), para comparar sus siluetas.
 func _families_room() -> void:
@@ -578,6 +637,58 @@ func _full_room() -> void:
 	_camera_point = RACKS_POINT
 	await _frames(40)
 	await _capture("38_impresoras_de_cerca")
+
+	# 43: el mismo taller, guardado de noche y ya en el nivel del taller, con
+	# impresoras en cada estado. Se carga como una partida (la luz de la hora,
+	# sin mezcla).
+	state = GameState.new_game(Game.rules, SEED)
+	FullRoom.fill(state, Game.rules)
+	state.game_seconds = roundi(NIGHT_HOUR * GameClock.SECONDS_PER_HOUR)
+	state.xp = Game.rules.levels.thresholds[WORKSHOP_LEVEL - 1]
+	_give_jobs(state)
+	await _rebuild_main(state)
+	_hud.visible = false
+	_place_character(FULL_ROOM_SPOT)
+	_zoom(ZOOM_FAR)
+	_camera_point = ROOM_CENTER
+	await _frames(40)
+	await _capture("43_taller_lleno_noche")
+
+
+## Pone a trabajar las impresoras de `state` según WORKSHOP_JOBS, cada una
+## con un pedido y un color distintos, como en una partida guardada.
+func _give_jobs(state: GameState) -> void:
+	var order_ids: Array = Game.rules.orders.keys()
+	var color_ids: Array = Game.rules.colors.keys()
+	var now: int = state.game_seconds
+	var failures: int = 0
+	for i: int in state.printers.size():
+		var status: int = WORKSHOP_JOBS[i % WORKSHOP_JOBS.size()]
+		if status < 0:
+			continue
+		var printer: OwnedPrinter = state.printers[i]
+		var order: Order = Order.new(state.take_uid(), order_ids[i % order_ids.size()], now)
+		order.stage = Order.Stage.PRINTING
+		order.printer_uid = printer.uid
+		state.orders.append(order)
+		var job: PrintJob = PrintJob.new()
+		job.order_uid = order.uid
+		job.spool_uid = state.spools[0].uid
+		job.color_id = color_ids[i % color_ids.size()]
+		job.pieces_total = 1
+		job.piece_seconds = WORKSHOP_HALF_PIECE_SECONDS * 2
+		job.piece_started_at = now - WORKSHOP_HALF_PIECE_SECONDS
+		job.ends_at = now + WORKSHOP_HALF_PIECE_SECONDS
+		job.status = status as PrintJob.Status
+		if status == PrintJob.Status.DONE:
+			order.stage = Order.Stage.PRINTED
+			order.pieces_done = 1
+		elif status == PrintJob.Status.FAILED:
+			job.fails = true
+			job.failure_type = WORKSHOP_FAILURES[failures % WORKSHOP_FAILURES.size()]
+			job.ends_at = now
+			failures += 1
+		printer.job = job
 
 
 ## Vuelve a crear la escena principal con `state`, como al cargar la partida

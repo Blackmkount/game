@@ -12,7 +12,8 @@ extends RefCounted
 ## cambia ("Monitor/Screen", la cambia DeskView). Marcadores (Marker3D) que
 ## lee RoomView para las luces del sombreador (§6.2): "LampBulb" (la ampolleta
 ## de la lámpara, cc_pl0) y "ScreenGlow" (el brillo delante de la pantalla,
-## cc_pl1).
+## cc_pl1). De noche, además, dos halos (night_lights(), biblia §4.7): la
+## mancha cálida de la lámpara sobre la mesa y el resplandor del monitor.
 ##
 ## La caja que se toca no cambia: x ±0,65, z −0,41…0,81 y 1,15 de alto (la
 ## prueba lo fija).
@@ -71,6 +72,28 @@ const POWER_STRIP_POS: Vector3 = Vector3(0.06, 0.0, -0.24)
 const POWER_STRIP_SIZE: Vector3 = Vector3(0.28, 0.035, 0.06)
 ## Radio de los cables.
 const CABLE_RADIUS: float = 0.004
+## Halos de noche (HaloField): la mancha de la lámpara sobre la mesa (dónde
+## cae respecto de la ampolleta y su tamaño) y el resplandor alrededor de la
+## pantalla (cuánto más grande que ella y a qué distancia delante), con la
+## fuerza de cada uno.
+const LAMP_POOL_OFFSET: Vector2 = Vector2(0.06, 0.02)
+const LAMP_POOL_SIZE: Vector2 = Vector2(0.7, 0.55)
+const LAMP_POOL_STRENGTH: float = 0.33
+const SCREEN_HALO_SCALE: float = 1.9
+const SCREEN_HALO_AHEAD: float = 0.012
+const SCREEN_HALO_STRENGTH: float = 0.22
+
+
+## Las luces de noche del escritorio (los halos de HaloField, en el espacio
+## del mueble): dónde (un plano: su +Y mira afuera), de qué tamaño y color.
+static func night_lights() -> Array[Dictionary]:
+	var bulb: Vector3 = LAMP_BULB
+	var pool: Vector3 = Vector3(bulb.x + LAMP_POOL_OFFSET.x, TABLE_SIZE.y + HaloField.LIFT, bulb.z + LAMP_POOL_OFFSET.y)
+	var screen: Vector3 = MONITOR_POS + SCREEN_POS + Vector3(0.0, 0.0, SCREEN_HALO_AHEAD)
+	return [
+		{"at": Transform3D(Basis.IDENTITY, pool), "size": LAMP_POOL_SIZE, "color": Color(LookPalette.LAMP_HALO) * LAMP_POOL_STRENGTH},
+		{"at": Transform3D(Basis(Vector3.RIGHT, PI / 2.0), screen), "size": SCREEN_SIZE * SCREEN_HALO_SCALE, "color": Color(LookPalette.MONITOR_HALO) * SCREEN_HALO_STRENGTH},
+	]
 
 
 ## La caja del tablero (con lo que hay debajo), en el espacio del mueble.

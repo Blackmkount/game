@@ -144,21 +144,23 @@ func _ready() -> void:
 	# Manchas de oclusión bajo los muebles, las impresoras y el rincón (sin
 	# partida, un piso limpio).
 	floor_ao = FloorAO.publish(grid.bounds, grid.obstacles())
-	day_cycle.apply_hour(Game.state.game_minutes / 60.0 if Game.state != null else NO_GAME_HOUR)
+	day_cycle.set_hour(Game.state.game_minutes / 60.0 if Game.state != null else NO_GAME_HOUR)
 	camera.snap_to_goal()
 	_publish_character()
 	_update_markers()
 
 
-## Avanza un cuadro: mueve al personaje y después la cámara, y avisa a los
-## sombreadores dónde está el personaje y el tiempo de animación. Lo llama
-## WorldControls, que decide el orden de todo lo que pasa en cada cuadro.
+## Avanza un cuadro: mueve al personaje y después la cámara, lleva la luz
+## hacia la hora del reloj y avisa a los sombreadores dónde está el
+## personaje y el tiempo de animación. Lo llama WorldControls, que decide el
+## orden de todo lo que pasa en cada cuadro.
 func step(delta: float) -> void:
 	if character != null:
 		character.step(delta)
 		_rig.follow()
 		camera.follow_velocity = character.velocity
 	camera.step(delta)
+	day_cycle.step(delta)
 	anim_time += delta
 	RenderingServer.global_shader_parameter_set(&"cc_anim_time", anim_time)
 	_publish_character()
@@ -359,6 +361,7 @@ func _build_contents() -> void:
 	var layout: RoomLayout = RoomLayout.for_space(state.space_id)
 	var furniture_nodes: Dictionary[int, Node3D] = {}
 	var used_slots: Array[int] = []
+	var desk: Node3D = null
 	for item: OwnedFurniture in state.furniture:
 		var node: Node3D = FurnitureModel.build(self, "Furniture%d" % item.uid, item.furniture_id, layout.wall_gaps[item.slot])
 		node.transform = layout.slots[item.slot]
@@ -371,6 +374,7 @@ func _build_contents() -> void:
 			_add_view(node, DeskView.new())
 			_place_desk_lights(node)
 			_desk_area = furniture_item.footprint()
+			desk = node
 
 	var spool_color: String = _first_spool_color(state)
 	var floor_index: int = 0
@@ -397,6 +401,9 @@ func _build_contents() -> void:
 		var view: PrinterView = PrinterView.new(printer.uid, printer.printer_id)
 		view.halos = halos
 		_add_view(node, view)
+	# Los halos del escritorio, después de los de las impresoras.
+	if desk != null:
+		_add_desk_halos(desk)
 
 	# Las marcas de lugares libres laten suavemente para invitar a llenarlos.
 	_marker_material = WorldPalette.glow_transparent(WorldPalette.SLOT_MARK, MARKER_ALPHA, MARKER_ALPHA_LOW, MARKER_PULSE_PERIOD)
@@ -487,7 +494,7 @@ func _show_decor_level(level: int) -> void:
 	decor.set_level(level)
 	if day_cycle.led_strip_on != decor.has_led_strip():
 		day_cycle.led_strip_on = decor.has_led_strip()
-		day_cycle.apply_hour(Game.state.game_minutes / 60.0)
+		day_cycle.refresh()
 
 
 ## Nivel del juego (sin partida, el primero).
@@ -519,17 +526,21 @@ func _on_computer_changed() -> void:
 	character.animator.modeling = Game.state.designing_uid >= 0
 
 
+## Avanzó el reloj (un minuto de juego): la luz va hacia la hora nueva
+## mezclándose y el personaje sabe qué hora es (bosteza de noche).
 func _on_time_changed(game_minutes: float) -> void:
+	day_cycle.go_to_hour(game_minutes / 60.0)
 	character.animator.game_minutes = game_minutes
 
 
-## Partida nueva o cargada: el animador sin reacciones pendientes y al día, y
-## la decoración de su nivel.
+## Partida nueva o cargada: la luz de su hora de una vez (sin mezcla), el
+## animador sin reacciones pendientes y al día, y la decoración de su nivel.
 func _on_game_loaded() -> void:
+	day_cycle.set_hour(Game.state.game_minutes / 60.0)
 	_show_decor_level(_level())
 	character.animator.reset()
 	_on_computer_changed()
-	_on_time_changed(Game.state.game_minutes)
+	character.animator.game_minutes = Game.state.game_minutes
 	_printers_done.clear()
 	for printer: OwnedPrinter in Game.state.printers:
 		_printers_done[printer.uid] = OrderQueries.printer_status(Game.state, Game.rules, printer) == OrderQueries.PrinterStatus.DONE
@@ -602,6 +613,13 @@ func _build_destination() -> void:
 func _place_desk_lights(desk: Node3D) -> void:
 	day_cycle.place_light("desk_lamp", (desk.get_node("LampBulb") as Node3D).global_position)
 	day_cycle.place_light("monitor", (desk.get_node("ScreenGlow") as Node3D).global_position)
+
+
+## Los halos de noche del escritorio (ComputerDeskModel.night_lights): la
+## mancha de la lámpara sobre la mesa y el resplandor del monitor.
+func _add_desk_halos(desk: Node3D) -> void:
+	for light: Dictionary in ComputerDeskModel.night_lights():
+		halos.add_glow(desk.transform * (light["at"] as Transform3D), light["size"], light["color"])
 
 
 ## La luz LED que alumbra la cama de la impresora del piso (cc_pl3), en su

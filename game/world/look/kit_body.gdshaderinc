@@ -5,7 +5,8 @@
 //   COLOR.rgb  color (hex de la paleta, espacio de pantalla)
 //   COLOR.a    oclusión horneada (1 = nada)
 //   UV.x       parte entera: tipo de superficie; parte decimal: brillo
-//   UV.y       peso del balanceo (plantas, cortina, cobija)
+//   UV.y       peso del balanceo (plantas, cortina, cobija); < 0: la
+//              luz propia parpadea (los focos de la guirnalda)
 //   UV2.x      alto de capa si es impreso, en metros (0 = no impreso)
 //   UV2.y      luz propia: > 0 siempre, < 0 solo de noche
 // kit_tinted.gdshader (define KIT_TINTED) toma lo mismo de los uniform: la
@@ -347,7 +348,13 @@ void fragment() {
 	}
 #endif
 	if (emit_amount != 0.0) {
-		glow += base * (emit_amount > 0.0 ? emit_amount : -emit_amount * cc_night);
+		float lit = emit_amount > 0.0 ? emit_amount : -emit_amount * cc_night;
+		// Un balanceo negativo marca lo que parpadea (los focos de la
+		// guirnalda, KitMesh.night_glow con twinkle).
+		if (v_attr.y < 0.0) {
+			lit *= cc_twinkle(v_world.x);
+		}
+		glow += base * lit;
 	}
 
 	float ao = v_color.a * cc_occlusion(v_world, n);

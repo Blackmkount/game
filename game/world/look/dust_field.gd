@@ -52,5 +52,5 @@ static func motes(seed_value: int, count: int = COUNT) -> PackedColorArray:
 
 ## Cuánto brilla el polvo con la luz de esta hora (0 = se esconde).
 func set_strength(strength: float) -> void:
-	(material_override as ShaderMaterial).set_shader_parameter("strength", strength)
+	(material_override as ShaderMaterial).set_shader_parameter(&"strength", strength)
 	visible = strength > 0.0

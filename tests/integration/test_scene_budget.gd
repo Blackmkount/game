@@ -68,6 +68,8 @@ const FULL_MAX_TRANSPARENT: int = 12
 const BUILD_RUNS: int = 5
 const BUILD_MAX_MSEC: float = 120.0
 const BUILD_GOAL_MSEC: float = 40.0
+## La hora de la medida de noche (las 22:00, en segundos de juego).
+const NIGHT_HOUR: int = 22
 
 var _main: Control
 var _previous_processing: bool
@@ -123,6 +125,31 @@ func test_a_full_room_fits_the_mobile_budget() -> void:
 	assert_lte(budget.get("shadow_meshes"), FULL_MAX_SHADOW_MESHES, "Mallas que dan sombra")
 	assert_lte(budget.get("transparent_surfaces"), FULL_MAX_TRANSPARENT, "Superficies transparentes")
 	_assert_one_sun_and_everything_measured(budget)
+
+
+## De noche (biblia §6) se encienden los halos (un MultiMesh: una llamada,
+## sumada) y se apaga el polvo del haz: los dos cuartos caben en los mismos
+## topes, con la misma luz única.
+func test_the_night_fits_the_same_budget() -> void:
+	Game.state.game_seconds = NIGHT_HOUR * GameClock.SECONDS_PER_HOUR
+	var start: RefCounted = await _measure()
+	gut.p("Cuarto inicial de noche: " + String(start.call("report")))
+	assert_true((_main.get_node("WorldView/SubViewport/Room/Halos") as Node3D).visible, "Es de noche: los halos se ven")
+	assert_lte(start.get("draw_calls"), START_MAX_DRAW_CALLS, "Llamadas de dibujo de noche")
+	assert_lte(start.get("transparent_surfaces"), START_MAX_TRANSPARENT, "Superficies transparentes de noche")
+	assert_lte((start.get("materials") as Dictionary).size(), START_MAX_MATERIALS, "Materiales de noche")
+	_assert_one_sun_and_everything_measured(start)
+	_main.queue_free()
+	await wait_process_frames(1)
+	Game.reset_game(SEED)
+	FullRoom.fill(Game.state, Game.rules)
+	Game.state.game_seconds = NIGHT_HOUR * GameClock.SECONDS_PER_HOUR
+	var full: RefCounted = await _measure()
+	gut.p("Cuarto lleno de noche: " + String(full.call("report")))
+	assert_lte(full.get("draw_calls"), FULL_MAX_DRAW_CALLS, "Llamadas de dibujo de noche")
+	assert_lte(full.get("transparent_surfaces"), FULL_MAX_TRANSPARENT, "Superficies transparentes de noche")
+	assert_lte((full.get("materials") as Dictionary).size(), FULL_MAX_MATERIALS, "Materiales de noche")
+	_assert_one_sun_and_everything_measured(full)
 
 
 func test_the_main_scene_builds_fast_with_cached_meshes() -> void:

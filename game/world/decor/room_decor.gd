@@ -141,7 +141,7 @@ func add_night_lights(halos: HaloField) -> void:
 	_halos = halos
 	_lights = DecorWall.night_lights()
 	for light: Dictionary in _lights:
-		_light_index.append(halos.add_glow(light["at"], light["size"], HaloField.OFF))
+		_light_index.append(halos.add_glow(light["at"], light["size"], HaloField.OFF, light.get("twinkle", false)))
 	_color_lights()
 
 

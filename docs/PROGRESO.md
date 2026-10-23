@@ -4,8 +4,8 @@
 
 - **Fase actual:** 1. Ciclo jugable, en curso (ruta aprobada por el dueño en `docs/RUTA.md`).
 - **Diseño:** GDD versión 2.3, guía de estilo en `docs/ESTILO.md` y ruta en `docs/RUTA.md`.
-- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 12 de 16: la decoración del dormitorio (cama con cobija de tigre, puf, librero, costilla de Adán, guitarra, pósters, guirnalda, tapete andino, polvo en el haz de la ventana...), que crece con el nivel sin quitar piso para muebles (2026-10-22). Antes: paso 11, el personaje vivo.
-- **Siguiente paso sugerido:** Arte 2.0, paso 13: el día y la noche completos (los seis momentos del día, luces de noche, la guirnalda y la tira LED encendidas). Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
+- **Última tarea:** Arte 2.0 ("Mundo Impreso"), paso 13 de 16: el día y la noche completos. El reloj del juego lleva la luz del cuarto por seis momentos (alba, mañana, mediodía, tarde dorada, atardecer y noche), siempre mezclándose; de noche se encienden la lámpara, el monitor, la guirnalda (que parpadea), la lámpara de la cama y los halos de las impresoras (2026-10-22). Antes: paso 12, la decoración del dormitorio.
+- **Siguiente paso sugerido:** Arte 2.0, paso 14: la firma (lo que se compra aparece imprimiéndose capa a capa) y el cuarto que se arma de nuevo al cargar otra partida. Después de Arte 2.0, la tarea 3 de la Fase 1 (navegación nueva y HUD despejado), lo que falta de la tarea 4 (versión en Ajustes y menú de pruebas) y la tarea 5 (tienda).
 - **Diseño del ciclo:** aprobado por el dueño (GDD, versión 2.3 en la sección 16).
 
 | Fase | Estado |
@@ -613,3 +613,27 @@ Cada tarea termina en un PR. El detalle está en `docs/RUTA.md`, sección 9.
 - Armar las tres decoraciones la primera vez tarda unos 19 ms en el computador; hay que medirlo en el teléfono (paso 15).
 - La guirnalda y la tira LED de día se ven finas; de noche se calibran en el paso 13.
 - El polvo todavía se ve en cualquier calidad: "solo en calidad Alta" llega con el paso 15.
+
+### 2026-10-22 — Arte 2.0, paso 13: el día y la noche completos
+
+**Qué se hizo** (D2: no se agregan luces del motor; D8: solo lo visual, nada cambia en el juego)
+- **La hora se siente:** el cuarto pasa por seis momentos según el reloj del juego: el alba (05:45, luz rosada y las lámparas todavía encendidas), la mañana (07:00–10:30, el sol entre las rejas, como hasta ahora), el mediodía (12:30, luz alta y blanca), la tarde dorada (16:30–18:00: el sol tira la sombra de la planta en la pared del fondo y los rayos de la ventana cruzan el cuarto hacia la cámara), el atardecer (19:15, la hora azul con las lámparas encendiéndose) y la noche (20:15–05:00, luz de luna azulada, lámpara cálida, monitor y guirnalda). Cambian el sol, el ambiente, la luz de la ventana, el fondo detrás del cuarto y lo que se ve por la ventana (de noche: estrellas, luna y ventanas encendidas en el barrio).
+- **Nunca de golpe:** entre un momento y otro la luz se mezcla suave, y cada minuto del reloj llega mezclándose en 2 segundos. Al abrir el juego o cargar una partida, la luz de esa hora aparece de una vez.
+- **La noche se lee en el teléfono:** el piso lejos de las luces se ve claro (una prueba hace la cuenta y exige al menos 70 de 255 de brillo en un gris medio) y el personaje se separa del piso con su contorno y el relleno extra de noche.
+- **Luces de noche:** la lámpara del escritorio deja una mancha cálida sobre la mesa y el monitor un resplandor; los 14 focos de la guirnalda parpadean suave, cada uno a su ritmo; el borde de la base brilla apenas en azul; en el taller (nivel 5) la tira LED lava de cian la pared del fondo. Las impresoras muestran su estado con un halo más fuerte que antes (cálido imprimiendo, verde lista, rojo con falla), y así el taller lleno se lee de noche.
+- Nada de esto agrega luces del motor ni llamadas de dibujo: de noche el cuarto inicial usa 38 llamadas, igual que de día.
+- **Capturas nuevas:** 41 y 42 (tarde dorada con y sin interfaz), 35 y 36b (noche sin y con interfaz), 44 (alba) y 43 (el taller lleno de noche, con impresoras en cada estado).
+
+**Verificado**
+- `check.sh` y `run_tests.sh` pasan: 692 pruebas (antes 678): 8 nuevas del día y la noche (cada momento igual a la biblia, sin saltos minuto a minuto, mezcla suave, la lámpara apagada a las 10:00 y encendida a las 22:00, el piso de noche, el fondo y la ventana por momento, el reloj que mezcla y la carga que no, sin memoria nueva), 5 del cuarto de día y de noche, 1 del presupuesto de noche y 1 del kit de formas. Dos pruebas adaptadas (detalle en `docs/DECISIONES.md`).
+- `screenshots.sh` saca las 48 capturas. Revisé las seis nuevas, la 30, la 37 y las del ciclo de pedidos (siguen en la mañana: llegan hasta las 10:27).
+
+**Qué revisar en el teléfono** (versión web)
+- El día del juego dura una hora real y el juego todavía no avanza con la app cerrada (la partida sigue a la hora en que la dejaste): juega o déjalo abierto. Desde las 08:00 de una partida nueva, la tarde dorada (16:30) llega a los ~21 minutos reales, el atardecer (19:15) a los ~28 y la noche (20:15) a los ~31. La hora está arriba, junto al día.
+- En la tarde dorada: la pared del fondo se pone naranja y la sombra de la planta cae sobre ella; los rayos de la ventana cruzan el piso.
+- De noche, con el brillo del teléfono bajo: ¿el piso, los muebles y el personaje se distinguen bien? ¿Los focos de la guirnalda parpadean suave (no molestan)? ¿Se ve la lámpara del escritorio y el resplandor del monitor?
+- Mientras cambia la hora (por ejemplo entre las 18:00 y las 20:15), la luz debe cambiar sin saltos.
+
+**Problemas conocidos**
+- El atardecer (19:15) es el momento más oscuro del día (así lo dice la biblia). Si se ve muy oscuro en el teléfono, se puede subir su ambiente.
+- Para mirar la noche sin esperar hace falta el menú de pruebas (tarea 4 de la Fase 1) o el panel `#debug` del paso 15.

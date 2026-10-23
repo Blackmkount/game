@@ -207,6 +207,14 @@ func test_each_vertex_carries_what_is_painted() -> void:
 	assert_almost_eq((led[2] as Vector2).y, 1.5, 0.0001, "Encendido siempre")
 	var lamp: Array = _first_vertex(func(kit: KitMesh) -> void: kit.night_glow("ffd27a", 0.8))
 	assert_almost_eq((lamp[2] as Vector2).y, -0.8, 0.0001, "Solo de noche")
+	assert_eq((lamp[1] as Vector2).y, 0.0, "Fija")
+	var bulb: Array = _first_vertex(func(kit: KitMesh) -> void: kit.night_glow("ffd27a", 1.3, true))
+	assert_almost_eq((bulb[2] as Vector2).y, -1.3, 0.0001, "Un foco de noche")
+	assert_eq((bulb[1] as Vector2).y, KitMesh.TWINKLE, "que parpadea (balanceo negativo: no se mueve)")
+	var after_bulb: Array = _first_vertex(func(kit: KitMesh) -> void:
+		kit.night_glow("ffd27a", 1.3, true)
+		kit.paint("ffffff"))
+	assert_eq((after_bulb[1] as Vector2).y, 0.0, "paint quita el parpadeo")
 
 	var plant: Array = _first_vertex(func(kit: KitMesh) -> void:
 		kit.printed("6fbf7a", 0.004)

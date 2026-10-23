@@ -7,6 +7,7 @@ extends RefCounted
 ## kit_body.gdshaderinc):
 ##   COLOR.rgb  color (hex de la paleta)       COLOR.a  oclusión horneada
 ##   UV.x       superficie + brillo            UV.y     peso del balanceo
+##                                             (< 0: su luz parpadea)
 ##   UV2.x      alto de capa si fue impreso    UV2.y    luz propia
 ## Así un mueble entero es una malla con un solo material
 ## (WorldPalette.kit()): una llamada de dibujo.
@@ -34,6 +35,8 @@ const DOWN_AO: float = 0.25
 const MIN_AREA: float = 1e-9
 ## Brillo máximo (UV.x guarda superficie + brillo: tiene que quedar < 1).
 const MAX_GLOSS: float = 0.98
+## Balanceo que marca una luz que parpadea (night_glow con twinkle).
+const TWINKLE: float = -1.0
 ## El bisel no pasa de esta fracción de la mitad del lado menor; por debajo
 ## de MIN_BEVEL la caja sale sin bisel.
 const MAX_BEVEL: float = 0.9
@@ -162,9 +165,13 @@ func glowing(hex: String, energy: float = 1.0) -> KitMesh:
 
 
 ## Algo que solo se enciende de noche (una lámpara, las luces del barrio).
-func night_glow(hex: String, energy: float = 1.0) -> KitMesh:
+## Con `twinkle`, su luz parpadea suave (los focos de la guirnalda): lo
+## marca un balanceo negativo (TWINKLE), que no mueve nada.
+func night_glow(hex: String, energy: float = 1.0, twinkle: bool = false) -> KitMesh:
 	paint(hex)
 	emit = -absf(energy)
+	if twinkle:
+		sway = TWINKLE
 	return self
 
 

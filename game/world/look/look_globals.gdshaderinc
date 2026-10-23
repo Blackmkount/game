@@ -127,6 +127,13 @@ float cc_noise(vec2 p) {
 		mix(cc_hash(i + vec2(0.0, 1.0)), cc_hash(i + vec2(1.0, 1.0)), u.x), u.y);
 }
 
+// Parpadeo suave de la guirnalda de noche (biblia §8.9): cada foco a su
+// ritmo según dónde está a lo largo de la pared (x), entre 0,62 y 1. Lo usan
+// el foco (kit_body, luz propia que parpadea) y su halo (halo_field).
+float cc_twinkle(float x) {
+	return 0.81 + 0.12 * sin(cc_anim_time * 1.9 + x * 9.7) + 0.07 * sin(cc_anim_time * 3.1 + x * 23.3);
+}
+
 // Las líneas finas se apagan cuando quedan por debajo de un píxel (si no,
 // centellean): `coord_fw` es fwidth de la coordenada y `period` su periodo.
 float cc_aa_fade(float coord_fw, float period) {
