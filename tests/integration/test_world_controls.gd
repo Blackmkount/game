@@ -98,6 +98,21 @@ func test_closing_a_panel_in_the_same_frame_it_opened_leaves_no_ghost() -> void:
 	assert_eq(host.get_child_count(), 0, "El panel no vuelve a subir solo")
 
 
+func test_taps_hit_the_same_object_at_any_phone_width() -> void:
+	# El mundo se dibuja con otro ancho según el teléfono (WorldViewport): las
+	# cuentas entre la interfaz y el dibujo tienen que seguir cuadrando.
+	for window: Vector2i in [Vector2i(1080, 2400), Vector2i(1440, 3200)]:
+		get_tree().root.size = window
+		await wait_process_frames(3)
+		var center: Vector3 = _printer().bounds.get_center()
+		var ui_point: Vector2 = _controls.world_to_ui(center)
+		var expected: Vector2 = _room.camera.unproject_position(center)
+		assert_almost_eq(_controls.ui_to_view(ui_point), expected, Vector2.ONE * 0.01, "Ida y vuelta con %s" % window)
+		assert_eq(_pick_under(ui_point), _printer(), "El toque da en la impresora con %s" % window)
+	await _touch(_screen_of(_printer()))
+	assert_eq(_controls.sheet_item, _printer())
+
+
 func test_tapping_another_object_swaps_the_panel_and_empty_floor_closes_it() -> void:
 	_controls.open_sheet(_printer())
 	await wait_process_frames(2)
@@ -146,6 +161,28 @@ func test_tapping_the_character_makes_it_talk() -> void:
 	await _touch(_screen_of(_item(WorldInteractable.Kind.CHARACTER)))
 	assert_true(_hud.speech.is_talking())
 	assert_false(_hud.has_sheet())
+
+
+## La estantería metálica es abierta: entre sus tablas se ve lo que está
+## detrás, y un toque ahí le da a eso. Con una en el lugar 5, el personaje en
+## su lugar del comienzo queda detrás de ella: tocar sus piernas, que se ven
+## entre dos tablas, lo hace hablar (antes la estantería se tocaba como una
+## caja entera de 2,6 m de alto y se abría). Tocar una tabla sigue abriendo la
+## estantería.
+func test_the_character_seen_through_an_open_rack_can_be_tapped() -> void:
+	var uid: int = Game.state.take_uid()
+	Game.state.furniture.append(OwnedFurniture.new(uid, MetalRackModel.FURNITURE_ID, 5))
+	_room.sync_models(false)
+	await wait_process_frames(2)
+	var rack: WorldInteractable = _room.item_for(WorldInteractable.Kind.FURNITURE, uid)
+	var legs: Vector2 = _controls.world_to_ui(_room.character.model.position + Vector3(0.0, 0.3, 0.0))
+	var view: Vector2 = _controls.ui_to_view(legs)
+	var inverse: Transform3D = rack.transform.affine_inverse()
+	var hit: Variant = rack.local_bounds.intersects_ray(inverse * _room.camera.project_ray_origin(view), inverse.basis * _room.camera.project_ray_normal(view))
+	assert_not_null(hit, "Las piernas quedan detrás de la caja de la estantería")
+	assert_eq(_pick_under(legs), _item(WorldInteractable.Kind.CHARACTER), "Tocar las piernas, que se ven entre las tablas, le da al personaje")
+	var board: Vector3 = rack.transform * Vector3(0.0, MetalRackModel.BOARDS[2] + MetalRackModel.BOARD_THICKNESS / 2.0, MetalRackModel.HALF_SIZE.y - 0.02)
+	assert_eq(_pick_under(_controls.world_to_ui(board)), rack, "Tocar una tabla abre la estantería")
 
 
 func test_joystick_drag_walks_where_the_thumb_points() -> void:
@@ -395,7 +432,7 @@ func _screen_of(item: WorldInteractable) -> Vector2:
 
 ## Lo que elegiría un toque en ese punto (el mismo cálculo que WorldControls.tap).
 func _pick_under(ui_position: Vector2) -> WorldInteractable:
-	return _room.pick(_controls.ui_to_view(ui_position), WorldControls.MIN_TOUCH_PX / float(_controls.world_view.stretch_shrink))
+	return _room.pick(_controls.ui_to_view(ui_position), WorldControls.MIN_TOUCH_PX * _controls.world_view.view_per_ui)
 
 
 func _screen_of_floor(point: Vector3) -> Vector2:

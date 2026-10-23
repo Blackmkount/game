@@ -33,7 +33,7 @@ var tracker: TouchTracker
 var reach: ReachTracker
 var room: RoomView
 var hud: Hud
-var world_view: SubViewportContainer
+var world_view: WorldViewport
 ## Lleva las acciones del ciclo de pedidos (paneles, tarjetas de Pedidos y
 ## burbuja de cercanía) a Game.
 var loop: OrderLoopController
@@ -78,10 +78,11 @@ func _setup() -> void:
 	hud.screen_changed.connect(_on_screen_changed)
 	hud.zoom_pressed.connect(_cycle_zoom)
 	hud.set_zoom_label(room.camera.zoom_index)
-	# La imagen del mundo se corre fracciones de píxel con un desplazamiento
-	# solo visual: Godot no lo redondea, como sí hace con la posición.
-	world_view.offset_transform_enabled = true
-	world_view.offset_transform_visual_only = true
+	room.models_changed.connect(_on_models_changed)
+	hud.debug_requested.connect(func() -> void: hud.toggle_debug(room, world_view))
+	# "#debug" en la dirección de la versión web abre el panel de depuración.
+	if PerfOverlay.requested_by_url():
+		hud.toggle_debug(room, world_view)
 	_hints = HintFlow.new(UserSettings.load_settings())
 	hud.move_hint.set_mode(_hints.mode())
 	loop = OrderLoopController.new(self)
@@ -112,13 +113,16 @@ func _process(delta: float) -> void:
 			# Caminar cierra el panel abierto.
 			if hud.has_sheet():
 				hud.close_sheet()
+		# Mueve la boca mientras se ve el globo; con un panel o una pantalla
+		# abierta no saca el celular ni hace gestos sueltos.
+		character.animator.talking = hud.speech.is_talking()
+		character.animator.panel_open = hud.has_sheet() or not playing
 	_update_pinch()
 	_wheel_cooldown = maxf(_wheel_cooldown - delta, 0.0)
 
-	var shrink: float = float(world_view.stretch_shrink)
-	var insets: Vector2 = hud.world_insets()
-	room.camera.inset_top_px = insets.x / shrink
-	room.camera.inset_bottom_px = insets.y / shrink
+	var insets: Vector2 = hud.world_insets() * world_view.view_per_ui
+	room.camera.inset_top_px = insets.x
+	room.camera.inset_bottom_px = insets.y
 	if sheet_item != null:
 		room.camera.follow_point = sheet_item.top_center()
 	elif character != null:
@@ -129,26 +133,18 @@ func _process(delta: float) -> void:
 		if stick != Vector2.ZERO:
 			_hints.add_walk(character.distance_walked - walked_before)
 		_update_reach()
-	# Primero se corre la imagen, para que lo que se dibuja encima del mundo
-	# quede alineado con este mismo cuadro.
-	_apply_pixel_shift()
 	_update_overlays()
 	_update_hints()
 
 
 ## Punto de la interfaz → píxel del dibujo del mundo.
 func ui_to_view(ui_position: Vector2) -> Vector2:
-	return (ui_position + global_position - _world_origin()) / float(world_view.stretch_shrink)
+	return world_view.ui_to_view(ui_position + global_position)
 
 
 ## Punto del mundo → punto de la interfaz.
 func world_to_ui(point: Vector3) -> Vector2:
-	return room.camera.unproject_position(point) * float(world_view.stretch_shrink) + _world_origin() - global_position
-
-
-## Dónde se dibuja la esquina de la vista del mundo, con el corrimiento.
-func _world_origin() -> Vector2:
-	return world_view.global_position + world_view.offset_transform_position
+	return world_view.view_to_ui(room.camera.unproject_position(point)) - global_position
 
 
 ## Abre el panel de un objeto. El personaje se gira a mirarlo.
@@ -183,7 +179,7 @@ func tap(ui_position: Vector2) -> void:
 		open_sheet(bubble_item)
 		return
 	var view_position: Vector2 = ui_to_view(ui_position)
-	var item: WorldInteractable = room.pick(view_position, MIN_TOUCH_PX / float(world_view.stretch_shrink))
+	var item: WorldInteractable = room.pick(view_position, MIN_TOUCH_PX * world_view.view_per_ui)
 	if hud.has_sheet():
 		# Con un panel abierto, tocar otro objeto cambia el panel; tocar
 		# cualquier otra cosa lo cierra (y no camina).
@@ -199,6 +195,11 @@ func tap(ui_position: Vector2) -> void:
 			_hints.walked_by_tap()
 		return
 	if item.kind == WorldInteractable.Kind.CHARACTER:
+		# Se detiene (si caminaba solo), se da vuelta, saluda y dice algo
+		# gracioso.
+		room.character.stop_path()
+		room.character.face_camera()
+		room.character.animator.react(CharacterAnimator.Reaction.TAPPED)
 		hud.speech.say(tr("CHARACTER_LINE_%d" % _rng.randi_range(1, CHARACTER_LINES)))
 		return
 	open_sheet(item)
@@ -274,7 +275,10 @@ func _use_nearby() -> void:
 		open_sheet(highlighted)
 
 
+## Un dedo baja en el mundo. Si algo se está imprimiendo en el cuarto (una
+## compra que acaba de llegar), termina ya: el toque sigue haciendo lo suyo.
 func _press(index: int, position: Vector2) -> void:
+	room.finish_print_ins()
 	tracker.area = Rect2(tuning.edge_ignore_px, 0.0, size.x - tuning.edge_ignore_px * 2.0, size.y)
 	tracker.press(index, position)
 
@@ -352,7 +356,7 @@ func _update_overlays() -> void:
 		hud.bubble.hide_bubble()
 	status.place_bubbles()
 	if hud.speech.is_talking() and room.character != null:
-		hud.place_speech(world_to_ui(room.character.model.position + Vector3(0.0, CharacterModel.HEIGHT, 0.0)))
+		hud.place_speech(world_to_ui(room.speech_point()))
 
 
 func _update_hints() -> void:
@@ -363,13 +367,11 @@ func _update_hints() -> void:
 	hud.move_hint.modulate.a = 0.0 if tracker.is_joystick() else 1.0
 
 
-## La cámara se mueve de píxel en píxel del dibujo. La fracción que falta se
-## compensa corriendo la imagen, para que el movimiento se vea suave. La vista
-## del mundo es 4 px más grande que la pantalla por cada lado (main.tscn), así
-## que al correrla no se ven sus bordes.
-func _apply_pixel_shift() -> void:
-	var remainder: Vector2 = room.camera.pixel_remainder
-	world_view.offset_transform_position = Vector2(-remainder.x, remainder.y) * float(world_view.stretch_shrink)
+## Cambió lo que hay en el cuarto (RoomView.sync_models): si el panel abierto
+## era de algo que ya no está, se cierra.
+func _on_models_changed() -> void:
+	if sheet_item != null and sheet_item not in room.interactables:
+		hud.close_sheet()
 
 
 func _on_sheet_closed() -> void:
@@ -378,6 +380,11 @@ func _on_sheet_closed() -> void:
 
 
 func _on_screen_changed(screen_id: String) -> void:
+	# En la tienda, las marcas de lugares libres se encienden: ahí va lo que
+	# se compre.
+	room.markers_emphasis = screen_id == "shop"
+	# La sección tapa el mundo: deja de dibujarse (ver WorldViewport).
+	world_view.set_covered(screen_id != "home")
 	if screen_id != "home":
 		_cancel_gestures()
 		if room.character != null:

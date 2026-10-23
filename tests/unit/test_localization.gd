@@ -44,6 +44,21 @@ func test_percent_signs_match_format_arguments() -> void:
 	assert_eq(problems, [] as Array[String])
 
 
+## Cada letra de cada texto está en la fuente de la interfaz (UiTheme.FONT).
+## En el teléfono, a una que falta el sistema le presta otra fuente; en la
+## web no hay fuentes del sistema y se ve un cuadro con su número (como la
+## flecha "→" del panel de depuración).
+func test_every_character_is_in_the_interface_font() -> void:
+	var missing: Array[String] = []
+	for row: PackedStringArray in _read_rows().slice(1):
+		for column: int in range(1, row.size()):
+			for character: String in row[column]:
+				var code: int = character.unicode_at(0)
+				if code >= 0x20 and not UiTheme.FONT.has_char(code):
+					missing.append("%s: «%s» (U+%04X)" % [row[0], character, code])
+	assert_eq(missing, [] as Array[String], "Letras que la fuente no tiene")
+
+
 func test_csv_has_required_language_columns() -> void:
 	var header: PackedStringArray = _read_rows()[0]
 	assert_eq(header[0], "keys", "La primera columna debe llamarse 'keys'")

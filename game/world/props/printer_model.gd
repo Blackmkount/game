@@ -1,78 +1,85 @@
 class_name PrinterModel
 extends RefCounted
-## Modelo 3D de cada impresora, armado con formas básicas. Cada familia se
-## ve distinta (GDD, sección 8). El frente mira hacia +Z y la base queda en
-## y = 0.
+## Modelo 3D de cada impresora (GDD §8, biblia de arte §9). Las siete
+## familias se distinguen por la silueta antes que por el color. El frente
+## mira hacia +Z y la base queda en y = 0.
+##
+## Cada familia vive en su archivo (game/world/props/printers/): CuboUnoModel
+## (la clásica), RayoModel (Rayo Mini, Rayo X1 y Prisma MC, de voladizo),
+## EnclosedPrinterModel (Bóveda P1 y Titán Pro, cerradas) y
+## ResinPrinterModel (Gota R1). Lo que comparten, en PrinterParts.
+##
+## Todas tienen "Body" (una malla del kit), "Display" (la pantallita) y los
+## marcadores "PieceAnchor", "TrayAnchor" y "BedLight"; el resto depende del
+## modo, que PrinterView reconoce por sus partes:
+## - abiertas ("Bed"): "Gantry", "PrintHead/Carriage", "Spool/Filament",
+##   "HeadRest" y "HeadPark";
+## - cerradas ("Platform"): "Interior", "PrintHead/Carriage", "PlatformLow",
+##   "HeadRest" y "HeadPark";
+## - de resina ("Plate"): "Resin", "Lid", "PlateTop" y "VatFloor".
+
+## Alto máximo de toda impresora, con su carrete (biblia §9.1: cabe en la
+## estantería).
+const MAX_HEIGHT: float = 0.72
 
 
-static func build(parent: Node3D, node_name: String, printer_id: String, spool_color: String = "f2efe6") -> Node3D:
+## `detail`: PrinterParts.FLOOR_DETAIL para la impresora del piso,
+## PrinterParts.FURNITURE_DETAIL para las de los muebles (menos triángulos y
+## solo "Body" da sombra).
+static func build(parent: Node3D, node_name: String, printer_id: String, spool_color: String = "f2efe6", detail: float = PrinterParts.FLOOR_DETAIL) -> Node3D:
 	var printer: Node3D = PropBuilder.group(parent, node_name)
 	match printer_id:
-		"cubo_uno":
-			_open_frame(printer, WorldPalette.PLASTIC_BLACK, WorldPalette.ACCENT_BLUE, spool_color, frame_scale(printer_id))
-		"rayo_mini", "rayo_x1":
-			_open_frame(printer, "e6e8ee", "4cbf5a", spool_color, frame_scale(printer_id))
+		"rayo_mini":
+			RayoModel.build(printer, RayoModel.Kind.MINI, spool_color, detail)
+		"rayo_x1":
+			RayoModel.build(printer, RayoModel.Kind.X1, spool_color, detail)
 		"prisma_mc":
-			_open_frame(printer, "e6e8ee", "9b5de5", spool_color, frame_scale(printer_id))
-			_color_box(printer, Vector3(0.0, 0.62, -0.05))
-		"boveda_p1", "titan_pro":
-			_enclosed(printer, printer_id == "titan_pro", spool_color)
+			RayoModel.build(printer, RayoModel.Kind.PRISMA, spool_color, detail)
+		"boveda_p1":
+			EnclosedPrinterModel.build(printer, EnclosedPrinterModel.Kind.VAULT, spool_color, detail)
+		"titan_pro":
+			EnclosedPrinterModel.build(printer, EnclosedPrinterModel.Kind.TITAN, spool_color, detail)
 		"gota_r1":
-			_resin(printer)
+			ResinPrinterModel.build(printer, spool_color, detail)
 		_:
-			_open_frame(printer, WorldPalette.METAL_MID, WorldPalette.ACCENT_BLUE, spool_color, frame_scale(printer_id))
+			CuboUnoModel.build(printer, spool_color, detail)
 	return printer
 
 
-## Escala del modelo de las impresoras abiertas: la Rayo Mini es más chica.
-## PrinterView la usa para ubicar la pieza, el cabezal y la bandeja.
+## La malla lejana de "Body" (con el zoom lejos, PrinterView.set_far): lo
+## fijo con el detalle PrinterParts.FAR_DETAIL y, adentro, lo que en la
+## versión normal va aparte y con el zoom lejos queda quieto: el bobinado del
+## carrete (o la resina) del color `spool_color`, la cama de las cerradas
+## (abajo) y la placa de la de resina (arriba). En caché.
+static func far_body(printer_id: String, spool_color: String) -> ArrayMesh:
+	match printer_id:
+		"rayo_mini":
+			return RayoModel.far_body(RayoModel.Kind.MINI, spool_color)
+		"rayo_x1":
+			return RayoModel.far_body(RayoModel.Kind.X1, spool_color)
+		"prisma_mc":
+			return RayoModel.far_body(RayoModel.Kind.PRISMA, spool_color)
+		"boveda_p1":
+			return EnclosedPrinterModel.far_body(EnclosedPrinterModel.Kind.VAULT, spool_color)
+		"titan_pro":
+			return EnclosedPrinterModel.far_body(EnclosedPrinterModel.Kind.TITAN, spool_color)
+		"gota_r1":
+			return ResinPrinterModel.far_body(spool_color)
+	return CuboUnoModel.far_body(spool_color)
+
+
+## Escala del modelo: la Rayo Mini es más chica. PrinterView la usa para el
+## vaivén y el espacio del cabezal, la bandeja y el espagueti.
 static func frame_scale(printer_id: String) -> float:
-	return 0.82 if printer_id == "rayo_mini" else 1.0
+	return RayoModel.MINI_SCALE if printer_id == "rayo_mini" else 1.0
 
 
-## Impresora abierta de cama móvil (tipo "bedslinger"), como la Cubo Uno.
-static func _open_frame(printer: Node3D, frame_hex: String, accent_hex: String, spool_color: String, size: float) -> void:
-	var frame: StandardMaterial3D = WorldPalette.solid(frame_hex)
-	var dark: StandardMaterial3D = WorldPalette.solid(WorldPalette.PLASTIC_BLACK)
-	var metal: StandardMaterial3D = WorldPalette.solid(WorldPalette.METAL_MID)
-	var s: float = size
-	PropBuilder.box(printer, "Base", Vector3(0.44, 0.08, 0.42) * s, Vector3(0.0, 0.04, 0.0) * s, frame)
-	PropBuilder.box(printer, "Bed", Vector3(0.28, 0.02, 0.28) * s, Vector3(0.0, 0.1, 0.03) * s, WorldPalette.solid(WorldPalette.PRINT_BED))
-	PropBuilder.box(printer, "LeftPost", Vector3(0.035, 0.44, 0.04) * s, Vector3(-0.19, 0.3, -0.09) * s, frame)
-	PropBuilder.box(printer, "RightPost", Vector3(0.035, 0.44, 0.04) * s, Vector3(0.19, 0.3, -0.09) * s, frame)
-	PropBuilder.box(printer, "TopBar", Vector3(0.415, 0.035, 0.04) * s, Vector3(0.0, 0.535, -0.09) * s, frame)
-	PropBuilder.box(printer, "Gantry", Vector3(0.38, 0.03, 0.03) * s, Vector3(0.0, 0.25, -0.06) * s, metal)
-	var head: Node3D = PropBuilder.group(printer, "PrintHead", Vector3(-0.05, 0.25, -0.02) * s)
-	PropBuilder.box(head, "Carriage", Vector3(0.07, 0.08, 0.05) * s, Vector3.ZERO, dark)
-	PropBuilder.box(head, "Fan", Vector3(0.05, 0.05, 0.01) * s, Vector3(0.0, 0.0, 0.03) * s, WorldPalette.solid(accent_hex))
-	PropBuilder.quad(printer, "Display", Vector2(0.1, 0.05) * s, Vector3(0.14, 0.05, 0.215) * s, WorldPalette.glow("ffffff", "printer_display"))
-	PropBuilder.box(printer, "SpoolArm", Vector3(0.03, 0.08, 0.03) * s, Vector3(0.0, 0.59, -0.09) * s, frame)
-	SpoolModel.build(printer, "Spool", Vector3(0.0, 0.64, -0.09) * s, spool_color, 0.09 * s)
-
-
-## Impresora cerrada tipo caja (Bóveda P1, Titán Pro).
-static func _enclosed(printer: Node3D, large: bool, spool_color: String) -> void:
-	var s: float = 1.3 if large else 1.0
-	var body: StandardMaterial3D = WorldPalette.solid(WorldPalette.PLASTIC_BLACK)
-	PropBuilder.box(printer, "Body", Vector3(0.4, 0.46, 0.4) * s, Vector3(0.0, 0.23, 0.0) * s, body)
-	PropBuilder.quad(printer, "Window", Vector2(0.3, 0.3) * s, Vector3(0.0, 0.25, 0.201) * s, WorldPalette.glow("ffcf7a"))
-	PropBuilder.box(printer, "Part", Vector3(0.08, 0.1, 0.08) * s, Vector3(0.0, 0.16, 0.12) * s, WorldPalette.solid(spool_color))
-	PropBuilder.quad(printer, "Display", Vector2(0.08, 0.05) * s, Vector3(-0.12, 0.06, 0.201) * s, WorldPalette.glow("ffffff", "printer_display"))
-	if large:
-		_color_box(printer, Vector3(0.0, 0.62, -0.02))
-
-
-## Caja de colores para impresoras multicolor.
-static func _color_box(printer: Node3D, position: Vector3) -> void:
-	var box: Node3D = PropBuilder.group(printer, "ColorBox", position)
-	PropBuilder.box(box, "Case", Vector3(0.38, 0.1, 0.16), Vector3.ZERO, WorldPalette.solid("e6e8ee"))
-	var colors: Array[String] = ["e0453a", "f5cf3c", "3b7fe0", "4cbf5a"]
-	for i: int in colors.size():
-		PropBuilder.box(box, "Color%d" % i, Vector3(0.06, 0.04, 0.01), Vector3(-0.13 + i * 0.087, 0.0, 0.08), WorldPalette.solid(colors[i]))
-
-
-## Impresora de resina: base y tapa ámbar.
-static func _resin(printer: Node3D) -> void:
-	PropBuilder.box(printer, "Base", Vector3(0.3, 0.14, 0.3), Vector3(0.0, 0.07, 0.0), WorldPalette.solid(WorldPalette.PLASTIC_BLACK))
-	PropBuilder.box(printer, "Lid", Vector3(0.26, 0.3, 0.26), Vector3(0.0, 0.29, 0.0), WorldPalette.solid("f28c28"))
-	PropBuilder.quad(printer, "Display", Vector2(0.1, 0.05), Vector3(0.0, 0.07, 0.151), WorldPalette.glow("ffffff", "printer_display"))
+## Color de la luz de adentro de una impresora cerrada mientras imprime ("" si
+## no es cerrada).
+static func interior_hex(printer_id: String) -> String:
+	match printer_id:
+		"boveda_p1":
+			return EnclosedPrinterModel.INSIDE[EnclosedPrinterModel.Kind.VAULT]
+		"titan_pro":
+			return EnclosedPrinterModel.INSIDE[EnclosedPrinterModel.Kind.TITAN]
+	return ""

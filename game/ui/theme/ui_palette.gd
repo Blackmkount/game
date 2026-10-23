@@ -28,3 +28,8 @@ const PRIMARY_TEXT: Color = Color("08121f")
 const BUBBLE: Color = Color("f4f1e8")
 const BUBBLE_TEXT: Color = Color("23242b")
 const OUTLINE_DARK: Color = Color("1a1320")
+## Disco de luz detrás de las vistas 3D (tienda, paneles, retratos; biblia
+## de arte §11): de este azul en el centro a transparente en el borde, para
+## que lo oscuro (el marco de una impresora, la estantería, el buzo) se lea
+## sobre el fondo.
+const PREVIEW_DISC: Color = Color("2a3a66")

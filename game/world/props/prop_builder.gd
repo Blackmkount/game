@@ -1,33 +1,22 @@
 class_name PropBuilder
 extends RefCounted
-## Atajos para armar modelos con formas básicas. Cada forma queda centrada en
-## su origen, como necesita el shader de contorno.
+## Atajos para poner mallas en un modelo. kit() pone una malla del kit
+## (KitMesh: varias formas en una malla, con el origen en la base del
+## objeto). Quedan dos formas básicas, centradas en su origen: box (la pieza
+## que crece, un BoxMesh por contrato, y los bloquecitos de la bandeja) y
+## quad (las pantallas y la vista de la ventana, que cambian de material).
+
+
+## Una malla del kit (KitMesh) como hijo de `parent`. Sin `material` usa el
+## del kit (WorldPalette.kit()), que lee color, superficie y oclusión de los
+## vértices.
+static func kit(parent: Node3D, node_name: String, mesh: Mesh, material: Material = null, position: Vector3 = Vector3.ZERO) -> MeshInstance3D:
+	return _add(parent, node_name, mesh, position, material if material != null else WorldPalette.kit())
 
 
 static func box(parent: Node3D, node_name: String, size: Vector3, position: Vector3, material: Material) -> MeshInstance3D:
 	var mesh: BoxMesh = BoxMesh.new()
 	mesh.size = size
-	return _add(parent, node_name, mesh, position, material)
-
-
-static func cylinder(parent: Node3D, node_name: String, radius: float, height: float, position: Vector3, material: Material, rotation_degrees: Vector3 = Vector3.ZERO) -> MeshInstance3D:
-	var mesh: CylinderMesh = CylinderMesh.new()
-	mesh.top_radius = radius
-	mesh.bottom_radius = radius
-	mesh.height = height
-	mesh.radial_segments = 12
-	mesh.rings = 1
-	var instance: MeshInstance3D = _add(parent, node_name, mesh, position, material)
-	instance.rotation_degrees = rotation_degrees
-	return instance
-
-
-static func sphere(parent: Node3D, node_name: String, radius: float, position: Vector3, material: Material) -> MeshInstance3D:
-	var mesh: SphereMesh = SphereMesh.new()
-	mesh.radius = radius
-	mesh.height = radius * 2.0
-	mesh.radial_segments = 12
-	mesh.rings = 6
 	return _add(parent, node_name, mesh, position, material)
 
 

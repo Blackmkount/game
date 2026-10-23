@@ -33,6 +33,18 @@ func add_obstacle(rect: Rect2) -> void:
 	_obstacles.append(rect)
 
 
+## Quita todos los obstáculos (para volver a agregarlos cuando cambia lo que
+## hay en el cuarto; después hay que llamar build()).
+func clear_obstacles() -> void:
+	_obstacles.clear()
+
+
+## Copia de los obstáculos agregados (los usa también el mapa de oclusión del
+## piso, FloorAO).
+func obstacles() -> Array[Rect2]:
+	return _obstacles.duplicate()
+
+
 ## Arma la cuadrícula de caminos. Hay que llamarla después de agregar o quitar
 ## obstáculos.
 func build() -> void:

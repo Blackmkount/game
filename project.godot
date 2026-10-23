@@ -47,8 +47,153 @@ locale/fallback="es"
 
 [rendering]
 
-lights_and_shadows/directional_shadow/soft_shadow_filter_quality=0
+lights_and_shadows/directional_shadow/size=2048
+lights_and_shadows/directional_shadow/size.mobile=2048
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality=2
+lights_and_shadows/directional_shadow/soft_shadow_filter_quality.mobile=2
 lights_and_shadows/positional_shadow/soft_shadow_filter_quality=0
+lights_and_shadows/positional_shadow/atlas_size=0
+lights_and_shadows/positional_shadow/atlas_size.mobile=0
+limits/global_shader_variables/buffer_size=1024
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 textures/vram_compression/import_etc2_astc=true
+
+[shader_globals]
+
+cc_amb_sky={
+"type": "vec3",
+"value": Vector3(0.4644, 0.4984, 0.5835)
+}
+cc_amb_ground={
+"type": "vec3",
+"value": Vector3(0.451, 0.3667, 0.2863)
+}
+cc_fill_dir={
+"type": "vec3",
+"value": Vector3(0.6118, 0.5015, 0.6118)
+}
+cc_fill={
+"type": "vec4",
+"value": Vector4(0.22, 0.2105, 0.2019, 0.25)
+}
+cc_window_dir={
+"type": "vec3",
+"value": Vector3(0.774, -0.559, -0.297)
+}
+cc_window_color={
+"type": "vec3",
+"value": Vector3(0.85, 0.7533, 0.5867)
+}
+cc_window_rect={
+"type": "vec4",
+"value": Vector4(-1.8, -0.6, 1.15, 2.05)
+}
+cc_window_x={
+"type": "float",
+"value": -3.0
+}
+cc_window_bars={
+"type": "vec4",
+"value": Vector4(0.2, 0.009, 1.6, 0.025)
+}
+cc_window_sun={
+"type": "vec4",
+"value": Vector4(-1.2, 1.83, 0.1, 0.05)
+}
+cc_occ_a_c={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+cc_occ_a_h={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+cc_occ_b_c={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+cc_occ_b_h={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+cc_char_pos={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+cc_pl0={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+cc_pl1={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+cc_pl2={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+cc_pl3={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 0)
+}
+cc_pl0_col={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 1)
+}
+cc_pl1_col={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 1)
+}
+cc_pl2_col={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 1)
+}
+cc_pl3_col={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 1)
+}
+cc_strip_a={
+"type": "vec3",
+"value": Vector3(-2.1, 2.72, -2.96)
+}
+cc_strip_b={
+"type": "vec3",
+"value": Vector3(2.6, 2.72, -2.96)
+}
+cc_strip_col={
+"type": "vec4",
+"value": Vector4(0, 0, 0, 2.1)
+}
+cc_night={
+"type": "float",
+"value": 0.0
+}
+cc_px_m={
+"type": "float",
+"value": 0.0064
+}
+cc_room={
+"type": "vec4",
+"value": Vector4(-3, -3, 6, 2.8)
+}
+cc_floor_ao={
+"type": "sampler2D",
+"value": ""
+}
+cc_base_fix={
+"type": "float",
+"value": 0.0
+}
+cc_sun_fix={
+"type": "float",
+"value": 1.0
+}
+cc_sun_shadowed={
+"type": "float",
+"value": 1.0
+}
+cc_anim_time={
+"type": "float",
+"value": 0.0
+}

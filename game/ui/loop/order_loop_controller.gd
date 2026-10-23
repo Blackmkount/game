@@ -13,7 +13,7 @@ extends Node
 ##   despacho, donde aparece la caja.
 ## - Las opciones (modo, carrete, pedido) cambian lo elegido (PrintChoice).
 ## - Si un comando no se puede, el panel se vuelve a armar con el motivo en
-##   rojo arriba.
+##   rojo arriba (y el personaje se encoge de hombros).
 ##
 ## Tarjetas de Pedidos (run_card):
 ## - Aceptar, Rechazar, Concentrarse y Cancelar corren en el lugar.
@@ -30,7 +30,10 @@ extends Node
 ##
 ## Burbuja de cercanía (run_quick): corre la acción sin abrir panel cuando no
 ## hay nada que decidir (QuickActions); si no se puede, el personaje dice por
-## qué.
+## qué y se encoge de hombros.
+##
+## Al embalar o despachar con el personaje cerca del rincón de despacho, hace
+## el gesto de embalar (biblia de arte §7.8; nunca hace falta caminar).
 ##
 ## El panel abierto se refresca solo con las señales de Events (al final del
 ## cuadro, una vez, y nunca dentro del botón que se tocó). Con el reloj solo
@@ -107,9 +110,9 @@ func run_sheet(action_id: String) -> void:
 		"focus":
 			_after(Game.focus_design(Game.state.designing_uid))
 		"pack":
-			_after(Game.pack_all())
+			_after(_packed(Game.pack_all()))
 		"dispatch":
-			_after(Game.dispatch_all())
+			_after(_packed(Game.dispatch_all()))
 		"go_pack":
 			_open_later(_controls.room.dispatch_item)
 		DeskSheet.PRINT_READY:
@@ -140,9 +143,9 @@ func run_card(verb: String, uid: int) -> void:
 		"remove":
 			_run_at_dispatch(_remove_order_pieces, uid)
 		"pack":
-			_run_at_dispatch(Game.pack_order, uid)
+			_run_at_dispatch(func(order_uid: int) -> CommandResult: return _packed(Game.pack_order(order_uid)), uid)
 		"dispatch":
-			_run_at_dispatch(Game.dispatch_order, uid)
+			_run_at_dispatch(func(order_uid: int) -> CommandResult: return _packed(Game.dispatch_order(order_uid)), uid)
 		_:
 			push_error("Acción de tarjeta desconocida: " + verb)
 
@@ -165,15 +168,16 @@ func run_quick(item: WorldInteractable) -> bool:
 		QuickActions.REMOVE:
 			result = Game.remove_pieces(item.ref)
 		QuickActions.PACK_ALL:
-			result = Game.pack_all()
+			result = _packed(Game.pack_all())
 		QuickActions.DISPATCH_ALL:
-			result = Game.dispatch_all()
+			result = _packed(Game.dispatch_all())
 		QuickActions.FOCUS:
 			result = Game.focus_design(Game.state.designing_uid)
 		_:
 			return false
 	if not result.ok:
 		_controls.loop_feedback.say(UiFormat.reason(result, Game.rules.game_seconds_per_real_second))
+		_controls.room.character.animator.react(CharacterAnimator.Reaction.ACTION_FAILED)
 	return true
 
 
@@ -246,6 +250,15 @@ func _remove_order_pieces(order_uid: int) -> CommandResult:
 	return Game.remove_pieces(order.printer_uid)
 
 
+## Después de embalar o despachar: si se pudo y el personaje está cerca del
+## rincón, hace el gesto de embalar. Devuelve el mismo resultado.
+func _packed(result: CommandResult) -> CommandResult:
+	var room: RoomView = _controls.room
+	if result.ok and room.character_near(room.dispatch_item):
+		room.character.animator.react(CharacterAnimator.Reaction.PACKED)
+	return result
+
+
 ## Si el comando de una tarjeta no se pudo, dice por qué en un aviso rojo.
 func _report(result: CommandResult) -> void:
 	if result.ok:
@@ -260,6 +273,7 @@ func _after(result: CommandResult, fresh_choice: bool = false) -> void:
 	if not result.ok:
 		_error = UiFormat.reason(result, Game.rules.game_seconds_per_real_second)
 		_queue_refresh()
+		_controls.room.character.animator.react(CharacterAnimator.Reaction.ACTION_FAILED)
 	elif fresh_choice:
 		_choice = PrintChoice.new(_choice.printer_uid)
 

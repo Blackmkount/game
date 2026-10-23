@@ -39,18 +39,35 @@ func test_the_computer_screen_shows_the_model_only_while_designing() -> void:
 	assert_eq(screen.material_override, WorldPalette.glow("ffffff", "crt_screen"), "Vuelve a la pantalla de siempre")
 
 
-func test_the_piece_grows_one_screen_pixel_at_a_time_while_the_head_swings() -> void:
+func test_the_piece_grows_one_layer_at_a_time_and_never_shrinks() -> void:
 	var printer: Node3D = _printer_node()
 	var piece: MeshInstance3D = printer.get_node("PieceSpot/Piece")
 	assert_false(piece.visible, "Sin trabajo no hay pieza")
 	_start_keychain()
 	assert_eq(_display().material_override, WorldPalette.glow("ffffff", "printer_display_busy"))
-	Game.advance(25.0)
-	var step: float = _room.vertical_pixel_meters()
+	var step: float = PieceModel.LAYER_STEP
+	var previous: float = 0.0
+	var shrank: Array[String] = []
+	var off_layer: Array[String] = []
+	# Un segundo por vez hasta la mitad. A mitad de camino cambia el zoom: el
+	# alto de la capa ya no depende de la cámara.
+	for second: int in range(1, 26):
+		if second == 12:
+			_room.camera.set_zoom_index(0)
+			_room.camera.snap_to_goal()
+		Game.advance(1.0)
+		var shown: float = _height(piece)
+		if shown < previous:
+			shrank.append("%d s: %.4f → %.4f" % [second, previous, shown])
+		# Antes de la primera capa la caja mide lo mínimo.
+		if not is_equal_approx(shown, PieceModel.MIN_HEIGHT) and absf(shown - roundf(shown / step) * step) > 0.0001:
+			off_layer.append("%d s: %.4f" % [second, shown])
+		previous = shown
+	assert_eq(shrank, [] as Array[String], "La pieza nunca baja")
+	assert_eq(off_layer, [] as Array[String], "Crece de a una capa entera")
 	var height: float = _height(piece)
 	assert_true(piece.visible)
 	assert_between(height, step, PieceModel.SIZES["S"].y - step, "Va por la mitad")
-	assert_almost_eq(height / step, roundf(height / step), 0.001, "Crece de a un píxel de pantalla")
 	Game.advance(10.0)
 	assert_gt(_height(piece), height, "Siguió creciendo con el reloj")
 	var head: Node3D = printer.get_node("PrintHead")
@@ -90,7 +107,7 @@ func test_finished_pieces_of_a_longer_order_wait_on_the_tray() -> void:
 	Game.advance(76.0)
 	var printer_uid: int = state.printers[0].uid
 	assert_true(Game.start_print(offer.uid, printer_uid, spool.uid, "normal").ok)
-	var red: StandardMaterial3D = WorldPalette.solid(Game.rules.colors["rojo"]["hex"])
+	var red: Material = WorldPalette.solid(Game.rules.colors["rojo"]["hex"])
 	assert_eq(printer.get_node("Spool/Filament").material_override, red, "El carrete toma el color del filamento")
 	# Cada pieza tarda 50 min de juego (125 s reales).
 	Game.advance(130.0)
@@ -128,6 +145,103 @@ func test_a_failed_piece_stays_dark_and_a_warped_one_tilts() -> void:
 	assert_eq(spot.rotation_degrees.x, 0.0)
 
 
+func test_the_hot_layer_rides_on_top_of_the_growing_piece() -> void:
+	var piece: MeshInstance3D = _printer_node().get_node("PieceSpot/Piece")
+	_start_keychain()
+	var hex: String = PieceModel.filament_hex(Game.rules, Game.state.printers[0].job.color_id)
+	var checked: int = 0
+	for second: int in range(1, 30):
+		Game.advance(1.0)
+		var height: float = _height(piece)
+		if height < PieceModel.LAYER_STEP:
+			continue
+		assert_eq(piece.material_override, WorldPalette.printing(hex), "Mientras se imprime, con la capa caliente")
+		var hot: float = piece.get_instance_shader_parameter(&"hot_top")
+		assert_almost_eq(hot, height / 2.0, 0.0001, "En el borde de arriba (la malla va centrada)")
+		var spot: Node3D = piece.get_parent()
+		var hot_world: float = (piece.global_transform * Vector3(0.0, hot, 0.0)).y
+		assert_almost_eq(hot_world, spot.global_position.y + height, 0.0001, "En el mundo, el borde de arriba de la pieza")
+		checked += 1
+	assert_gt(checked, 10, "Se revisó capa por capa")
+	Game.advance(30.0)
+	assert_eq(Game.state.printers[0].job.status, PrintJob.Status.DONE)
+	assert_eq(piece.material_override, WorldPalette.solid(hex), "Terminada, sin capa caliente")
+
+
+func test_a_spaghetti_failure_shows_the_nest_in_the_filament_color() -> void:
+	var printer: Node3D = _printer_node()
+	var nest: MeshInstance3D = printer.get_node("PieceSpot/Spaghetti")
+	var piece: MeshInstance3D = printer.get_node("PieceSpot/Piece")
+	var spot: Node3D = printer.get_node("PieceSpot")
+	var head: Node3D = printer.get_node("PrintHead")
+	var printer_uid: int = Game.state.printers[0].uid
+	assert_false(nest.visible, "Sin falla no hay espagueti")
+	_start_keychain()
+	var hex: String = PieceModel.filament_hex(Game.rules, Game.state.printers[0].job.color_id)
+	assert_true(DebugTools.force_fail(Game.sim, printer_uid, FailureRules.SPAGHETTI))
+	Game.advance(20.0)
+	assert_eq(Game.state.printers[0].job.status, PrintJob.Status.FAILED)
+	assert_true(nest.visible, "El nido se ve sin abrir el panel")
+	assert_eq(nest.material_override, PieceModel.spaghetti_material(hex), "Del color del filamento")
+	assert_eq(piece.material_override, WorldPalette.solid(WorldPalette.FAILED_PIECE), "Sobre la pieza fallida")
+	var height: float = _height(piece)
+	assert_almost_eq(nest.position.y, height, 0.0001, "El nido arriba de la pieza")
+	assert_almost_eq(head.position.x, spot.position.x, 0.0001, "El cabezal se quedó sobre el nido")
+	assert_almost_eq(head.position.y - PrinterView.HEAD_CLEARANCE, spot.position.y + height + PieceModel.SPAGHETTI_RISE, 0.0001, "Las hebras llegan a la boquilla")
+	assert_true(Game.clean_printer(printer_uid).ok)
+	assert_false(nest.visible, "Limpia, sin espagueti")
+	assert_eq(head.position, (printer.get_node("HeadRest") as Node3D).position, "El cabezal vuelve a su lugar")
+
+
+func test_a_warped_piece_lifts_a_corner_and_makes_no_spaghetti() -> void:
+	var printer: Node3D = _printer_node()
+	var spot: Node3D = printer.get_node("PieceSpot")
+	_start_keychain()
+	assert_true(DebugTools.force_fail(Game.sim, Game.state.printers[0].uid, FailureRules.WARPING))
+	Game.advance(20.0)
+	assert_eq(Game.state.printers[0].job.status, PrintJob.Status.FAILED)
+	assert_false(printer.get_node("PieceSpot/Spaghetti").visible, "El warping no hace espagueti")
+	var half: Vector3 = PieceModel.full_size("S") / 2.0
+	var corners: Array[float] = []
+	for x: float in [-half.x, half.x]:
+		for z: float in [-half.z, half.z]:
+			corners.append((spot.transform * Vector3(x, 0.0, z)).y)
+	assert_almost_eq(corners.min(), PrinterView.BED_TOP, 0.0005, "La esquina más baja sigue en la cama")
+	assert_gt(corners.max(), PrinterView.BED_TOP + 0.02, "Una esquina se levantó")
+	assert_almost_eq(printer.get_node("PrintHead").position.x, PrinterView.HEAD_PARK_X, 0.0001, "El cabezal se apartó")
+
+
+func test_a_finished_piece_sparkles_once_and_a_loaded_one_does_not() -> void:
+	var sparkles: ReadySparkles = _printer_node().get_node("PieceSpot/Sparkles")
+	_start_keychain()
+	Game.advance(25.0)
+	var almost: GameState = _copy(Game.state)
+	assert_false(sparkles.visible)
+	Game.advance(26.0)
+	assert_eq(Game.state.printers[0].job.status, PrintJob.Status.DONE)
+	assert_true(sparkles.visible, "La pieza lista suelta sus destellos")
+	await wait_seconds(ReadySparkles.DURATION + 0.15)
+	assert_false(sparkles.visible, "Y se apagan solos")
+	Simulation.new(almost, Game.rules).advance(30.0)
+	Game._start(almost)
+	await wait_process_frames(2)
+	assert_false(sparkles.visible, "Al cargar una partida con la pieza ya lista, sin destellos")
+
+
+func test_the_floor_printer_is_placed_by_its_markers() -> void:
+	var printer: Node3D = _printer_node()
+	var anchor: Node3D = printer.get_node("PieceAnchor")
+	assert_eq(printer.get_node("PieceSpot").position, anchor.position, "La pieza donde dice el modelo")
+	var tray: Vector3 = (printer.get_node("TrayAnchor") as Node3D).position
+	for i: int in PrinterView.TRAY_BLOCKS:
+		var expected: Vector3 = tray + Vector3(i * PrinterView.TRAY_GAP, PrinterView.TRAY_BLOCK / 2.0, 0.0)
+		assert_almost_eq((printer.get_node("Tray%d" % i) as Node3D).position, expected, Vector3.ONE * 0.0001, "Tray%d" % i)
+	# Lo que se publica en cc_pl3: el lugar de la barra LED y su alcance.
+	var bar: Vector3 = (printer.get_node("BedLight") as Node3D).global_position
+	var led: Vector4 = Vector4(bar.x, bar.y, bar.z, DayCycle.LIGHTS["printer_led"]["range"])
+	assert_almost_eq(_room.day_cycle.light_place("printer_led"), led, Vector4.ONE * 0.0001, "La luz de la cama sale de su barra LED")
+
+
 func test_the_dispatch_corner_shows_a_box_then_a_package_that_leaves() -> void:
 	var corner: Node3D = _room.get_node("DispatchCorner")
 	var box: Node3D = corner.get_node("PackSpot0/OpenBox")
@@ -139,7 +253,7 @@ func test_the_dispatch_corner_shows_a_box_then_a_package_that_leaves() -> void:
 	assert_true(Game.remove_pieces(Game.state.printers[0].uid).ok)
 	await wait_process_frames(1)
 	assert_true(box.visible, "Caja abierta en la mesa")
-	var white: StandardMaterial3D = WorldPalette.solid(Game.rules.colors["blanco"]["hex"])
+	var white: Material = WorldPalette.solid(Game.rules.colors["blanco"]["hex"])
 	assert_eq((box.get_node("Piece") as MeshInstance3D).material_override, white, "Con la pieza de su color")
 	assert_false(corner.get_node("PackSpot1/OpenBox").visible)
 	assert_true(Game.pack_order(order.uid).ok)
@@ -229,4 +343,4 @@ func _display() -> MeshInstance3D:
 
 
 func _height(piece: MeshInstance3D) -> float:
-	return (piece.mesh as BoxMesh).size.y
+	return PieceModel.shown_height(piece)

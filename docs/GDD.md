@@ -2,7 +2,7 @@
 
 > Este documento es la fuente de verdad sobre **qué** es el juego. Las reglas técnicas sobre **cómo** se construye están en `CLAUDE.md`. Los números de este documento son valores iniciales para balancear, no definitivos: los valores reales viven en `data/*.json`.
 >
-> **Versión 2.3** (2026-10-22). Los cambios están resumidos en la sección 16. El estilo visual se detalla en `docs/ESTILO.md` y el orden de trabajo en `docs/RUTA.md`.
+> **Versión 2.4** (2026-10-23). Los cambios están resumidos en la sección 16. El estilo visual se detalla en `docs/ESTILO.md` (dirección de arte completa en `docs/BIBLIA_ARTE.md`) y el orden de trabajo en `docs/RUTA.md`.
 
 ---
 
@@ -28,7 +28,7 @@ Cada función nueva debe apoyar al menos uno de estos pilares. Si no apoya ningu
 ## 3. Ambientación y tono
 
 - Ciudad latinoamericana ficticia, ambiente cálido y cercano.
-- El protagonista es joven; el jugador elige su nombre. Aparece en la escena 3D (ver 5.10): pelo café alborotado, buzo negro con capucha, jeans y zapatillas blancas.
+- El protagonista es un joven adulto; el jugador elige su nombre. Aparece en la escena 3D (ver 5.10): pelo café alborotado, buzo gris carbón (casi negro) con capucha de forro mostaza, jeans y zapatillas blancas.
 - **Don Ernesto**, el vecino que le regala su vieja impresora, funciona como guía del tutorial y aparece de vez en cuando con consejos.
 - Los pedidos llegan como mensajes de clientes en una **app de mensajería ficticia** dentro del teléfono del protagonista. Cada cliente tiene personalidad propia y frases con humor local, sin caer en estereotipos.
 - **Todas las marcas son ficticias**: impresoras, filamentos, muebles, apps y tiendas. Nunca se usan nombres reales como Prusa, Bambu Lab, Creality, IKEA o WhatsApp, ni nombres de productos reales (Ender, A1, SKÅDIS...).
@@ -212,7 +212,7 @@ Posteriores al MVP: turno nocturno (amplía el progreso fuera del juego de 8 a 1
 
 ### 5.10 Personaje y nivel
 
-- **El personaje** aparece en la escena 3D, en su habitación. Al principio se arma con formas básicas; su apariencia definitiva se define en la fase de arte.
+- **El personaje** aparece en la escena 3D, en su habitación: un joven maker de 1,40 m de proporciones simpáticas (unas 3,2 cabezas), con la cara pintada y 8 expresiones, que respira, mira lo que tiene cerca y reacciona a lo que pasa (feliz al cobrar, las manos a la cabeza con un espagueti, un salto al subir de nivel). Las reacciones son solo de adorno: nunca bloquean ni cambian el juego. Detalle en `docs/ESTILO.md`.
 - **Se maneja con un joystick** y camina por el espacio (sección 7.1). Su posición es solo presentación: no se guarda en la partida y al abrir el juego aparece junto a su escritorio.
 - **Experiencia y nivel:** entregar pedidos a tiempo da experiencia (XP). La barra superior muestra siempre el retrato del personaje, su nivel y una **barra de progreso** hacia el siguiente nivel.
 - Entregar tarde no da experiencia.
@@ -395,12 +395,13 @@ Como la imagen de referencia; el detalle está en `docs/ESTILO.md`.
 
 ## 8. Arte
 
-- **Estilo: pixel art isométrico cálido**, según la imagen de referencia del dueño (`docs/referencias/taller_final.webp`). La guía completa está en `docs/ESTILO.md`.
-- **Técnica:** el mundo es 3D, armado con formas básicas, y se dibuja a la mitad de la resolución con píxeles nítidos, contorno oscuro de 1 píxel, sombreado por bandas y texturas pixel art generadas por código. Así parece pixel art sin necesitar miles de dibujos a mano, y se puede animar.
-- **Interfaz:** paneles azul marino con bordes y brillos cian, tipografía Nunito e iconos propios.
-- **Recursos de terceros:** si más adelante se usan modelos (Kenney, Quaternius, Poly Pizza), deben pasar por el mismo render pixel art. Se revisa la licencia de cada uno y se registra en `assets/CREDITS.md`.
-- Las impresoras deben verse claramente distintas entre sí, aun siendo sencillas.
-- La pieza que se imprime debe "crecer" capa a capa dentro de la impresora. Es el detalle visual más importante del juego.
+- **Estilo: "Mundo Impreso"** (desde la versión 2.4; antes, pixel art). Un diorama 3D suave y cálido del cuarto del protagonista, presentado como una **maqueta impresa capa a capa**, a resolución alta con bordes suavizados. Se inspira en la imagen de referencia del dueño (`docs/referencias/taller_final.webp`). La guía completa está en `docs/ESTILO.md` y la dirección de arte, con todos sus números, en `docs/BIBLIA_ARTE.md`.
+- **Técnica:** el mundo es 3D hecho por código (formas con bisel, una malla y un material por objeto), con la luz calculada en el sombreador: un solo sol con sombra y las lámparas, el monitor y los LEDs sin luces extra del motor. Así se ve "caro" y sigue siendo barato en un teléfono; dos niveles de calidad (Alta y Baja, con una opción automática en Ajustes) cuidan los teléfonos de gama baja.
+- **La hora se ve:** el reloj del juego lleva la luz del alba a la noche (sol entre las rejas de la ventana en la mañana, tarde dorada, noche de lámpara y monitor). Es solo visual: el juego no cambia de noche.
+- **Interfaz:** paneles azul marino con bordes y brillos cian, tipografía Nunito e iconos propios. Las impresoras, los muebles y el personaje se ven en 3D también en la tienda y en los retratos, con una luz de estudio fija.
+- **Recursos de terceros:** por ahora ninguno en el mundo (todo es procedural). Si más adelante se usa alguno, se revisa su licencia, se registra en `assets/CREDITS.md` y tiene que pasar por el mismo kit de materiales y la misma paleta.
+- Las impresoras deben verse claramente distintas entre sí, por la silueta antes que por el color.
+- La pieza que se imprime debe "crecer" capa a capa dentro de la impresora, con una capa caliente que se vea con cualquier zoom. Es el detalle visual más importante del juego. Lo que se compra también aparece imprimiéndose en su lugar.
 
 ## 9. Audio
 
@@ -554,3 +555,16 @@ Cada fase termina con algo que se puede probar. No se avanza a la siguiente sin 
 - La velocidad de la impresora divide el tiempo; se corrige la redacción (5.3).
 - La burbuja de cercanía hace la acción cuando no hay nada que decidir (7.1).
 - Se adelantan un guardado mínimo (de la Fase 1, tarea 4) y la ferretería (de la tarea 5).
+
+### Versión 2.4 (2026-10-23)
+
+**Pedido del dueño:** empezar la fase de diseño: que el personaje y los espacios se vean como un juego caro, mejorar y agregar todo lo pertinente, con libertad para cambiar el estilo gráfico.
+
+**Decisiones del dueño** (Arte 2.0, detalle en `docs/BIBLIA_ARTE.md` §16 y `docs/DECISIONES.md`):
+- **D1:** el estilo pasa de pixel art a "Mundo Impreso" (sección 8).
+- **D2:** sin luces extra del motor de noche: las lámparas y el monitor se calculan en el sombreador.
+- **D3:** personaje rediseñado: 1,40 m, cara nueva y buzo gris carbón con forro mostaza (el "buzo negro" de la sección 3, más legible de noche).
+- **D4:** las mallas se arman por código al empezar, sin archivos generados en el repositorio.
+- **D5 y D6** (se informaron): la estantería metálica de 2,40 m con 0,74 m libres por piso, la repisa y el tablero con pie propio donde no hay pared, y la decoración del dormitorio que crece con el nivel.
+- **D7:** opción "Calidad gráfica: Automática / Alta / Baja" en Ajustes.
+- **D8:** se adelantan de la Fase 2 el día y la noche visuales y las reacciones del personaje; ningún cambio de juego (por ejemplo, de noche no llegan menos pedidos).

@@ -67,6 +67,29 @@ func test_the_xp_bar_fills_within_a_level_and_jumps_on_level_up() -> void:
 	assert_eq(bar.max_value, float(Game.levels.xp_span_of_level(280)))
 
 
+func test_the_portrait_changes_its_face_at_the_big_moments() -> void:
+	var card: ProfileCard = _hud.get_node("TopBar/ProfileCard")
+	var face: GeometryInstance3D = card.find_children("Mesh", "MeshInstance3D", true, false).filter(
+		func(node: Node) -> bool: return node.get_parent().name == "Head")[0]
+	assert_eq(card.shown_face(), FacePainter.Face.NEUTRAL)
+	Events.print_failed.emit(1, "spaghetti")
+	assert_eq(card.shown_face(), FacePainter.Face.WORRIED, "Preocupado si falla una impresión")
+	assert_eq(face.get_instance_shader_parameter(&"expression"), FacePainter.Face.WORRIED, "El retrato la muestra")
+	card._face_timer.timeout.emit()
+	assert_eq(card.shown_face(), FacePainter.Face.NEUTRAL, "Después vuelve a la normal")
+	Events.level_up.emit(2)
+	assert_eq(card.shown_face(), FacePainter.Face.SURPRISE, "Sorpresa al subir de nivel")
+	card._face_timer.timeout.emit()
+	assert_eq(card.shown_face(), FacePainter.Face.HAPPY, "y después feliz")
+	card._face_timer.timeout.emit()
+	assert_eq(card.shown_face(), FacePainter.Face.NEUTRAL)
+	assert_true(Events.order_delivered.is_connected(card._on_order_delivered))
+	card._on_order_delivered(1, "llavero", 100, 10, true)
+	assert_eq(card.shown_face(), FacePainter.Face.NEUTRAL, "Si llegó tarde no hay festejo")
+	card._on_order_delivered(1, "llavero", 100, 10, false)
+	assert_eq(card.shown_face(), FacePainter.Face.HAPPY, "Feliz al cobrar a tiempo")
+
+
 func test_a_sheet_button_that_is_not_a_section_goes_to_the_order_loop() -> void:
 	var sheet: BottomSheet = BottomSheet.new(Previews.icon("printer"), "Cubo Uno")
 	sheet.add_action("print", "Imprimir", true)
@@ -178,6 +201,30 @@ func test_the_speech_never_covers_the_nearby_bubble() -> void:
 	assert_almost_eq(_hud.speech.position.x + _hud.speech.size.x / 2.0, head.x, 0.5)
 
 
+func test_the_speech_never_covers_a_status_bubble() -> void:
+	_hud.speech.say(tr("SPEECH_NEW_MESSAGE"))
+	await wait_process_frames(1)
+	var head: Vector2 = Vector2(360.0, 700.0)
+	var item: WorldInteractable = WorldInteractable.new(WorldInteractable.Kind.PRINTER, 2, AABB(Vector3.ZERO, Vector3.ONE))
+	var bubbles: StatusBubbles = _hud.status_bubbles
+	var index: int = bubbles.add(item)
+	bubbles.bubble(index).set_state("warning", "", UiPalette.BADGE, true)
+	# El aviso de la impresora, al lado de la cabeza (como en la captura 23a).
+	bubbles.place(index, Vector2(470.0, 560.0))
+	bubbles.set_visible_for(index, true)
+	await wait_process_frames(1)
+	_hud.bubble.hide_bubble()
+	_hud.place_speech(head)
+	var status: Rect2 = bubbles.bubble(index).get_rect()
+	assert_false(Rect2(_hud.speech.position, _hud.speech.size).intersects(status), "No tapa el aviso")
+	var middle: float = _hud.speech.position.x + _hud.speech.size.x / 2.0
+	assert_lt(absf(middle - head.x), _hud.speech.size.x / 2.0, "Sigue sobre la cabeza")
+	# Oculta, no cuenta: va sobre la cabeza como siempre.
+	bubbles.set_visible_for(index, false)
+	_hud.place_speech(head)
+	assert_almost_eq(_hud.speech.position.x + _hud.speech.size.x / 2.0, head.x, 0.5)
+
+
 func test_a_toast_never_covers_the_objectives_or_the_side_buttons() -> void:
 	# El agradecimiento llega justo cuando el objetivo cambia a (1/3): debe verse.
 	_hud.feedback.toast("Amigos y familia: «¡Quedó genial! Ya todos me preguntan dónde lo hice.»")
@@ -204,6 +251,28 @@ func test_toasts_wait_their_turn_and_keep_the_latest() -> void:
 	assert_has(_label_texts(toast), "cuatro")
 	await wait_seconds(FeedbackLayer.TOAST_SECONDS)
 	assert_false(toast.visible)
+
+
+## El latido de una burbuja (pieza lista, falla) aclara su icono y nada
+## cambia de tamaño: agrandar la burbuja la volvía a dibujar en cada cuadro.
+func test_a_pulsing_bubble_brightens_its_icon_and_keeps_its_size() -> void:
+	var item: WorldInteractable = WorldInteractable.new(WorldInteractable.Kind.PRINTER, 2, AABB(Vector3.ZERO, Vector3.ONE))
+	var bubbles: StatusBubbles = _hud.status_bubbles
+	var index: int = bubbles.add(item)
+	var bubble: StatusBubble = bubbles.bubble(index)
+	bubble.set_state("check", "", UiPalette.XP_FILL, true)
+	bubbles.set_visible_for(index, true)
+	var icon: TextureRect = bubble.find_child("Icon", true, false)
+	var brightest: float = 0.0
+	for frame: int in 40:
+		await wait_process_frames(1)
+		brightest = maxf(brightest, icon.self_modulate.r)
+		assert_eq(bubble.scale, Vector2.ONE, "No cambia de tamaño")
+		assert_eq(icon.scale, Vector2.ONE)
+	assert_gt(brightest, 1.2, "El icono se aclara")
+	assert_eq(icon.modulate, UiPalette.XP_FILL, "Del color de su estado")
+	bubble.set_state("check", "", UiPalette.XP_FILL, false)
+	assert_eq(icon.self_modulate, Color.WHITE, "Sin latido, quieto")
 
 
 func test_status_bubbles_take_taps_only_when_shown_at_home() -> void:

@@ -9,7 +9,8 @@ extends Control
 ## el panel inferior de un objeto, el joystick, las burbujas de estado, la
 ## burbuja sobre el objeto cercano, el globo de diálogo, la pista para
 ## jugadores nuevos y el botón de zoom. Arriba de todo, la capa de
-## celebraciones (FeedbackLayer).
+## celebraciones (FeedbackLayer). Mientras se prueba una escena del panel de
+## depuración (Game.trial: nada se guarda), un botón para salir de la prueba.
 ##
 ## Se actualiza con las señales de Events: el dinero, la experiencia, los
 ## objetivos y el número de "Pedidos" cambian apenas cambia la partida.
@@ -26,6 +27,8 @@ signal sheet_command(action_id: String)
 signal order_card_action(verb: String, uid: int)
 ## Comprar un carrete en la ferretería (desde Pedidos o Inventario).
 signal local_store_requested(material_id: String)
+## Se pidió el panel de depuración (cinco toques en la tarjeta de nivel).
+signal debug_requested
 
 const MARGIN: float = 16.0
 const TOP: float = 20.0
@@ -33,6 +36,8 @@ const CONTENT_TOP: float = 150.0
 const NAV_HEIGHT: float = 116.0
 const ZOOM_BUTTON_SIZE: Vector2 = Vector2(96, 104)
 const ZOOM_LABELS: Array[String] = ["ZOOM_FAR", "ZOOM_NORMAL", "ZOOM_NEAR"]
+## El botón "Salir de la prueba", abajo a la derecha (frente al de zoom).
+const TRIAL_BADGE_SIZE: Vector2 = Vector2(260, 88)
 ## Espacio libre entre el globo de diálogo y la burbuja de cercanía.
 const SPEECH_GAP: float = 8.0
 ## Si el globo se corre hacia un costado, la cabeza tiene que quedar al menos
@@ -62,6 +67,7 @@ var _orders_button: SideButton
 var _tasks_button: SideButton
 var _nav: BottomNav
 var _zoom_button: Button
+var _trial_badge: Button
 var _zoom_index: int = 1
 var _sheet_host: Control
 var _sheet: BottomSheet
@@ -80,6 +86,7 @@ func _ready() -> void:
 	_build_objectives()
 	_build_side_buttons()
 	_build_zoom_button()
+	_build_trial_badge()
 	_build_nav()
 	_build_sheet_host()
 	_build_screen_host()
@@ -93,6 +100,7 @@ func _ready() -> void:
 	_connect_events()
 	_refresh_values()
 	_refresh_badge()
+	_refresh_trial_badge()
 
 
 func _notification(what: int) -> void:
@@ -116,6 +124,7 @@ func open_screen(screen_id: String, option: String = "") -> void:
 	_side.visible = on_home
 	status_bubbles.visible = on_home
 	_zoom_button.visible = on_home
+	_refresh_trial_badge()
 	move_hint.visible = on_home and move_hint.mode != MoveHint.Mode.NONE
 	_nav.set_active(screen_id if screen_id in ["home", "workshop", "inventory", "shop", "profile"] else "")
 	if not on_home:
@@ -149,6 +158,7 @@ func show_sheet(sheet: BottomSheet, animate: bool = true) -> void:
 	else:
 		_sheet.dock(MARGIN)
 	_zoom_button.visible = false
+	_refresh_trial_badge()
 	move_hint.visible = false
 	# El panel tapa la barra de secciones; sin esto asoma su borde debajo.
 	_nav.visible = false
@@ -163,6 +173,7 @@ func close_sheet() -> void:
 	closing.slide_out(closing.queue_free)
 	_nav.visible = true
 	_zoom_button.visible = _screen_id == "home"
+	_refresh_trial_badge()
 	move_hint.visible = _screen_id == "home" and move_hint.mode != MoveHint.Mode.NONE
 	sheet_closed.emit()
 
@@ -194,10 +205,14 @@ func place_bubble(icon_name: String, anchor: Vector2) -> void:
 
 ## Pone el globo de diálogo sobre la cabeza (punta de abajo en `anchor`), sin
 ## salirse de la pantalla ni tapar la burbuja de cercanía (se pone después de
-## ella en cada cuadro).
+## ella en cada cuadro) ni una burbuja de estado (el aviso de una falla
+## tiene que verse mientras el personaje dice "¡Nooo!").
 func place_speech(anchor: Vector2) -> void:
 	var box: Vector2 = speech.size
 	var spot: Vector2 = keep_in_world(Rect2(anchor - Vector2(box.x / 2.0, box.y + SpeechBubble.LIFT), box))
+	var status: Rect2 = status_bubbles.visible_over(Rect2(spot, box).grow(SPEECH_GAP))
+	if status.has_area():
+		spot = _speech_clear_of(status.grow(SPEECH_GAP), spot, box, anchor.x)
 	if bubble.visible:
 		var avoid: Rect2 = Rect2(bubble.position, bubble.size).grow(SPEECH_GAP)
 		if avoid.intersects(Rect2(spot, box)):
@@ -222,6 +237,18 @@ func set_zoom_label(zoom_index: int) -> void:
 	_zoom_index = zoom_index
 	if _zoom_button != null:
 		_zoom_button.text = tr(ZOOM_LABELS[clampi(zoom_index, 0, ZOOM_LABELS.size() - 1)])
+
+
+## Abre el panel de depuración (PerfOverlay) arriba de todo, o lo cierra si
+## ya estaba abierto. Necesita el cuarto y la vista del mundo para medir.
+func toggle_debug(room: RoomView, world_view: WorldViewport) -> void:
+	var open: PerfOverlay = get_node_or_null("PerfOverlay")
+	if open != null:
+		open.queue_free()
+		return
+	var overlay: PerfOverlay = PerfOverlay.new(room, world_view)
+	overlay.position = Vector2(MARGIN, CONTENT_TOP)
+	add_child(overlay)
 
 
 ## Número rojo del botón "Pedidos": cuántas cosas esperan al jugador.
@@ -343,6 +370,7 @@ func _build_top_bar() -> void:
 	add_child(bar)
 	_profile = ProfileCard.new()
 	_profile.name = "ProfileCard"
+	_profile.debug_requested.connect(debug_requested.emit)
 	_profile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bar.add_child(_profile)
 	var pills: VBoxContainer = UiKit.vbox(8)
@@ -419,6 +447,30 @@ func _build_zoom_button() -> void:
 	set_zoom_label(_zoom_index)
 
 
+## "Salir de la prueba": se ve en la habitación mientras se prueba una escena
+## del panel de depuración (al cerrar el panel no queda otra señal de que nada
+## se guarda) y vuelve a la partida del jugador.
+func _build_trial_badge() -> void:
+	_trial_badge = Button.new()
+	_trial_badge.name = "TrialBadge"
+	_trial_badge.theme_type_variation = "PrimaryButton"
+	_trial_badge.text = tr("TRIAL_LEAVE")
+	_trial_badge.focus_mode = Control.FOCUS_NONE
+	_trial_badge.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_trial_badge.offset_right = -MARGIN
+	_trial_badge.offset_left = -MARGIN - TRIAL_BADGE_SIZE.x
+	_trial_badge.offset_bottom = -MARGIN - NAV_HEIGHT - MARGIN
+	_trial_badge.offset_top = _trial_badge.offset_bottom - TRIAL_BADGE_SIZE.y
+	_trial_badge.pressed.connect(Game.end_trial)
+	add_child(_trial_badge)
+
+
+## El botón de salir de la prueba: solo probando, en la habitación y sin un
+## panel abierto (como el de zoom).
+func _refresh_trial_badge() -> void:
+	_trial_badge.visible = Game.trial and _screen_id == "home" and _sheet == null
+
+
 func _build_nav() -> void:
 	_nav = BottomNav.new()
 	_nav.name = "BottomNav"
@@ -484,6 +536,7 @@ func _on_money_changed(money_cents: int) -> void:
 ## Partida nueva o recién cargada: todo lo que muestra el HUD puede cambiar.
 func _on_game_loaded() -> void:
 	_refresh_values()
+	_refresh_trial_badge()
 	_profile.refresh()
 	_objectives.refresh()
 	_queue_badge()

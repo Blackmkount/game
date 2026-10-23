@@ -41,13 +41,8 @@ func _init(controls: WorldControls) -> void:
 func _ready() -> void:
 	if Game.state == null:
 		return
-	for item: WorldInteractable in _controls.room.interactables:
-		var desk: bool = item.kind == WorldInteractable.Kind.FURNITURE and QuickActions.is_computer_desk(Game.state, item.ref)
-		if item.kind == WorldInteractable.Kind.PRINTER or item.kind == WorldInteractable.Kind.DISPATCH or desk:
-			_items.append(item)
-			_indices.append(_controls.hud.status_bubbles.add(item))
-			_active.append(false)
-			_ticking.append(false)
+	_add_bubbles()
+	_controls.room.models_changed.connect(_on_models_changed)
 	Events.printer_changed.connect(_queue_refresh.unbind(1))
 	Events.computer_changed.connect(_queue_refresh)
 	Events.order_changed.connect(_queue_refresh.unbind(1))
@@ -55,6 +50,30 @@ func _ready() -> void:
 	Events.spools_changed.connect(_queue_refresh)
 	Events.game_loaded.connect(_queue_refresh)
 	Events.clock_ticked.connect(_on_clock_ticked)
+	_refresh()
+
+
+## Una burbuja por cada impresora, la mesa del computador y el rincón de
+## despacho del cuarto.
+func _add_bubbles() -> void:
+	for item: WorldInteractable in _controls.room.interactables:
+		var desk: bool = item.kind == WorldInteractable.Kind.FURNITURE and QuickActions.is_computer_desk(Game.state, item.ref)
+		if item.kind == WorldInteractable.Kind.PRINTER or item.kind == WorldInteractable.Kind.DISPATCH or desk:
+			_items.append(item)
+			_indices.append(_controls.hud.status_bubbles.add(item))
+			_active.append(false)
+			_ticking.append(false)
+
+
+## Cambió lo que hay en el cuarto (RoomView.sync_models): las burbujas de
+## nuevo, con lo que muestran ahora.
+func _on_models_changed() -> void:
+	_controls.hud.status_bubbles.clear()
+	_items.clear()
+	_indices.clear()
+	_active.clear()
+	_ticking.clear()
+	_add_bubbles()
 	_refresh()
 
 

@@ -24,7 +24,15 @@ var levels: LevelTable
 var state: GameState
 var sim: Simulation
 var commands: GameCommands
+## Se está probando una escena del panel de depuración (start_trial): nada
+## se guarda hasta que se salga de la prueba (end_trial, el botón del HUD), se
+## vuelva a abrir el juego o se empiece una partida nueva (reset_game).
+var trial: bool = false
 
+## Si se guardaba antes de empezar a probar (lo vuelven a poner end_trial y
+## reset_game) y la partida del jugador mientras tanto (vuelve con end_trial).
+var _saving_before_trial: bool = false
+var _player_state: GameState
 ## Último minuto de juego y último segundo real avisados; -1 = avisar en el
 ## próximo avance (partida recién empezada o cargada).
 var _last_minute: int = -1
@@ -52,11 +60,43 @@ func _process(delta: float) -> void:
 
 
 ## Empieza una partida nueva con esa semilla. No guarda: quien la pide decide
-## (Ajustes guarda enseguida; las pruebas corren con el guardado apagado).
+## (Ajustes guarda enseguida; las pruebas corren con el guardado apagado). Si
+## se estaba probando una escena del panel de depuración, la prueba termina:
+## la partida nueva es de verdad y el guardado vuelve a estar como antes.
 func reset_game(p_seed: int) -> void:
 	if rules == null:
 		return
+	if trial:
+		trial = false
+		SaveManager.enabled = _saving_before_trial
+		_player_state = null
 	_start(GameState.new_game(rules, p_seed))
+
+
+## Panel de depuración: juega con `p_state` (el taller lleno, otra hora)
+## sin tocar la partida del jugador: primero guarda la de verdad y después
+## apaga el guardado hasta que se vuelva a abrir el juego.
+func start_trial(p_state: GameState) -> void:
+	if not trial:
+		SaveManager.save_now()
+		_saving_before_trial = SaveManager.enabled
+		_player_state = state
+	trial = true
+	SaveManager.enabled = false
+	_start(p_state)
+
+
+## Sale de la prueba del panel de depuración: vuelve la partida del jugador
+## tal como estaba al empezar a probar (la que se guardó entonces) y el
+## guardado como antes. Sin prueba no hace nada.
+func end_trial() -> void:
+	if not trial:
+		return
+	trial = false
+	SaveManager.enabled = _saving_before_trial
+	var player: GameState = _player_state
+	_player_state = null
+	_start(player)
 
 
 ## Avanza la partida `real_seconds` segundos reales. _process lo llama con el

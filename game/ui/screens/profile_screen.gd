@@ -2,6 +2,14 @@ class_name ProfileScreen
 extends ScreenBase
 ## Perfil del protagonista: retrato, nivel, experiencia y estadísticas.
 
+## Retrato de cuerpo entero (biblia de arte §7.9): lado de la vista (px),
+## ancho que muestra (m), punto que queda al centro y giro (grados). La
+## inclinación es la del retrato del HUD (ProfileCard.PORTRAIT_PITCH).
+const PORTRAIT_SIZE: float = 150.0
+const PORTRAIT_FRAME: float = 1.65
+const PORTRAIT_TARGET: Vector3 = Vector3(0.0, 0.72, 0.0)
+const PORTRAIT_YAW: float = 30.0
+
 
 func _init() -> void:
 	super("user", "SCREEN_PROFILE")
@@ -12,7 +20,7 @@ func _build_content() -> void:
 	var header: HBoxContainer = UiKit.hbox(16)
 	content.add_child(header)
 	var frame: PanelContainer = UiKit.panel("IconTile")
-	frame.add_child(ModelPreview.new(func(world: Node3D) -> void: CharacterModel.build(world, "Character"), 150.0, 1.5, Vector3(0.0, 0.66, 0.0), 30.0))
+	frame.add_child(ModelPreview.new(func(world: Node3D) -> void: CharacterModel.build(world, "Character"), PORTRAIT_SIZE, PORTRAIT_FRAME, PORTRAIT_TARGET, PORTRAIT_YAW, ProfileCard.PORTRAIT_PITCH))
 	header.add_child(frame)
 	var info: VBoxContainer = UiKit.vbox(6)
 	info.alignment = BoxContainer.ALIGNMENT_CENTER

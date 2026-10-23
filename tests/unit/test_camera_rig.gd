@@ -1,5 +1,5 @@
 extends GutTest
-## Cámara: escalones de zoom, límites del cuarto y ajuste a los píxeles.
+## Cámara: escalones de zoom, límites del cuarto y que llega justo a su meta.
 ## La cámara se prueba fuera del árbol: usa una vista de 360×640 píxeles.
 
 const ROOM: AABB = AABB(Vector3(-3.2, 0.0, -3.2), Vector3(6.2, 2.8, 6.2))
@@ -82,21 +82,27 @@ func test_close_view_follows_but_never_shows_empty_space_past_the_room() -> void
 	assert_lte(center.dot(_camera.basis.x) + _camera.size / 2.0, _room_extent(_camera.basis.x, true) + 0.01, "Ni a la derecha")
 
 
-func test_camera_sits_on_whole_pixels_and_reports_the_rest() -> void:
+func test_camera_reaches_its_goal_exactly() -> void:
 	_camera.set_zoom_index(2)
-	_camera.follow_point = Vector3(0.37, 0.7, -0.91)
+	# Un punto que con el zoom cerca se puede encuadrar sin chocar con los
+	# bordes del cuarto.
+	_camera.follow_point = Vector3(0.2, 1.5, -0.3)
 	_step(0.5)
-	var texel: float = _camera.size / VIEW.x
+	# Sin ajuste a píxeles: el centro de la vista es justo el punto que la
+	# cámara persigue en cada cuadro, sin resto.
 	var center: Vector3 = _camera.position + _forward() * CameraRig.DISTANCE
+	var target: Vector3 = _camera._target
 	for axis: Vector3 in [_camera.basis.x, _camera.basis.y]:
-		var pixels: float = center.dot(axis) / texel
-		assert_almost_eq(pixels, roundf(pixels), 0.001, "La cámara queda en un píxel entero")
-	assert_lte(absf(_camera.pixel_remainder.x), 0.5)
-	assert_lte(absf(_camera.pixel_remainder.y), 0.5)
-	# La posición en píxeles enteros más el resto es la posición exacta.
-	var goal: Vector3 = _camera._target
-	assert_almost_eq(center.dot(_camera.basis.x) / texel + _camera.pixel_remainder.x, goal.dot(_camera.basis.x) / texel, 0.001)
-	assert_almost_eq(center.dot(_camera.basis.y) / texel + _camera.pixel_remainder.y, goal.dot(_camera.basis.y) / texel, 0.001)
+		assert_almost_eq(center.dot(axis), target.dot(axis), 0.00001, "La cámara está justo donde va")
+	assert_almost_eq(_camera.meters_per_pixel(), _camera.size / VIEW.x, 0.00001)
+	# Y llega a su meta: el punto seguido queda centrado de lado a lado y a la
+	# altura de ANCHOR, medida en píxeles de la vista.
+	_step(2.0)
+	center = _camera.position + _forward() * CameraRig.DISTANCE
+	var offset: Vector3 = _camera.follow_point - center
+	var below_px: float = (CameraRig.ANCHOR - 0.5) * VIEW.y
+	assert_almost_eq(offset.dot(_camera.basis.x), 0.0, 0.00001, "Centrado de lado a lado")
+	assert_almost_eq(-offset.dot(_camera.basis.y) / _camera.meters_per_pixel(), below_px, 0.001, "A la altura de ANCHOR")
 
 
 func test_an_open_panel_lets_the_camera_frame_objects_above_it() -> void:

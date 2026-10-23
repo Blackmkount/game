@@ -3,7 +3,8 @@ extends Control
 ## Capa de las burbujas de estado sobre los objetos del mundo (impresoras,
 ## computador, rincón de despacho), debajo de las demás burbujas del HUD.
 ##
-## Cada burbuja se crea una vez por objeto (add). Después solo se mueve, se
+## Cada burbuja se crea una vez por objeto (add) y solo se vuelven a crear
+## si cambia lo que hay en el cuarto (clear). Después solo se mueve, se
 ## muestra u oculta y cambia su contenido: nada se crea en cada cuadro. Qué
 ## muestra cada una y dónde va lo decide StatusPresenter.
 
@@ -26,6 +27,15 @@ func add(item: WorldInteractable) -> int:
 	return _bubbles.size() - 1
 
 
+## Quita todas las burbujas (cambió lo que hay en el cuarto: StatusPresenter
+## las vuelve a agregar).
+func clear() -> void:
+	for bubble: StatusBubble in _bubbles:
+		bubble.free()
+	_bubbles.clear()
+	_items.clear()
+
+
 ## La burbuja de ese índice, para cambiar lo que muestra (set_state) o leer
 ## su tamaño al ubicarla.
 func bubble(index: int) -> StatusBubble:
@@ -39,6 +49,18 @@ func place(index: int, top_left: Vector2) -> void:
 
 func set_visible_for(index: int, shown: bool) -> void:
 	_bubbles[index].visible = shown
+
+
+## Rectángulo (coordenadas de la capa) de la primera burbuja visible que
+## toca `area`, o un rectángulo vacío si ninguna: el globo de diálogo se
+## corre para no taparla.
+func visible_over(area: Rect2) -> Rect2:
+	if not visible:
+		return Rect2()
+	for status: StatusBubble in _bubbles:
+		if status.visible and status.get_rect().intersects(area):
+			return status.get_rect()
+	return Rect2()
 
 
 ## Objeto de la burbuja visible que está bajo `global_point`, o null. Si dos

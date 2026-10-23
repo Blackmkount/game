@@ -3,9 +3,10 @@ extends RefCounted
 ## Caja que envuelve un modelo armado con PropBuilder, en el espacio local de
 ## su nodo raíz.
 ##
-## Se calcula con las medidas de cada forma (BoxMesh.size, CylinderMesh.radius...)
-## y no con get_aabb(), porque sin pantalla (pruebas en modo headless) las
-## mallas no tienen tamaño.
+## Las formas básicas usan sus medidas (BoxMesh.size, CylinderMesh.radius...);
+## las demás mallas, como las del kit (KitMesh, ArrayMesh), su get_aabb(),
+## que en Godot 4.7.2 ya trae el tamaño también sin pantalla (pruebas en modo
+## headless).
 
 
 static func local_aabb(root: Node3D) -> AABB:
@@ -21,7 +22,7 @@ static func local_aabb(root: Node3D) -> AABB:
 	return result
 
 
-## Caja de una malla centrada en su origen.
+## Caja de una malla en su propio espacio.
 static func mesh_aabb(mesh: Mesh) -> AABB:
 	if mesh is BoxMesh:
 		var size: Vector3 = (mesh as BoxMesh).size

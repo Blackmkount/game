@@ -148,7 +148,7 @@ func test_reloading_in_the_middle_of_a_print_restores_the_world() -> void:
 	var printer: Node3D = _room.get_node("Printer%d" % Game.state.printers[0].uid)
 	var piece: MeshInstance3D = printer.get_node("PieceSpot/Piece")
 	assert_true(piece.visible)
-	assert_between((piece.mesh as BoxMesh).size.y, 0.001, PieceModel.SIZES["S"].y - 0.001, "La pieza sigue a la mitad")
+	assert_between(PieceModel.shown_height(piece), 0.001, PieceModel.SIZES["S"].y - 0.001, "La pieza sigue a la mitad")
 	assert_true(printer.get_node("Tray0").visible, "La primera pieza espera en la bandeja")
 	assert_true(_room.get_node("DispatchCorner/PackSpot0/OpenBox").visible, "El llavero espera en su caja")
 	var screen: MeshInstance3D = _room.get_node("Furniture%d/Monitor/Screen" % Game.state.furniture[0].uid)
