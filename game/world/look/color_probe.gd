@@ -117,6 +117,7 @@ static func _apply(result: Dictionary) -> void:
 	sun_fix = result["sun_fix"]
 	RenderingServer.global_shader_parameter_set(&"cc_base_fix", float(base_fix))
 	RenderingServer.global_shader_parameter_set(&"cc_sun_fix", float(sun_fix))
+	Events.color_model_changed.emit()
 
 
 func _ready() -> void:

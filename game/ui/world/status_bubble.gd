@@ -10,8 +10,11 @@ const SIZE: float = 72.0
 ## Lado mínimo del cuadro que acepta toques, centrado en la burbuja.
 const HIT_SIZE: float = 88.0
 const ICON_SIZE: float = 36.0
-## Latido de lo que espera al jugador (pieza lista, falla).
-const PULSE_SCALE: float = 1.1
+## Latido de lo que espera al jugador (pieza lista, falla): el icono se
+## aclara y vuelve (self_modulate). Agrandar la burbuja la obligaba a
+## dibujarse de nuevo en cada cuadro (el borde y el brillo de PillPanel se
+## arman otra vez: memoria nueva por cuadro); el color no.
+const PULSE_BRIGHTNESS: float = 1.6
 const PULSE_TIME: float = 0.5
 
 var _icon: TextureRect
@@ -35,6 +38,7 @@ func _init() -> void:
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(column)
 	_icon = UiKit.icon("printer", ICON_SIZE)
+	_icon.name = "Icon"
 	_icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	column.add_child(_icon)
 	_label = UiKit.label("", "SmallLabel")
@@ -42,7 +46,6 @@ func _init() -> void:
 	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_label.visible = false
 	column.add_child(_label)
-	resized.connect(func() -> void: pivot_offset = size / 2.0)
 
 
 ## Cambia lo que muestra. Si es lo mismo que ya muestra, no hace nada.
@@ -77,8 +80,8 @@ func _set_pulse(pulse: bool) -> void:
 	if _pulse_tween != null:
 		_pulse_tween.kill()
 		_pulse_tween = null
-	scale = Vector2.ONE
+	_icon.self_modulate = Color.WHITE
 	if pulse:
 		_pulse_tween = create_tween().set_loops().set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-		_pulse_tween.tween_property(self, "scale", Vector2.ONE * PULSE_SCALE, PULSE_TIME)
-		_pulse_tween.tween_property(self, "scale", Vector2.ONE, PULSE_TIME)
+		_pulse_tween.tween_property(_icon, "self_modulate", Color.WHITE * PULSE_BRIGHTNESS, PULSE_TIME)
+		_pulse_tween.tween_property(_icon, "self_modulate", Color.WHITE, PULSE_TIME)

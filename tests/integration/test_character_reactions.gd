@@ -12,6 +12,8 @@ const FIRST: int = 4
 ## Un lugar del piso frente al rincón de despacho, y otro lejos de todo.
 const BY_THE_CORNER: Vector2 = Vector2(-1.45, 2.1)
 const FAR_FROM_ALL: Vector2 = Vector2(0.9, 1.6)
+## Desde aquí hasta FAR_FROM_ALL camina hacia la cámara más de 1 m.
+const WALK_FROM: Vector2 = Vector2(-0.6, 0.2)
 
 var _main: Control
 var _hud: Hud
@@ -148,6 +150,78 @@ func test_packing_by_the_corner_and_a_failed_command() -> void:
 	assert_eq(_animator.current_gesture(), CharacterGestures.Gesture.SHRUG, "No había nada que limpiar: se encoge de hombros")
 
 
+## Despachar junto al rincón (con la burbuja de cercanía, lo de siempre):
+## el cobro se festeja con el puño y la subida de nivel con el salto. El
+## gesto de embalar no los corta (el despacho los avisa antes de terminar).
+func test_dispatching_by_the_corner_cheers_the_payday() -> void:
+	await _packed_keychain_by_the_corner()
+	_controls.tap(_hud.bubble.get_global_rect().get_center() - _controls.global_position)
+	assert_null(Game.state.find_order(FIRST), "Se despachó")
+	assert_eq(_animator.current_gesture(), CharacterGestures.Gesture.CHEER, "Cobra: puño arriba")
+	assert_eq(_animator.emotion(), FacePainter.Face.HAPPY)
+
+
+func test_a_level_up_by_the_corner_jumps() -> void:
+	await _packed_keychain_by_the_corner()
+	Game.state.xp = Game.levels.thresholds[1] - 1
+	_controls.tap(_hud.bubble.get_global_rect().get_center() - _controls.global_position)
+	assert_eq(Game.level(), 2, "Subió de nivel")
+	assert_eq(_animator.current_gesture(), CharacterGestures.Gesture.JUMP, "Sube de nivel: salta")
+	assert_eq(_animator.emotion(), FacePainter.Face.SURPRISE)
+
+
+## Embalar sí corta un gesto suelto (el celular, estirarse).
+func test_packing_cuts_a_loose_gesture() -> void:
+	_ready_keychain()
+	_start_print()
+	Game.advance(50.0)
+	assert_true(Game.remove_pieces(Game.state.printers[0].uid).ok)
+	_room.character.floor_position = BY_THE_CORNER
+	await wait_process_frames(3)
+	_animator.reset()
+	Events.offer_arrived.emit(1)
+	assert_eq(_animator.current_gesture(), CharacterGestures.Gesture.PHONE)
+	_controls.tap(_hud.bubble.get_global_rect().get_center() - _controls.global_position)
+	assert_eq(_animator.current_gesture(), CharacterGestures.Gesture.PACK, "Deja el celular y embala")
+
+
+## Tocar al personaje mientras camina solo (por un toque en el piso): se
+## detiene, saluda apenas se queda quieto y se queda de frente a la cámara
+## (antes seguía caminando y al llegar quedaba de espaldas).
+func test_tapping_the_character_while_it_walks_stops_it_to_wave() -> void:
+	var character: CharacterController = _room.character
+	character.floor_position = WALK_FROM
+	await wait_process_frames(2)
+	assert_true(character.walk_to(FAR_FROM_ALL))
+	await wait_seconds(0.15)
+	assert_true(character.is_following_path(), "Camina")
+	_controls.tap(_controls.world_to_ui(character.model.position + Vector3(0.0, 0.7, 0.0)))
+	assert_false(character.is_following_path(), "Al tocarlo se detiene")
+	var waved: bool = false
+	for frame: int in 60:
+		await wait_process_frames(1)
+		waved = waved or _animator.current_gesture() == CharacterGestures.Gesture.WAVE
+	assert_true(waved, "y saluda apenas se queda quieto")
+	await wait_seconds(1.0)
+	assert_almost_eq(wrapf(character.yaw - deg_to_rad(CameraRig.YAW), -PI, PI), 0.0, 0.05, "De frente a la cámara")
+
+
+## Al fallar una impresión con el personaje mirándola (acaba de usar su
+## panel), se da vuelta hacia la cámara: la cara preocupada se ve.
+func test_a_failed_print_turns_the_worried_face_to_the_player() -> void:
+	_ready_keychain()
+	_start_print()
+	_controls.open_sheet(_printer())
+	await wait_seconds(0.4)
+	_hud.close_sheet()
+	await wait_process_frames(2)
+	assert_gt(absf(wrapf(_room.character.yaw - deg_to_rad(CameraRig.YAW), -PI, PI)), 0.5, "Mira la impresora, no la cámara")
+	Events.print_failed.emit(Game.state.printers[0].uid, "spaghetti")
+	assert_eq(_animator.current_gesture(), CharacterGestures.Gesture.HANDS_ON_HEAD)
+	await wait_seconds(0.6)
+	assert_almost_eq(wrapf(_room.character.yaw - deg_to_rad(CameraRig.YAW), -PI, PI), 0.0, 0.05, "Se da vuelta hacia la cámara")
+
+
 func test_packing_from_far_away_has_no_gesture() -> void:
 	_ready_keychain()
 	_start_print()
@@ -174,6 +248,19 @@ func test_the_animator_knows_the_room() -> void:
 	Game.advance(10.0)
 	assert_false(_animator.modeling, "Terminó de modelar")
 	assert_almost_eq(_animator.game_minutes, Game.state.game_minutes, 1.0, "Sabe la hora")
+
+
+## El llavero impreso, retirado y embalado, con el personaje junto al
+## rincón de despacho y sin gestos.
+func _packed_keychain_by_the_corner() -> void:
+	_ready_keychain()
+	_start_print()
+	Game.advance(50.0)
+	assert_true(Game.remove_pieces(Game.state.printers[0].uid).ok)
+	assert_true(Game.pack_order(FIRST).ok)
+	_room.character.floor_position = BY_THE_CORNER
+	await wait_process_frames(3)
+	_animator.reset()
 
 
 func _ready_keychain() -> void:

@@ -137,6 +137,32 @@ func test_while_automatic_measures_each_frame_reaches_it() -> void:
 	assert_false(_view.is_processing(), "Sin pantalla no hay cuadros de verdad que medir")
 
 
+## Tapado por una sección (biblia §13: no dibujar lo que no se ve): se dibuja
+## una vez más y se queda quieto; al volver, cada cuadro. Un cambio de
+## calidad mientras tanto se dibuja una vez. Si el automático mide, sigue
+## dibujando hasta terminar.
+func test_covered_by_a_section_the_world_stops_drawing() -> void:
+	assert_eq(_sub.render_target_update_mode, SubViewport.UPDATE_ALWAYS, "Cada cuadro")
+	_view.set_covered(true)
+	# Después de ese cuadro el motor lo deja en UPDATE_DISABLED (sin pantalla
+	# no dibuja, así que aquí no se ve).
+	assert_eq(_sub.render_target_update_mode, SubViewport.UPDATE_ONCE, "Tapado: una vez más y quieto")
+	_quality.set_mode(GraphicsQuality.Mode.LOW)
+	assert_eq(_sub.render_target_update_mode, SubViewport.UPDATE_ONCE, "Otra calidad: se dibuja una vez")
+	_view.set_covered(false)
+	assert_eq(_sub.render_target_update_mode, SubViewport.UPDATE_ALWAYS, "Destapado: cada cuadro")
+	_view.has_screen = true
+	_quality.set_mode(GraphicsQuality.Mode.AUTO)
+	_view.set_covered(true)
+	assert_eq(_sub.render_target_update_mode, SubViewport.UPDATE_ALWAYS, "Midiendo, sigue dibujando")
+	_view.set_process(false)
+	for i: int in ceili((GraphicsQuality.AUTO_WARMUP_SECONDS + GraphicsQuality.AUTO_WINDOW_SECONDS + 0.1) / 0.01):
+		_view._process(0.01)
+	assert_false(_quality.is_measuring())
+	assert_eq(_sub.render_target_update_mode, SubViewport.UPDATE_ONCE, "Terminó de medir: tapado, se queda quieto")
+	_view.has_screen = false
+
+
 func test_ui_and_view_points_round_trip() -> void:
 	for window: Array in WINDOWS:
 		await _set_window(window)

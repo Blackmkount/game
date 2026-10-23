@@ -32,6 +32,7 @@ const SHADERS: Dictionary[String, Array] = {
 	"res://game/world/look/kit_head.gdshader": ["toon", "rim", "studio_key", "face_atlas", "face_cells", "face_axis", "face_span", "face_height", "eye_ink"],
 	"res://game/world/look/outline_character.gdshader": ["ink", "hair_ink"],
 	"res://game/world/look/display_field.gdshader": [],
+	"res://game/ui/components/preview_premultiplied.gdshader": [],
 }
 
 

@@ -10,11 +10,17 @@ extends Control
 ##   nivel de calidad, entre el ancho de la interfaz) y se ve del tamaño de la
 ##   vista. En un teléfono de 1080 px, un píxel del modelo es un píxel de la
 ##   pantalla. Bordes suavizados con MSAA 4× (se dibuja una vez: no cuesta).
+##   El dibujo sale premultiplicado y se pone así sobre la tarjeta
+##   (PREMULTIPLIED; si no, el borde suavizado queda oscuro).
 ## - Luz de estudio: cada malla lleva la versión de vista previa de su
 ##   material (WorldPalette.preview_of, preview_light = 1), así ni la hora, ni
 ##   las lámparas, ni dónde está el personaje cambian cómo se ve. Su sol da
 ##   sombra o no como el del mundo (GraphicsQuality): así vale la misma cuenta
-##   de color (cc_sun_shadowed es un global de todos los sombreadores).
+##   de color (cc_sun_shadowed es un global de todos los sombreadores). Y la
+##   da como el del mundo: una sola sombra ortogonal (usa las mismas variantes
+##   de los sombreadores del kit que el cuarto).
+## - Se vuelve a dibujar cuando ColorProbe termina de medir
+##   (Events.color_model_changed): la primera vez se dibuja antes.
 ## - Detrás, en 2D, un disco de luz (UiPalette.PREVIEW_DISC → transparente)
 ##   para que lo oscuro se lea sobre el azul de la tarjeta.
 ## - Cámara ortográfica con la inclinación del mundo (los retratos pueden
@@ -39,8 +45,23 @@ const MIN_FRAME: float = 0.5
 ## borde (posición, alfa).
 const DISC_TEXELS: int = 128
 const DISC_FADE: Array[Vector2] = [Vector2(0.0, 1.0), Vector2(0.5, 0.7), Vector2(1.0, 0.0)]
+## La cámara está a esta distancia (m) del centro del modelo y ve hasta el
+## doble: con cámara ortográfica la sombra del sol cubre de near a far, así
+## que un far corto le da detalle.
+const CAMERA_DISTANCE: float = 10.0
+## Cómo se pone el dibujo sobre la tarjeta (ver arriba).
+const PREMULTIPLIED: Shader = preload("res://game/ui/components/preview_premultiplied.gdshader")
 
 static var _disc: GradientTexture2D
+static var _premultiplied: ShaderMaterial
+
+## El material de PREMULTIPLIED (uno para todas las vistas).
+static func premultiplied() -> ShaderMaterial:
+	if _premultiplied == null:
+		_premultiplied = ShaderMaterial.new()
+		_premultiplied.shader = PREMULTIPLIED
+	return _premultiplied
+
 
 ## Recibe el nodo raíz del mundo de la vista y arma el modelo dentro.
 var _build_model: Callable
@@ -96,6 +117,7 @@ func _ready() -> void:
 	_container.stretch = true
 	_container.stretch_shrink = 1
 	_container.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_container.material = premultiplied()
 	_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_container)
 	_viewport = SubViewport.new()
@@ -124,6 +146,7 @@ func _ready() -> void:
 	_light.rotation_degrees = LIGHT_ROTATION
 	_light.light_color = Color(LIGHT_COLOR)
 	_light.light_energy = LIGHT_ENERGY
+	_light.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
 	_light.shadow_enabled = GraphicsQuality.current.sun_shadow()
 	_world.add_child(_light)
 
@@ -144,10 +167,12 @@ func _ready() -> void:
 		var seen: Rect2 = _seen_from(_camera.basis)
 		target = _camera.basis.x * seen.get_center().x + _camera.basis.y * seen.get_center().y
 		_camera.size = maxf(maxf(seen.size.x, seen.size.y) * FIT_MARGIN, MIN_FRAME)
-	_camera.position = target - _camera.basis * Vector3.FORWARD * 10.0
+	_camera.position = target - _camera.basis * Vector3.FORWARD * CAMERA_DISTANCE
+	_camera.far = CAMERA_DISTANCE * 2.0
 	_world.add_child(_camera)
 
 	GraphicsQuality.current.changed.connect(_on_quality_changed)
+	Events.color_model_changed.connect(redraw)
 	resized.connect(_fit)
 	get_viewport().size_changed.connect(_fit)
 	_fit()

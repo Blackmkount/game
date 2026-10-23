@@ -342,6 +342,29 @@ func test_each_shader_light_publishes_its_own_place_and_reach() -> void:
 	assert_eq(cycle.light_place("ventilador"), Vector4.ZERO, "Lo que no es una luz no alumbra")
 
 
+## Una luz apagada a esa hora (la lámpara de día, la tira LED antes del
+## taller) va al sombreador con alcance 0: su cuenta se salta en cada
+## fragmento (antes se calculaba entera y daba 0). Encendida, con su alcance.
+func test_a_light_that_is_off_reaches_the_shaders_with_no_reach() -> void:
+	var cycle: DayCycle = _cycle()
+	cycle.place_light("desk_lamp", Vector3(1.0, 1.0, 1.0))
+	cycle.led_strip_on = false
+	cycle.set_hour(10.0)
+	assert_eq(float(LIGHT_FACTORS["desk_lamp"]), 0.0, "De mañana la lámpara está apagada")
+	assert_eq(cycle.shown_reach("desk_lamp"), 0.0, "Lámpara apagada: sin alcance")
+	assert_almost_eq(cycle.light_place("desk_lamp").w, float(DayCycle.LIGHTS["desk_lamp"]["range"]), 0.0001, "aunque sigue en su lugar")
+	assert_eq(cycle.shown_strip_reach(), 0.0, "Sin tira LED: sin alcance")
+	cycle.set_hour(22.0)
+	assert_almost_eq(cycle.shown_reach("desk_lamp"), float(DayCycle.LIGHTS["desk_lamp"]["range"]), 0.0001, "De noche, con su alcance")
+	assert_eq(cycle.shown_strip_reach(), 0.0, "La tira sigue apagada")
+	cycle.led_strip_on = true
+	cycle.refresh()
+	assert_almost_eq(cycle.shown_strip_reach(), DayCycle.LED_STRIP_RANGE, 0.0001, "Con la tira LED del taller, de noche alumbra")
+	cycle.set_hour(12.0)
+	assert_eq(cycle.shown_strip_reach(), 0.0, "Al mediodía, apagada")
+	assert_eq(cycle.shown_reach("monitor"), 0.0, "Sin lugar, sin alcance aunque esté prendido")
+
+
 func test_the_dust_of_the_window_shaft_follows_the_hour() -> void:
 	var cycle: DayCycle = DayCycle.new()
 	var dust: DustField = DustField.new(1)

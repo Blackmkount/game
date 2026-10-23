@@ -110,6 +110,10 @@ func test_the_settings_offer_automatic_high_and_low() -> void:
 		buttons[mode] = settings.find_child("Graphics_" + GraphicsQuality.MODE_NAMES[mode], true, false)
 		assert_not_null(buttons[mode], "Opción %s" % GraphicsQuality.MODE_NAMES[mode])
 		assert_eq(buttons[mode].text, tr(SettingsScreen.GRAPHICS_MODES[mode]), "Con su texto traducido")
+		assert_gte(buttons[mode].size.y, SettingsScreen.BUTTON_HEIGHT, "Del alto táctil mínimo de ESTILO")
+	for language: Dictionary in SettingsScreen.LANGUAGES:
+		var language_button: Button = settings.find_child("Language_" + String(language["locale"]), true, false)
+		assert_gte(language_button.size.y, SettingsScreen.BUTTON_HEIGHT, "Idioma: del alto táctil mínimo")
 	assert_true(buttons[GraphicsQuality.Mode.HIGH].button_pressed, "Marca la elegida")
 	buttons[GraphicsQuality.Mode.LOW].pressed.emit()
 	await wait_process_frames(1)
@@ -225,6 +229,72 @@ func test_trying_scenes_never_touches_the_players_game() -> void:
 	assert_false(Game.trial, "La partida nueva termina la prueba")
 	assert_true(SaveManager.enabled, "Y se vuelve a guardar")
 	assert_true(SaveManager.save_now(), "Ajustes la puede guardar")
+
+
+## Al cerrar el panel sin salir de la prueba, el HUD lo sigue diciendo con
+## el botón "Salir de la prueba" (antes no quedaba ninguna señal de que nada
+## se guardaba). El botón vuelve a la partida del jugador, tal como estaba, y
+## el guardado vuelve.
+func test_leaving_a_trial_brings_back_the_players_game() -> void:
+	SaveManager.enabled = true
+	await _load()
+	var player_state: GameState = Game.state
+	var saved: Dictionary = SaveCodec.encode(player_state)
+	var leave: Button = _hud.get_node("TrialBadge")
+	assert_false(leave.visible, "Sin probar nada, sin botón")
+	_hud.toggle_debug(_room, _main.get_node("WorldView"))
+	var overlay: PerfOverlay = _hud.get_node("PerfOverlay")
+	(overlay.find_child("Room_full", true, false) as Button).pressed.emit()
+	(overlay.find_child("Close", true, false) as Button).pressed.emit()
+	await wait_process_frames(2)
+	assert_true(Game.trial, "Sigue probando con el panel cerrado")
+	assert_true(leave.visible, "y lo dice")
+	assert_eq(leave.text, tr("TRIAL_LEAVE"))
+	assert_gte(leave.size.y, SettingsScreen.BUTTON_HEIGHT, "Del alto táctil mínimo")
+	_hud.open_screen("shop")
+	assert_false(leave.visible, "Sobre una sección no se ve (como el zoom)")
+	_hud.open_screen("home")
+	assert_true(leave.visible)
+	leave.pressed.emit()
+	await wait_process_frames(2)
+	assert_false(Game.trial, "Salió de la prueba")
+	assert_eq(Game.state, player_state, "Vuelve la partida del jugador")
+	assert_eq(SaveCodec.encode(Game.state), saved, "Tal como estaba")
+	assert_eq(_room.find_children("Printer*", "", false, false).size(), player_state.printers.size(), "El cuarto es el suyo")
+	assert_true(SaveManager.enabled, "Y se vuelve a guardar")
+	assert_false(leave.visible, "Sin el botón")
+
+
+## Con el taller lleno, las horas lo vuelven a armar a esa hora con sus
+## trabajos en cada estado (el de la captura 43): adelantar el reloj
+## terminaba todas las impresiones y de noche ninguna imprimía.
+func test_the_full_workshop_keeps_its_jobs_at_every_hour() -> void:
+	await _load()
+	_hud.toggle_debug(_room, _main.get_node("WorldView"))
+	var overlay: PerfOverlay = _hud.get_node("PerfOverlay")
+	(overlay.find_child("Room_full", true, false) as Button).pressed.emit()
+	await wait_process_frames(2)
+	var printing: int = _count_printing()
+	assert_eq(printing, 4, "Cuatro imprimiendo")
+	for hour: String in ["Hour_night", "Hour_golden", "Hour_morning"]:
+		(overlay.find_child(hour, true, false) as Button).pressed.emit()
+		await wait_process_frames(2)
+		assert_eq(_count_printing(), printing, "%s: siguen imprimiendo" % hour)
+		assert_eq(Game.state.printers.size(), 16, "%s: el taller lleno" % hour)
+	assert_eq(GameClock.hour(Game.state.game_minutes), 8, "Ya es de mañana")
+	(overlay.find_child("Room_start", true, false) as Button).pressed.emit()
+	(overlay.find_child("Hour_night", true, false) as Button).pressed.emit()
+	await wait_process_frames(2)
+	assert_eq(Game.state.printers.size(), 1, "Con el cuarto del comienzo, la hora adelanta el reloj")
+	assert_eq(GameClock.hour(Game.state.game_minutes), 22)
+
+
+func _count_printing() -> int:
+	var printing: int = 0
+	for printer: OwnedPrinter in Game.state.printers:
+		if printer.job != null and printer.job.status == PrintJob.Status.PRINTING:
+			printing += 1
+	return printing
 
 
 func _load() -> void:

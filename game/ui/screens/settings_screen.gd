@@ -23,8 +23,9 @@ const GRAPHICS_LEVELS: Dictionary[GraphicsQuality.Level, String] = {
 }
 ## Segundos que "Empezar partida nueva" espera el segundo toque que confirma.
 const CONFIRM_SECONDS: float = 3.0
-## Alto del botón "Empezar partida nueva": el mínimo táctil de ESTILO.
-const NEW_GAME_HEIGHT: float = 88.0
+## Alto de los botones (idioma, calidad gráfica, partida nueva): el mínimo
+## táctil de ESTILO.
+const BUTTON_HEIGHT: float = 88.0
 
 ## Qué hace la partida nueva después de guardarse: volver a armar la escena.
 ## Las pruebas lo cambian para no recargar el programa de pruebas.
@@ -57,6 +58,7 @@ func _build_content() -> void:
 		button.toggle_mode = true
 		button.button_group = group
 		button.button_pressed = TranslationServer.get_locale().begins_with(language["locale"])
+		button.custom_minimum_size = Vector2(0, BUTTON_HEIGHT)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.focus_mode = Control.FOCUS_NONE
 		button.pressed.connect(func() -> void: _set_language(language["locale"]))
@@ -66,7 +68,7 @@ func _build_content() -> void:
 	_new_game_button.name = "NewGame"
 	_new_game_button.text = tr("SETTINGS_NEW_GAME")
 	_new_game_button.focus_mode = Control.FOCUS_NONE
-	_new_game_button.custom_minimum_size = Vector2(0, NEW_GAME_HEIGHT)
+	_new_game_button.custom_minimum_size = Vector2(0, BUTTON_HEIGHT)
 	_new_game_button.pressed.connect(_on_new_game_pressed)
 	content.add_child(_new_game_button)
 	add_section("SETTINGS_CREDITS")
@@ -89,6 +91,7 @@ func _build_graphics() -> void:
 		button.toggle_mode = true
 		button.button_group = group
 		button.button_pressed = quality.mode == mode
+		button.custom_minimum_size = Vector2(0, BUTTON_HEIGHT)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.focus_mode = Control.FOCUS_NONE
 		button.pressed.connect(quality.set_mode.bind(mode))

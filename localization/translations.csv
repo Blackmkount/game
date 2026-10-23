@@ -188,7 +188,7 @@ DEBUG_CLOSE,Cerrar,Close
 DEBUG_LESS,Menos,Less
 DEBUG_MORE,Más,More
 DEBUG_FPS,%s cuadros por segundo · %s ms por cuadro,%s frames per second · %s ms per frame
-DEBUG_DRAW,Llamadas de dibujo: %s (mundo: %s) · triángulos: %s,Draw calls: %s (world: %s) · triangles: %s
+DEBUG_DRAW,Llamadas de dibujo con la interfaz: %s (mundo: %s) · triángulos con la interfaz: %s (mundo: %s),Draw calls with the interface: %s (world: %s) · triangles with the interface: %s (world: %s)
 DEBUG_QUALITY,Calidad: %s (opción: %s),Quality: %s (option: %s)
 DEBUG_WORLD,Mundo: %s px de ancho · suavizado %s× · sombra del sol: %s,World: %s px wide · antialiasing %s× · sun shadow: %s
 DEBUG_PROBE,ColorProbe: %s · base %s (ajuste %s) · sol %s (ajuste %s),ColorProbe: %s · base %s (fix %s) · sun %s (fix %s)
@@ -207,7 +207,8 @@ DEBUG_ROOM_FULL,Taller lleno,Full workshop
 DEBUG_MORNING,Mañana,Morning
 DEBUG_GOLDEN,Tarde,Afternoon
 DEBUG_NIGHT,Noche,Night
-DEBUG_TRIAL,Modo de prueba: no se guarda nada. Vuelve a abrir el juego (o recarga la página) para seguir con tu partida.,Test mode: nothing is saved. Open the game again (or reload the page) to continue your game.
+DEBUG_TRIAL,Modo de prueba: no se guarda nada. Toca «Salir de la prueba» (abajo a la derecha) para volver a tu partida.,Test mode: nothing is saved. Tap “Leave test” (bottom right) to go back to your game.
+TRIAL_LEAVE,Salir de la prueba,Leave test
 COLOR_BLANCO,Blanco,White
 COLOR_NEGRO,Negro,Black
 COLOR_GRIS,Gris,Gray

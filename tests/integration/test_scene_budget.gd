@@ -7,7 +7,10 @@ extends GutTest
 ## Dos cuartos: el de la partida nueva y el más cargado de hoy
 ## (DebugTools.fill_workshop: escritorio, impresora del piso y 5 estanterías
 ## metálicas con 3 impresoras cada una, de todas las familias), también con
-## trabajos en cada estado (DebugTools.give_jobs, la captura 43). Con la
+## trabajos en cada estado (DebugTools.give_jobs, la captura 43). El cuarto
+## lleno se mide en el nivel del taller (DebugTools.WORKSHOP_LEVEL, con su
+## decoración): las estanterías se compran desde el nivel 3, así que con la
+## decoración del nivel 1 no existe en el juego. Con la
 ## calidad gráfica Alta (la de siempre) y también en Baja; el cuarto lleno
 ## también con el zoom lejos (las impresoras en su versión lejana).
 ##
@@ -63,7 +66,10 @@ const DECOR_MAX_TRIANGLES: int = 9000
 ## cuarto inicial). Los topes no cambian (medido + 10 % pasaría el anterior).
 ## Antes: 128 llamadas, 13 materiales y 28 mallas con sombra (pasos 10 y
 ## 11); 170 (paso 9); 230 (paso 8); 395 (paso 7); 440 (paso 6); 519 (paso
-## 5); 535 (paso 3); 1.042 (paso 1).
+## 5); 535 (paso 3); 1.042 (paso 1). Desde la revisión final del arte
+## (2026-10-23) se mide en el nivel del taller, con su decoración: 133
+## llamadas, 54.744 triángulos en color y 90.129 con la sombra (con la
+## decoración del nivel 1 eran 53.846 y 88.839).
 const FULL_MAX_DRAW_CALLS: int = 141
 const FULL_MAX_VISIBLE_TRIANGLES: int = 60000
 const FULL_MAX_TOTAL_TRIANGLES: int = 99999
@@ -80,7 +86,10 @@ const FULL_MAX_TRANSPARENT: int = 12
 ## medido + 10 %, bajo el final de la biblia (200 llamadas). Los materiales
 ## tienen tope propio: cada pieza, bandeja y carrete lleva el color de su
 ## filamento y aquí hay 12 trabajos de colores distintos (el peor caso); los
-## 18 de la biblia son del cuarto lleno quieto (FULL_MAX_MATERIALS).
+## 18 de la biblia son del cuarto lleno quieto (FULL_MAX_MATERIALS). En el
+## nivel del taller (revisión final): 148 llamadas, 58.744 triángulos en
+## color y 94.141 con la sombra; el peor caso es la tarde dorada (o el alba):
+## 149 llamadas, 58.814 en color, 94.211 con la sombra y 34 materiales.
 const JOBS_MAX_DRAW_CALLS: int = 162
 const JOBS_MAX_MATERIALS: int = 36
 const JOBS_MAX_SHADOW_MESHES: int = 33
@@ -107,6 +116,13 @@ const BIBLE_START_TRANSPARENT: int = 12
 const BUILD_RUNS: int = 5
 const BUILD_MAX_MSEC: float = 120.0
 const BUILD_GOAL_MSEC: float = 40.0
+## El primer armado al abrir el juego, con todas las cachés vacías (las mallas
+## del kit, los materiales y la cara pintada): el que paga el jugador. Meta de
+## la biblia §13 en escritorio (al registro) y tope duro (la decisión D4: 1 s
+## en el teléfono; las máquinas de la integración continua van más lentas
+## que un escritorio). Medido el 2026-10-23: unos 230 ms.
+const COLD_BUILD_MAX_MSEC: float = 1000.0
+const COLD_BUILD_GOAL_MSEC: float = 400.0
 ## Las horas de las medidas con luz de noche (en horas de juego): la noche
 ## (22:00) y las dos horas que tienen a la vez halos (cc_night 0,2–0,3) y
 ## polvo del haz, las de más llamadas del día: la tarde dorada (17:00) y el
@@ -186,7 +202,7 @@ func test_the_decor_fits_its_budget_at_every_level() -> void:
 
 
 func test_a_full_room_fits_the_mobile_budget() -> void:
-	DebugTools.fill_workshop(Game.state, Game.rules)
+	_fill_workshop()
 	var budget: RefCounted = await _measure()
 	gut.p("Cuarto lleno (%d impresoras): %s" % [Game.state.printers.size(), budget.call("report")])
 	assert_eq(Game.state.printers.size(), 16, "El escritorio, la del piso y 5 estanterías de 3")
@@ -203,8 +219,7 @@ func test_a_full_room_fits_the_mobile_budget() -> void:
 ## las bandejas y los nidos de espagueti (solo la impresora del piso les da
 ## sombra, biblia §2.6) caben en el tope final de la biblia.
 func test_a_full_room_with_jobs_fits_the_mobile_budget() -> void:
-	DebugTools.fill_workshop(Game.state, Game.rules)
-	DebugTools.give_jobs(Game.state, Game.rules)
+	_fill_workshop(true)
 	var budget: RefCounted = await _measure()
 	gut.p("Cuarto lleno con trabajos: " + String(budget.call("report")))
 	assert_lte(budget.get("draw_calls"), JOBS_MAX_DRAW_CALLS, "Llamadas de dibujo")
@@ -223,9 +238,7 @@ func test_a_full_room_with_jobs_fits_the_mobile_budget() -> void:
 func test_at_far_zoom_the_full_room_is_much_cheaper() -> void:
 	for jobs: bool in [false, true]:
 		Game.reset_game(SEED)
-		DebugTools.fill_workshop(Game.state, Game.rules)
-		if jobs:
-			DebugTools.give_jobs(Game.state, Game.rules)
+		_fill_workshop(jobs)
 		var what: String = "Cuarto lleno%s" % (" con trabajos" if jobs else "")
 		var near: RefCounted = await _measure()
 		var room: RoomView = _main.get_node("WorldView/SubViewport/Room")
@@ -255,7 +268,7 @@ func test_low_quality_drops_the_shadow_pass_and_fits_the_same_budget() -> void:
 	for full: bool in [false, true]:
 		Game.reset_game(SEED)
 		if full:
-			DebugTools.fill_workshop(Game.state, Game.rules)
+			_fill_workshop()
 		GraphicsQuality.current.set_mode(GraphicsQuality.Mode.HIGH)
 		var high: RefCounted = await _measure()
 		_main.queue_free()
@@ -306,6 +319,17 @@ func test_the_main_scene_builds_fast_with_cached_meshes() -> void:
 	assert_lte(median, BUILD_MAX_MSEC, "Armar la escena principal con caché")
 
 
+func test_the_first_build_with_empty_caches_is_fast_enough() -> void:
+	KitMesh._cache.clear()
+	WorldPalette._cache.clear()
+	WorldPalette._reveal.clear()
+	WorldPalette._preview.clear()
+	FacePainter._atlas = null
+	var elapsed: float = await _build_once()
+	gut.p("Primer armado con las cachés vacías: %.1f ms (meta ≤ %.0f ms en escritorio, tope %.0f ms)" % [elapsed, COLD_BUILD_GOAL_MSEC, COLD_BUILD_MAX_MSEC])
+	assert_lte(elapsed, COLD_BUILD_MAX_MSEC, "El primer armado del juego")
+
+
 ## Biblia §13: un solo sol con sombra (sin ella en la calidad Baja,
 ## `shadowed` falso) y ninguna luz extra del motor (las lámparas se calculan
 ## en el sombreador). Y nada que dibuje sin contarse. Se mira todo el
@@ -325,32 +349,48 @@ func _assert_one_sun_and_everything_measured(budget: RefCounted, shadowed: bool 
 	assert_eq(world.call("total_triangles"), budget.call("total_triangles"), "Todos los triángulos están dentro de Room")
 
 
-## Mide el cuarto inicial y el lleno a la hora `hour` (horas de juego)
-## contra sus topes de siempre, con los halos encendidos; `dust`: si a esa
-## hora se ve también el polvo del haz (el inicial tiene entonces una
-## transparente más, START_MAX_TRANSPARENT_HALOS_AND_DUST).
+## Mide el cuarto inicial, el lleno y el lleno con trabajos a la hora `hour`
+## (horas de juego) contra sus topes de siempre, con los halos encendidos;
+## `dust`: si a esa hora se ve también el polvo del haz (el inicial tiene
+## entonces una transparente más, START_MAX_TRANSPARENT_HALOS_AND_DUST).
 func _assert_both_rooms_fit_at(hour: float, label: String, dust: bool) -> void:
-	for full: bool in [false, true]:
+	for room_kind: int in 3:
+		var full: bool = room_kind > 0
+		var jobs: bool = room_kind == 2
 		Game.reset_game(SEED)
-		if full:
-			DebugTools.fill_workshop(Game.state, Game.rules)
 		Game.state.game_seconds = roundi(hour * GameClock.SECONDS_PER_HOUR)
+		if full:
+			_fill_workshop(jobs)
 		var budget: RefCounted = await _measure()
-		var what: String = "Cuarto %s %s" % ["lleno" if full else "inicial", label]
+		var what: String = "Cuarto %s %s" % [["inicial", "lleno", "lleno con trabajos"][room_kind], label]
 		gut.p(what + ": " + String(budget.call("report")))
 		var room: RoomView = _main.get_node("WorldView/SubViewport/Room")
 		assert_true(room.halos.visible, what + ": los halos se ven")
 		assert_eq(room.decor.dust.visible, dust, what + ": el polvo del haz")
-		assert_lte(budget.get("draw_calls"), FULL_MAX_DRAW_CALLS if full else START_MAX_DRAW_CALLS, what + ": llamadas de dibujo")
+		var max_calls: int = JOBS_MAX_DRAW_CALLS if jobs else (FULL_MAX_DRAW_CALLS if full else START_MAX_DRAW_CALLS)
+		assert_lte(budget.get("draw_calls"), max_calls, what + ": llamadas de dibujo")
 		assert_lte(budget.get("visible_triangles"), FULL_MAX_VISIBLE_TRIANGLES if full else START_MAX_VISIBLE_TRIANGLES, what + ": triángulos en la pasada de color")
 		assert_lte(budget.call("total_triangles"), FULL_MAX_TOTAL_TRIANGLES if full else START_MAX_TOTAL_TRIANGLES, what + ": triángulos con la pasada de sombra")
-		assert_lte((budget.get("materials") as Dictionary).size(), FULL_MAX_MATERIALS if full else START_MAX_MATERIALS, what + ": materiales")
-		assert_lte(budget.get("shadow_meshes"), FULL_MAX_SHADOW_MESHES if full else START_MAX_SHADOW_MESHES, what + ": mallas que dan sombra")
+		var max_materials: int = JOBS_MAX_MATERIALS if jobs else (FULL_MAX_MATERIALS if full else START_MAX_MATERIALS)
+		assert_lte((budget.get("materials") as Dictionary).size(), max_materials, what + ": materiales")
+		var max_shadow_meshes: int = JOBS_MAX_SHADOW_MESHES if jobs else (FULL_MAX_SHADOW_MESHES if full else START_MAX_SHADOW_MESHES)
+		assert_lte(budget.get("shadow_meshes"), max_shadow_meshes, what + ": mallas que dan sombra")
 		var transparent: int = START_MAX_TRANSPARENT_HALOS_AND_DUST if dust else START_MAX_TRANSPARENT
 		assert_lte(budget.get("transparent_surfaces"), FULL_MAX_TRANSPARENT if full else transparent, what + ": superficies transparentes")
 		_assert_one_sun_and_everything_measured(budget)
 		_main.queue_free()
 		await wait_process_frames(1)
+
+
+## El taller lleno (DebugTools.fill_workshop) en el nivel del taller, como en
+## el juego (con su decoración) y como DebugTools.busy_workshop; con `jobs`,
+## con trabajos en cada estado (DebugTools.give_jobs). Los trabajos empiezan
+## a la hora de la partida.
+func _fill_workshop(jobs: bool = false) -> void:
+	DebugTools.fill_workshop(Game.state, Game.rules)
+	Game.state.xp = Game.rules.levels.thresholds[DebugTools.WORKSHOP_LEVEL - 1]
+	if jobs:
+		DebugTools.give_jobs(Game.state, Game.rules)
 
 
 ## Lleva la cámara al escalón de zoom `index` de una vez y deja pasar dos

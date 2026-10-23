@@ -195,7 +195,9 @@ func tap(ui_position: Vector2) -> void:
 			_hints.walked_by_tap()
 		return
 	if item.kind == WorldInteractable.Kind.CHARACTER:
-		# Se da vuelta, saluda y dice algo gracioso.
+		# Se detiene (si caminaba solo), se da vuelta, saluda y dice algo
+		# gracioso.
+		room.character.stop_path()
 		room.character.face_camera()
 		room.character.animator.react(CharacterAnimator.Reaction.TAPPED)
 		hud.speech.say(tr("CHARACTER_LINE_%d" % _rng.randi_range(1, CHARACTER_LINES)))
@@ -381,6 +383,8 @@ func _on_screen_changed(screen_id: String) -> void:
 	# En la tienda, las marcas de lugares libres se encienden: ahí va lo que
 	# se compre.
 	room.markers_emphasis = screen_id == "shop"
+	# La sección tapa el mundo: deja de dibujarse (ver WorldViewport).
+	world_view.set_covered(screen_id != "home")
 	if screen_id != "home":
 		_cancel_gestures()
 		if room.character != null:

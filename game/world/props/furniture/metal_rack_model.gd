@@ -12,6 +12,8 @@ extends RefCounted
 ## 0,08 / 0,85 / 1,62 / 2,37, que dejan 0,72 m en el piso de arriba: las tres
 ## de abajo bajan 2 cm para que los tres pisos tengan 0,74 m.)
 
+## Su id en data/furniture.json.
+const FURNITURE_ID: String = "estanteria_metalica"
 const HEIGHT: float = 2.4
 ## Centro (y) de cada tabla, de abajo hacia arriba, y su grosor. Las tres de
 ## abajo llevan una impresora cada una (PrinterSpot0..2 sobre su cara de
@@ -38,6 +40,9 @@ const TOP_SPOOL_COLORS: Array[String] = [LookPalette.FILAMENT_GREY, LookPalette.
 ## Amarras del atado de cables: altos.
 const TIES: Array[float] = [0.95, 1.25, 1.55]
 
+## Lo que se toca (touch_parts), calculado una vez.
+static var _touch_parts: Array[AABB] = []
+
 
 ## Alto de la cara de arriba de cada tabla con impresora (donde van los
 ## PrinterSpot).
@@ -46,6 +51,29 @@ static func spot_heights() -> Array[float]:
 	for i: int in BOARDS.size() - 1:
 		heights.append(BOARDS[i] + BOARD_THICKNESS / 2.0)
 	return heights
+
+
+## Lo que se toca de la estantería (WorldInteractable.touch_parts), en el
+## espacio de su malla: los cuatro postes, cada tabla con su marco y lo que se
+## guarda arriba (las cajas y los carretes, cada pila con su caja). Es
+## abierta: un toque que pasa entre dos tablas le da a lo que se ve detrás
+## (el personaje, por ejemplo), no a la estantería.
+static func touch_parts() -> Array[AABB]:
+	if not _touch_parts.is_empty():
+		return _touch_parts
+	var post: Vector3 = Vector3(ANGLE, HEIGHT, ANGLE)
+	for sx: float in KitMesh.SIGNS:
+		for sz: float in KitMesh.SIGNS:
+			var center: Vector3 = Vector3(sx * (HALF_SIZE.x - ANGLE / 2.0), HEIGHT / 2.0, sz * (HALF_SIZE.y - ANGLE / 2.0))
+			_touch_parts.append(AABB(center - post / 2.0, post))
+	for y: float in BOARDS:
+		var top: float = y + BOARD_THICKNESS / 2.0
+		_touch_parts.append(AABB(Vector3(-HALF_SIZE.x, top - ANGLE, -HALF_SIZE.y), Vector3(HALF_SIZE.x * 2.0, ANGLE, HALF_SIZE.y * 2.0)))
+	for stored: Callable in [_stored_boxes, _stored_spools]:
+		var kit: KitMesh = FurnitureParts.kit()
+		stored.call(kit, _top())
+		_touch_parts.append(kit.commit().get_aabb())
+	return _touch_parts
 
 
 static func mesh() -> ArrayMesh:
@@ -143,13 +171,25 @@ static func _cables(kit: KitMesh) -> void:
 ## apiladas y dos carretes de canto (desde arriba, una pila se leía como una
 ## lata).
 static func _stored_on_top(kit: KitMesh) -> void:
-	var top: float = BOARDS[BOARDS.size() - 1] + BOARD_THICKNESS / 2.0
+	_stored_boxes(kit, _top())
+	_stored_spools(kit, _top())
+	kit.ao_base = 0.0
+
+
+## La cara de arriba de la tabla de arriba.
+static func _top() -> float:
+	return BOARDS[BOARDS.size() - 1] + BOARD_THICKNESS / 2.0
+
+
+static func _stored_boxes(kit: KitMesh, top: float) -> void:
 	kit.ao_base = top
 	FurnitureParts.filament_box(kit, Vector3(-0.3, top, 0.02), 6.0)
 	kit.ao_base = top + FurnitureParts.FILAMENT_BOX_SIZE.y
 	FurnitureParts.filament_box(kit, Vector3(-0.28, top + FurnitureParts.FILAMENT_BOX_SIZE.y, 0.0), -3.0)
+
+
+static func _stored_spools(kit: KitMesh, top: float) -> void:
 	kit.ao_base = top
 	for i: int in TOP_SPOOLS.size():
 		var at: Vector2 = TOP_SPOOLS[i]
 		SpoolModel.add_on_shelf(kit, Vector3(at.x, top + TOP_SPOOL_RADIUS, at.y), TOP_SPOOL_RADIUS, TOP_SPOOL_COLORS[i])
-	kit.ao_base = 0.0

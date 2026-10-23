@@ -555,7 +555,9 @@ func _sync_furniture(state: GameState, layout: RoomLayout, appeared: Dictionary[
 		node.transform = layout.slots[item.slot]
 		if item.furniture_id == DeskSheet.FURNITURE_ID:
 			_add_view(node, DeskView.new())
-		_furniture[item.uid] = Placed.new(node, keys[item.uid], _make_item(WorldInteractable.Kind.FURNITURE, item.uid, node))
+		var touched: WorldInteractable = _make_item(WorldInteractable.Kind.FURNITURE, item.uid, node)
+		touched.touch_parts = FurnitureModel.touch_parts(node, item.furniture_id)
+		_furniture[item.uid] = Placed.new(node, keys[item.uid], touched)
 		appeared[item.uid] = node
 		changed = true
 	return changed
@@ -837,10 +839,14 @@ func _on_order_delivered(_order_uid: int, _order_id: String, _cents: int, _xp: i
 	character.animator.react(CharacterAnimator.Reaction.DELIVERED_LATE if late else CharacterAnimator.Reaction.DELIVERED)
 
 
-## Mira la impresora que falló (la cabeza y los ojos: el cuerpo no se da
-## vuelta, así la cara preocupada se sigue viendo).
+## Se agarra la cabeza de cara al jugador (se gira hacia la cámara, como al
+## saludar: si estaba mirando la impresora, la cara preocupada quedaba de
+## espaldas) y mira de reojo la impresora que falló. Con un panel abierto
+## sigue de frente al objeto del panel.
 func _on_print_failed(printer_uid: int, _failure_type: String) -> void:
 	character.animator.react(CharacterAnimator.Reaction.PRINT_FAILED, _print_head_of(printer_uid))
+	if character.animator.current_gesture() == CharacterGestures.Gesture.HANDS_ON_HEAD and not character.animator.panel_open:
+		character.face_camera()
 
 
 ## Sube de nivel: el personaje salta y la decoración crece (la grilla de

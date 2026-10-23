@@ -168,6 +168,50 @@ func test_the_camera_tilts_like_the_world_and_frames_the_whole_model() -> void:
 		assert_gt(maxf(reach.x, reach.y), half * 0.85, "%s llena la vista" % camera.get_path())
 
 
+## El sol de la vista hace sombra como el del mundo: una sola sombra
+## ortogonal (el modo de 4 divisiones armaba otras variantes de los
+## sombreadores del kit, solo para las vistas, y dibujaba la sombra 4 veces).
+## Con cámara ortográfica la sombra cubre de near a far: far corto, para que
+## tenga detalle.
+func test_the_sun_of_a_view_casts_one_shadow_like_the_world() -> void:
+	var view: ModelPreview = _add(Previews.printer("cubo_uno"))
+	await wait_process_frames(1)
+	var sun: DirectionalLight3D = view.find_children("*", "DirectionalLight3D", true, false)[0]
+	assert_eq(sun.directional_shadow_mode, DirectionalLight3D.SHADOW_ORTHOGONAL)
+	var camera: Camera3D = view.find_children("*", "Camera3D", true, false)[0]
+	assert_lte(camera.far, ModelPreview.CAMERA_DISTANCE * 2.0, "La sombra cubre solo hasta un poco detrás del modelo")
+
+
+## Lo que dibuja un SubViewport transparente con MSAA viene premultiplicado
+## (el borde suavizado ya trae su alfa en el color): se pone sobre la
+## tarjeta premultiplicado, sin volver a multiplicar por el alfa (dejaba un
+## borde oscuro). Y con el alfa de quien la contiene (un panel que aparece)
+## también en el color.
+func test_a_view_is_put_on_the_card_premultiplied() -> void:
+	var view: ModelPreview = _add(Previews.printer("cubo_uno"))
+	await wait_process_frames(1)
+	var container: SubViewportContainer = view.get_node("View")
+	var material: ShaderMaterial = container.material as ShaderMaterial
+	assert_not_null(material, "El contenedor tiene su material")
+	assert_eq(material.shader, ModelPreview.PREMULTIPLIED, "El de mezclar premultiplicado")
+	var other: ModelPreview = _add(Previews.printer("rayo_mini"))
+	await wait_process_frames(1)
+	assert_eq((other.get_node("View") as SubViewportContainer).material, material, "Uno para todas")
+
+
+## ColorProbe mide después de que las vistas ya se dibujaron (se dibujan una
+## vez): cuando cambia el modelo de color, se vuelven a dibujar.
+func test_a_view_is_drawn_again_when_the_color_model_changes() -> void:
+	var view: ModelPreview = _add(Previews.printer("cubo_uno"))
+	await wait_process_frames(2)
+	var sub: SubViewport = view.get_node("View/SubViewport")
+	sub.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	watch_signals(Events)
+	ColorProbe._apply({"base_fix": ColorProbe.base_fix, "sun_fix": ColorProbe.sun_fix})
+	assert_signal_emitted(Events, "color_model_changed", "ColorProbe avisa que midió")
+	assert_eq(sub.render_target_update_mode, SubViewport.UPDATE_ONCE, "La vista se vuelve a dibujar")
+
+
 func test_a_light_disc_goes_behind_every_view() -> void:
 	var disc: GradientTexture2D = ModelPreview.disc()
 	assert_eq(ModelPreview.disc(), disc, "Uno para todas")

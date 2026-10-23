@@ -176,12 +176,15 @@ func test_shop_lists_all_printers_and_furniture() -> void:
 
 
 func test_closing_a_screen_goes_back_home() -> void:
+	var world: SubViewport = _main.get_node("WorldView/SubViewport")
 	_hud.open_screen("inventory")
 	assert_not_null(_hud.get_node_or_null("ScreenHost/Screen"))
+	assert_ne(world.render_target_update_mode, SubViewport.UPDATE_ALWAYS, "La sección tapa el mundo: deja de dibujarse")
 	_hud.open_screen("home")
 	await wait_process_frames(1)
 	assert_eq(_hud.current_screen_id(), "home")
 	assert_null(_hud.get_node_or_null("ScreenHost/Screen"))
+	assert_eq(world.render_target_update_mode, SubViewport.UPDATE_ALWAYS, "De vuelta, el mundo cada cuadro")
 
 
 func test_the_inventory_hides_empty_spools() -> void:

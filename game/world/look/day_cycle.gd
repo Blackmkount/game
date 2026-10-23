@@ -262,6 +262,10 @@ var _lamp_factor: PackedInt32Array = PackedInt32Array()
 var _lamp_slot: PackedInt32Array = PackedInt32Array()
 var _lamp_color: PackedVector3Array = PackedVector3Array()
 var _lamp_place: PackedVector4Array = PackedVector4Array()
+## El alcance que llegó a los sombreadores de cada luz y de la tira LED en
+## la última hora que se mostró (0 si estaba apagada).
+var _lamp_shown_reach: PackedFloat32Array = PackedFloat32Array()
+var _strip_shown_reach: float = 0.0
 var _strip_color: Vector3 = _scaled(LED_STRIP_COLOR, LED_STRIP_INTENSITY)
 var _night_index: int = FACTORS.find(NIGHT_FACTOR)
 var _shaft_index: int = FACTORS.find("window_shaft")
@@ -279,6 +283,7 @@ func _init() -> void:
 		_lamp_slot.append(light["slot"])
 		_lamp_color.append(_scaled(light["color"], light["intensity"]))
 		_lamp_place.append(Vector4.ZERO)
+		_lamp_shown_reach.append(0.0)
 
 
 ## Los valores de luz de la hora `hour` (horas; se cuentan desde la
@@ -339,12 +344,24 @@ func clear_light(light_name: String) -> void:
 		_lamp_place[LIGHTS.keys().find(light_name)] = Vector4.ZERO
 
 
-## Lo que la luz `light_name` (nombre de LIGHTS) publica en su global cc_plN:
-## su lugar (x, y, z) y su alcance (w; 0 = sin lugar o no es una luz: no
-## alumbra).
+## Dónde se puso la luz `light_name` (nombre de LIGHTS): su lugar (x, y, z)
+## y su alcance (w; 0 = sin lugar o no es una luz: no alumbra).
 func light_place(light_name: String) -> Vector4:
 	var index: int = LIGHTS.keys().find(light_name)
 	return _lamp_place[index] if index >= 0 else Vector4.ZERO
+
+
+## El alcance de la luz `light_name` que les llegó a los sombreadores en la
+## última hora que se mostró: 0 si no tiene lugar o si a esa hora está
+## apagada (así el sombreador se salta su cuenta en cada fragmento).
+func shown_reach(light_name: String) -> float:
+	var index: int = LIGHTS.keys().find(light_name)
+	return _lamp_shown_reach[index] if index >= 0 else 0.0
+
+
+## Lo mismo para la tira LED (cc_strip_col.w).
+func shown_strip_reach() -> float:
+	return _strip_shown_reach
 
 
 ## Pone la luz de la hora `hour` de una vez, sin mezcla: al armar el cuarto,
@@ -428,14 +445,21 @@ func _show(hour: float) -> void:
 	_shaft.set_shader_parameter(&"strength", WINDOW_SHAFT_STRENGTH * shaft)
 	if dust != null:
 		dust.set_strength(shaft)
+	# Una luz apagada a esta hora va con alcance 0: el sombreador se salta su
+	# cuenta (si no, la hace entera en cada fragmento para sumar 0).
 	for i: int in _lamp_slot.size():
 		var color: Vector3 = _lamp_color[i] * light.factors[_lamp_factor[i]]
-		_publish(LIGHT_GLOBALS[_lamp_slot[i]], _lamp_place[i])
+		var place: Vector4 = _lamp_place[i]
+		if color == Vector3.ZERO:
+			place.w = 0.0
+		_lamp_shown_reach[i] = place.w
+		_publish(LIGHT_GLOBALS[_lamp_slot[i]], place)
 		_publish(LIGHT_COLOR_GLOBALS[_lamp_slot[i]], Vector4(color.x, color.y, color.z, 1.0))
 	var strip: Vector3 = _strip_color * (light.factors[_strip_index] if led_strip_on else 0.0)
+	_strip_shown_reach = LED_STRIP_RANGE if strip != Vector3.ZERO else 0.0
 	_publish(&"cc_strip_a", LED_STRIP_FROM)
 	_publish(&"cc_strip_b", LED_STRIP_TO)
-	_publish(&"cc_strip_col", Vector4(strip.x, strip.y, strip.z, LED_STRIP_RANGE))
+	_publish(&"cc_strip_col", Vector4(strip.x, strip.y, strip.z, _strip_shown_reach))
 
 
 ## Convierte MOMENTS y KEYS una vez.

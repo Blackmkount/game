@@ -163,6 +163,28 @@ func test_tapping_the_character_makes_it_talk() -> void:
 	assert_false(_hud.has_sheet())
 
 
+## La estantería metálica es abierta: entre sus tablas se ve lo que está
+## detrás, y un toque ahí le da a eso. Con una en el lugar 5, el personaje en
+## su lugar del comienzo queda detrás de ella: tocar sus piernas, que se ven
+## entre dos tablas, lo hace hablar (antes la estantería se tocaba como una
+## caja entera de 2,6 m de alto y se abría). Tocar una tabla sigue abriendo la
+## estantería.
+func test_the_character_seen_through_an_open_rack_can_be_tapped() -> void:
+	var uid: int = Game.state.take_uid()
+	Game.state.furniture.append(OwnedFurniture.new(uid, MetalRackModel.FURNITURE_ID, 5))
+	_room.sync_models(false)
+	await wait_process_frames(2)
+	var rack: WorldInteractable = _room.item_for(WorldInteractable.Kind.FURNITURE, uid)
+	var legs: Vector2 = _controls.world_to_ui(_room.character.model.position + Vector3(0.0, 0.3, 0.0))
+	var view: Vector2 = _controls.ui_to_view(legs)
+	var inverse: Transform3D = rack.transform.affine_inverse()
+	var hit: Variant = rack.local_bounds.intersects_ray(inverse * _room.camera.project_ray_origin(view), inverse.basis * _room.camera.project_ray_normal(view))
+	assert_not_null(hit, "Las piernas quedan detrás de la caja de la estantería")
+	assert_eq(_pick_under(legs), _item(WorldInteractable.Kind.CHARACTER), "Tocar las piernas, que se ven entre las tablas, le da al personaje")
+	var board: Vector3 = rack.transform * Vector3(0.0, MetalRackModel.BOARDS[2] + MetalRackModel.BOARD_THICKNESS / 2.0, MetalRackModel.HALF_SIZE.y - 0.02)
+	assert_eq(_pick_under(_controls.world_to_ui(board)), rack, "Tocar una tabla abre la estantería")
+
+
 func test_joystick_drag_walks_where_the_thumb_points() -> void:
 	var start: Vector3 = _room.character.model.position
 	var finger: Vector2 = Vector2(360.0, 900.0)

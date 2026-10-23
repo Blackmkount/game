@@ -18,6 +18,11 @@ extends SubViewportContainer
 ## (GraphicsQuality, biblia §2.2: Alta 1080 px y MSAA 4×, Baja 720 px y
 ## 2×); si cambia, se vuelve a ajustar. Mientras el modo automático mide los
 ## primeros cuadros, este nodo le pasa cuánto dura cada uno.
+##
+## Detrás de una sección de la interfaz (set_covered) el mundo deja de
+## dibujarse: se ve su último cuadro (en los bordes y a través del panel) y
+## no gasta batería ni calienta el teléfono. Mientras el automático mide,
+## sigue dibujándose (la medida tiene que ser de cuadros de verdad).
 
 ## Píxeles del dibujo del mundo por cada píxel de la interfaz (k).
 var view_per_ui: float = 1.0
@@ -27,6 +32,8 @@ var has_screen: bool = DisplayServer.get_name() != "headless"
 
 var _view: SubViewport
 var _quality: GraphicsQuality
+## Una sección de la interfaz tapa el mundo (set_covered).
+var _covered: bool = false
 
 
 func _init() -> void:
@@ -56,6 +63,17 @@ func _process(delta: float) -> void:
 	_quality.add_frame(delta)
 	if not _quality.is_measuring():
 		set_process(false)
+		_apply_update_mode()
+
+
+## Una sección de la interfaz tapa el mundo (`covered`) o se cerró. Tapado,
+## el mundo se dibuja una vez más (lo que cambió al abrirla, como las marcas
+## encendidas de la tienda) y se queda quieto.
+func set_covered(covered: bool) -> void:
+	if covered == _covered:
+		return
+	_covered = covered
+	_apply_update_mode()
 
 
 ## k para una pantalla de `physical_width` píxeles físicos y `ui_width` de
@@ -90,6 +108,15 @@ func _apply_quality() -> void:
 	_view.msaa_3d = _quality.msaa()
 	_fit()
 	set_process(_quality.is_measuring() and has_screen)
+	_apply_update_mode()
+
+
+## Cada cuadro, salvo tapado (y sin el automático midiendo): entonces una vez
+## más con lo de ahora (por ejemplo, la calidad que se acaba de elegir en
+## Ajustes) y nada más.
+func _apply_update_mode() -> void:
+	var still: bool = _covered and not (_quality.is_measuring() and has_screen)
+	_view.render_target_update_mode = SubViewport.UPDATE_ONCE if still else SubViewport.UPDATE_ALWAYS
 
 
 ## Tamaño y escala según la pantalla de ahora.

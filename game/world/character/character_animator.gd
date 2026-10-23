@@ -108,6 +108,9 @@ const NIGHT: Vector2 = Vector2(22.0, 5.0)
 const NEAR: float = 1.2
 ## Segundos que mira la impresora que terminó.
 const LOOK_READY: float = 1.5
+## Lo más que espera un gesto a que el personaje se quede quieto (saludar al
+## tocarlo mientras camina), en segundos.
+const WAIT_STILL: float = 1.0
 ## Mezcla al cortar o cambiar un gesto (s).
 const CUT_BLEND: float = 0.12
 ## Movimiento secundario: resortes (rigidez, amortiguación) del pelo y de
@@ -203,6 +206,12 @@ var _breath: float = 0.0
 var _gesture: CharacterGestures.Gesture = CharacterGestures.Gesture.NONE
 var _gesture_time: float = 0.0
 var _held: bool = false
+## Si el gesto de ahora es suelto (al azar o el celular): embalar lo corta;
+## un festejo o un susto, no.
+var _loose: bool = false
+## El gesto que espera a que se quede quieto, y cuánto más espera (s).
+var _waiting: CharacterGestures.Gesture = CharacterGestures.Gesture.NONE
+var _waiting_left: float = 0.0
 var _fidget_armed: bool = false
 var _fidget_wait: float = 0.0
 var _last_fidget: CharacterGestures.Gesture = CharacterGestures.Gesture.NONE
@@ -269,6 +278,8 @@ func reseed(seed_value: int) -> void:
 func reset() -> void:
 	_gesture = CharacterGestures.Gesture.NONE
 	_held = false
+	_loose = false
+	_waiting = CharacterGestures.Gesture.NONE
 	_cut_weight = 0.0
 	_look_left = 0.0
 	_fidget_armed = false
@@ -282,6 +293,7 @@ func step(delta: float) -> void:
 	var dt: float = 0.0 if _held or paused else delta
 	_clock += dt
 	_read_motion(delta, dt)
+	_play_waiting(delta)
 	_update_gesture(dt)
 	_update_fidgets(dt)
 	_base_pose()
@@ -311,20 +323,26 @@ func react(reaction: Reaction, point: Variant = null) -> void:
 			_face.show(FacePainter.Face.SURPRISE, CharacterFace.SURPRISE_TIME, FacePainter.Face.HAPPY, CharacterFace.LEVEL_UP_TIME - CharacterFace.SURPRISE_TIME)
 			play(CharacterGestures.Gesture.JUMP)
 		Reaction.OFFER:
-			if not panel_open:
-				play(CharacterGestures.Gesture.PHONE, false)
+			if not panel_open and play(CharacterGestures.Gesture.PHONE, false):
+				_loose = true
 		Reaction.PRINTER_READY:
 			_face.show(FacePainter.Face.HAPPY, CharacterFace.READY_HAPPY_TIME)
 			play(CharacterGestures.Gesture.THUMBS_UP)
 			if point != null:
 				look_at(point, LOOK_READY)
 		Reaction.TAPPED:
+			# Si todavía camina (se acaba de detener), saluda apenas se quede
+			# quieto.
 			_face.show(FacePainter.Face.HAPPY, CharacterFace.WAVE_HAPPY_TIME)
-			play(CharacterGestures.Gesture.WAVE)
+			if not play(CharacterGestures.Gesture.WAVE):
+				_waiting = CharacterGestures.Gesture.WAVE
+				_waiting_left = WAIT_STILL
 		Reaction.ACTION_FAILED:
 			play(CharacterGestures.Gesture.SHRUG)
 		Reaction.PACKED:
-			play(CharacterGestures.Gesture.PACK)
+			# Al despachar, el cobro y el nivel ya reaccionaron (puño, salto):
+			# embalar no los corta.
+			play(CharacterGestures.Gesture.PACK, _loose)
 
 
 ## Empieza un gesto si está quieto. Con `interrupt` reemplaza al que esté
@@ -339,6 +357,8 @@ func play(gesture: CharacterGestures.Gesture, interrupt: bool = true) -> bool:
 		_snapshot()
 	_gesture = gesture
 	_gesture_time = 0.0
+	_loose = false
+	_waiting = CharacterGestures.Gesture.NONE
 	return true
 
 
@@ -412,6 +432,17 @@ func _read_motion(delta: float, dt: float) -> void:
 		remaining -= h
 
 
+## El gesto que espera (WAIT_STILL) empieza apenas se queda quieto.
+func _play_waiting(delta: float) -> void:
+	if _waiting == CharacterGestures.Gesture.NONE:
+		return
+	_waiting_left -= delta
+	if _waiting_left < 0.0:
+		_waiting = CharacterGestures.Gesture.NONE
+	elif _speed <= MOVING:
+		play(_waiting)
+
+
 func _update_gesture(dt: float) -> void:
 	if _gesture == CharacterGestures.Gesture.NONE:
 		return
@@ -438,7 +469,8 @@ func _update_fidgets(dt: float) -> void:
 	if _fidget_wait > 0.0:
 		return
 	var fidget: CharacterGestures.Gesture = _pick_fidget()
-	play(fidget, false)
+	if play(fidget, false):
+		_loose = true
 	if fidget == CharacterGestures.Gesture.WATCH:
 		look_at(_watch_point, CharacterGestures.length_of(fidget))
 	_fidget_wait = _rng.randf_range(FIDGET_GAP.x, FIDGET_GAP.y)

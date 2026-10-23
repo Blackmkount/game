@@ -29,6 +29,10 @@ var transform: Transform3D
 ## Caja alineada con el mundo que contiene a la girada: para el piso, la
 ## cercanía y el marco. En un objeto girado es más grande que el objeto.
 var bounds: AABB
+## Las partes que se tocan, en el espacio del modelo como local_bounds, si no
+## es la caja entera: la estantería metálica es abierta y por sus huecos se
+## toca lo que está detrás. Vacío: se toca la caja.
+var touch_parts: Array[AABB] = []
 ## Si se resalta cuando el personaje está cerca. Los lugares libres y el
 ## personaje no: solo se tocan.
 var reachable: bool
@@ -51,14 +55,19 @@ func priority() -> int:
 	return PRIORITY[kind]
 
 
-## Distancia desde `origin` hasta donde el rayo toca la caja girada, agrandada
-## `margin` metros por lado. INF si no la toca.
+## Distancia desde `origin` hasta donde el rayo toca la caja girada (o la
+## parte más cercana de touch_parts), agrandada `margin` metros por lado. INF
+## si no la toca.
 func ray_distance(origin: Vector3, direction: Vector3, margin: float) -> float:
 	var inverse: Transform3D = transform.affine_inverse()
-	var hit: Variant = local_bounds.grow(margin).intersects_ray(inverse * origin, inverse.basis * direction)
-	if hit == null:
-		return INF
-	return origin.distance_to(transform * (hit as Vector3))
+	var local_origin: Vector3 = inverse * origin
+	var local_direction: Vector3 = inverse.basis * direction
+	if touch_parts.is_empty():
+		return _hit_distance(local_bounds.grow(margin), origin, local_origin, local_direction)
+	var nearest: float = INF
+	for part: AABB in touch_parts:
+		nearest = minf(nearest, _hit_distance(part.grow(margin), origin, local_origin, local_direction))
+	return nearest
 
 
 ## Rectángulo que ocupa en el piso, en el plano XZ.
@@ -70,3 +79,12 @@ func footprint() -> Rect2:
 func top_center() -> Vector3:
 	var center: Vector3 = bounds.get_center()
 	return Vector3(center.x, bounds.end.y, center.z)
+
+
+## Distancia desde `origin` hasta donde el rayo (en el espacio del modelo)
+## toca `box`; INF si no la toca.
+func _hit_distance(box: AABB, origin: Vector3, local_origin: Vector3, local_direction: Vector3) -> float:
+	var hit: Variant = box.intersects_ray(local_origin, local_direction)
+	if hit == null:
+		return INF
+	return origin.distance_to(transform * (hit as Vector3))

@@ -66,3 +66,9 @@ signal level_up(level: int)
 ## Hay una partida nueva o recién cargada (después de Game.reset_game).
 @warning_ignore("unused_signal")
 signal game_loaded
+
+## ColorProbe terminó de medir y cambió la cuenta de color de los
+## sombreadores (cc_base_fix, cc_sun_fix): lo que se dibujó una sola vez (las
+## vistas 3D de la interfaz) se vuelve a dibujar.
+@warning_ignore("unused_signal")
+signal color_model_changed

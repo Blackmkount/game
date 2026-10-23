@@ -9,7 +9,8 @@ extends Control
 ## el panel inferior de un objeto, el joystick, las burbujas de estado, la
 ## burbuja sobre el objeto cercano, el globo de diálogo, la pista para
 ## jugadores nuevos y el botón de zoom. Arriba de todo, la capa de
-## celebraciones (FeedbackLayer).
+## celebraciones (FeedbackLayer). Mientras se prueba una escena del panel de
+## depuración (Game.trial: nada se guarda), un botón para salir de la prueba.
 ##
 ## Se actualiza con las señales de Events: el dinero, la experiencia, los
 ## objetivos y el número de "Pedidos" cambian apenas cambia la partida.
@@ -35,6 +36,8 @@ const CONTENT_TOP: float = 150.0
 const NAV_HEIGHT: float = 116.0
 const ZOOM_BUTTON_SIZE: Vector2 = Vector2(96, 104)
 const ZOOM_LABELS: Array[String] = ["ZOOM_FAR", "ZOOM_NORMAL", "ZOOM_NEAR"]
+## El botón "Salir de la prueba", abajo a la derecha (frente al de zoom).
+const TRIAL_BADGE_SIZE: Vector2 = Vector2(260, 88)
 ## Espacio libre entre el globo de diálogo y la burbuja de cercanía.
 const SPEECH_GAP: float = 8.0
 ## Si el globo se corre hacia un costado, la cabeza tiene que quedar al menos
@@ -64,6 +67,7 @@ var _orders_button: SideButton
 var _tasks_button: SideButton
 var _nav: BottomNav
 var _zoom_button: Button
+var _trial_badge: Button
 var _zoom_index: int = 1
 var _sheet_host: Control
 var _sheet: BottomSheet
@@ -82,6 +86,7 @@ func _ready() -> void:
 	_build_objectives()
 	_build_side_buttons()
 	_build_zoom_button()
+	_build_trial_badge()
 	_build_nav()
 	_build_sheet_host()
 	_build_screen_host()
@@ -95,6 +100,7 @@ func _ready() -> void:
 	_connect_events()
 	_refresh_values()
 	_refresh_badge()
+	_refresh_trial_badge()
 
 
 func _notification(what: int) -> void:
@@ -118,6 +124,7 @@ func open_screen(screen_id: String, option: String = "") -> void:
 	_side.visible = on_home
 	status_bubbles.visible = on_home
 	_zoom_button.visible = on_home
+	_refresh_trial_badge()
 	move_hint.visible = on_home and move_hint.mode != MoveHint.Mode.NONE
 	_nav.set_active(screen_id if screen_id in ["home", "workshop", "inventory", "shop", "profile"] else "")
 	if not on_home:
@@ -151,6 +158,7 @@ func show_sheet(sheet: BottomSheet, animate: bool = true) -> void:
 	else:
 		_sheet.dock(MARGIN)
 	_zoom_button.visible = false
+	_refresh_trial_badge()
 	move_hint.visible = false
 	# El panel tapa la barra de secciones; sin esto asoma su borde debajo.
 	_nav.visible = false
@@ -165,6 +173,7 @@ func close_sheet() -> void:
 	closing.slide_out(closing.queue_free)
 	_nav.visible = true
 	_zoom_button.visible = _screen_id == "home"
+	_refresh_trial_badge()
 	move_hint.visible = _screen_id == "home" and move_hint.mode != MoveHint.Mode.NONE
 	sheet_closed.emit()
 
@@ -438,6 +447,30 @@ func _build_zoom_button() -> void:
 	set_zoom_label(_zoom_index)
 
 
+## "Salir de la prueba": se ve en la habitación mientras se prueba una escena
+## del panel de depuración (al cerrar el panel no queda otra señal de que nada
+## se guarda) y vuelve a la partida del jugador.
+func _build_trial_badge() -> void:
+	_trial_badge = Button.new()
+	_trial_badge.name = "TrialBadge"
+	_trial_badge.theme_type_variation = "PrimaryButton"
+	_trial_badge.text = tr("TRIAL_LEAVE")
+	_trial_badge.focus_mode = Control.FOCUS_NONE
+	_trial_badge.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_trial_badge.offset_right = -MARGIN
+	_trial_badge.offset_left = -MARGIN - TRIAL_BADGE_SIZE.x
+	_trial_badge.offset_bottom = -MARGIN - NAV_HEIGHT - MARGIN
+	_trial_badge.offset_top = _trial_badge.offset_bottom - TRIAL_BADGE_SIZE.y
+	_trial_badge.pressed.connect(Game.end_trial)
+	add_child(_trial_badge)
+
+
+## El botón de salir de la prueba: solo probando, en la habitación y sin un
+## panel abierto (como el de zoom).
+func _refresh_trial_badge() -> void:
+	_trial_badge.visible = Game.trial and _screen_id == "home" and _sheet == null
+
+
 func _build_nav() -> void:
 	_nav = BottomNav.new()
 	_nav.name = "BottomNav"
@@ -503,6 +536,7 @@ func _on_money_changed(money_cents: int) -> void:
 ## Partida nueva o recién cargada: todo lo que muestra el HUD puede cambiar.
 func _on_game_loaded() -> void:
 	_refresh_values()
+	_refresh_trial_badge()
 	_profile.refresh()
 	_objectives.refresh()
 	_queue_badge()

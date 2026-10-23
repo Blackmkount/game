@@ -6,7 +6,9 @@ extends PanelContainer
 ## (ProfileCard), y se cierra con su botón.
 ##
 ## Muestra, cada REFRESH_SECONDS: cuadros por segundo, llamadas de dibujo y
-## triángulos del cuadro entero (con la interfaz) y del mundo, el nivel de
+## triángulos del cuadro entero (con la interfaz y este panel) y del mundo
+## solo (con su sombra: lo que mide la prueba de presupuesto, el que se
+## compara con los topes de la biblia y de CLAUDE.md), el nivel de
 ## calidad gráfica y su modo, el ancho y el suavizado del dibujo del mundo y
 ## si el sol da sombra, el resultado de ColorProbe, si las impresoras están
 ## en su versión lejana, cuánto tardó en armarse el cuarto (el primero, con
@@ -16,9 +18,11 @@ extends PanelContainer
 ## mide); con "Más" vuelven los botones.
 ##
 ## Deja cambiar la calidad (como en Ajustes) y probar escenas sin tocar la
-## partida del jugador (Game.start_trial: nada se guarda hasta volver a abrir
-## el juego): el cuarto inicial, el taller lleno con trabajos (el mismo de la
-## prueba de presupuesto y de la captura 43) y la mañana, la tarde o la noche.
+## partida del jugador (Game.start_trial: nada se guarda hasta salir de la
+## prueba): el cuarto inicial, el taller lleno con trabajos (el de la captura
+## 43) y la mañana, la tarde o la noche. Con el taller lleno, cada hora lo
+## vuelve a armar a esa hora, con sus trabajos a medias (adelantar el reloj
+## los terminaría todos); si no, adelanta el reloj de una copia de la partida.
 
 ## Cada cuánto se actualizan los números (s).
 const REFRESH_SECONDS: float = 0.5
@@ -39,6 +43,12 @@ const WIDTH: float = 688.0
 const BUTTON_HEIGHT: float = 64.0
 const HEADER_BUTTON_WIDTH: float = 140.0
 const FONT_SIZE: int = 20
+## Sin taller lleno que probar (ver _workshop_seed).
+const NO_WORKSHOP: int = -1
+
+## La semilla del taller lleno que se está probando, o NO_WORKSHOP. Es de la
+## clase: sigue al cerrar y volver a abrir el panel.
+static var _workshop_seed: int = NO_WORKSHOP
 
 var _room: RoomView
 var _world_view: WorldViewport
@@ -138,12 +148,15 @@ func refresh() -> void:
 	var world: SubViewport = _world_view.get_node("SubViewport")
 	var world_calls: int = world.get_render_info(Viewport.RENDER_INFO_TYPE_VISIBLE, Viewport.RENDER_INFO_DRAW_CALLS_IN_FRAME) \
 		+ world.get_render_info(Viewport.RENDER_INFO_TYPE_SHADOW, Viewport.RENDER_INFO_DRAW_CALLS_IN_FRAME)
+	var world_triangles: int = world.get_render_info(Viewport.RENDER_INFO_TYPE_VISIBLE, Viewport.RENDER_INFO_PRIMITIVES_IN_FRAME) \
+		+ world.get_render_info(Viewport.RENDER_INFO_TYPE_SHADOW, Viewport.RENDER_INFO_PRIMITIVES_IN_FRAME)
 	var lines: PackedStringArray = PackedStringArray([
 		UiFormat.tr_format("DEBUG_FPS", [UiFormat.decimal(fps), UiFormat.decimal(1000.0 / fps if fps > 0.0 else 0.0)]),
 		UiFormat.tr_format("DEBUG_DRAW", [
 			UiFormat.number(int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME))),
 			UiFormat.number(world_calls),
-			UiFormat.number(int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)))]),
+			UiFormat.number(int(Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME))),
+			UiFormat.number(world_triangles)]),
 		UiFormat.tr_format("DEBUG_QUALITY", [tr(SettingsScreen.GRAPHICS_LEVELS[quality.level]), tr(SettingsScreen.GRAPHICS_MODES[quality.mode])]),
 		UiFormat.tr_format("DEBUG_WORLD", [world.size.x, _msaa_samples(world.msaa_3d), _yes_no(quality.sun_shadow())]),
 		UiFormat.tr_format("DEBUG_PROBE", [tr(PROBE_TEXT[ColorProbe.status]),
@@ -166,21 +179,29 @@ func _toggle_controls() -> void:
 
 ## Prueba con una partida nueva (el cuarto del comienzo).
 func _try_starting_room() -> void:
+	_workshop_seed = NO_WORKSHOP
 	Game.start_trial(GameState.new_game(Game.rules, randi()))
 
 
 ## Prueba con el taller lleno, en el nivel del taller y con trabajos en cada
 ## estado: lo más pesado que se puede dibujar hoy.
 func _try_full_workshop() -> void:
-	Game.start_trial(DebugTools.busy_workshop(Game.rules, randi()))
+	_workshop_seed = randi()
+	Game.start_trial(DebugTools.busy_workshop(Game.rules, _workshop_seed))
 
 
-## Adelanta el reloj hasta la próxima vez que marque `hour` (en una copia de
-## la partida si todavía no se estaba probando: la de verdad no cambia).
+## Con el taller lleno, lo vuelve a armar a la hora `hour`. Si no, adelanta el
+## reloj hasta la próxima vez que marque `hour` (en una copia de la partida
+## si todavía no se estaba probando: la de verdad no cambia).
 func _try_hour(hour: float) -> void:
 	if Game.state == null:
 		return
+	if Game.trial and _workshop_seed != NO_WORKSHOP:
+		Game.start_trial(DebugTools.busy_workshop(Game.rules, _workshop_seed, roundi(hour * GameClock.SECONDS_PER_HOUR)))
+		refresh()
+		return
 	if not Game.trial:
+		_workshop_seed = NO_WORKSHOP
 		var errors: Array[String] = []
 		var copy: GameState = SaveCodec.decode(SaveCodec.encode(Game.state), Game.rules, errors)
 		if copy == null:

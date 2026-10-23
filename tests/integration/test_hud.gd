@@ -253,6 +253,28 @@ func test_toasts_wait_their_turn_and_keep_the_latest() -> void:
 	assert_false(toast.visible)
 
 
+## El latido de una burbuja (pieza lista, falla) aclara su icono y nada
+## cambia de tamaño: agrandar la burbuja la volvía a dibujar en cada cuadro.
+func test_a_pulsing_bubble_brightens_its_icon_and_keeps_its_size() -> void:
+	var item: WorldInteractable = WorldInteractable.new(WorldInteractable.Kind.PRINTER, 2, AABB(Vector3.ZERO, Vector3.ONE))
+	var bubbles: StatusBubbles = _hud.status_bubbles
+	var index: int = bubbles.add(item)
+	var bubble: StatusBubble = bubbles.bubble(index)
+	bubble.set_state("check", "", UiPalette.XP_FILL, true)
+	bubbles.set_visible_for(index, true)
+	var icon: TextureRect = bubble.find_child("Icon", true, false)
+	var brightest: float = 0.0
+	for frame: int in 40:
+		await wait_process_frames(1)
+		brightest = maxf(brightest, icon.self_modulate.r)
+		assert_eq(bubble.scale, Vector2.ONE, "No cambia de tamaño")
+		assert_eq(icon.scale, Vector2.ONE)
+	assert_gt(brightest, 1.2, "El icono se aclara")
+	assert_eq(icon.modulate, UiPalette.XP_FILL, "Del color de su estado")
+	bubble.set_state("check", "", UiPalette.XP_FILL, false)
+	assert_eq(icon.self_modulate, Color.WHITE, "Sin latido, quieto")
+
+
 func test_status_bubbles_take_taps_only_when_shown_at_home() -> void:
 	var item: WorldInteractable = WorldInteractable.new(WorldInteractable.Kind.PRINTER, 2, AABB(Vector3.ZERO, Vector3.ONE))
 	var bubbles: StatusBubbles = _hud.status_bubbles

@@ -43,6 +43,19 @@ static func build(parent: Node3D, node_name: String, furniture_id: String, wall_
 	return root
 
 
+## Lo que se toca de un mueble armado con build() (`root`), en su espacio,
+## si no es su caja entera: las partes de la estantería metálica, que es
+## abierta (MetalRackModel.touch_parts). Vacío para los demás.
+static func touch_parts(root: Node3D, furniture_id: String) -> Array[AABB]:
+	var parts: Array[AABB] = []
+	if furniture_id != MetalRackModel.FURNITURE_ID:
+		return parts
+	var body: Node3D = root.get_node("Body")
+	for part: AABB in MetalRackModel.touch_parts():
+		parts.append(body.transform * part)
+	return parts
+
+
 ## Dónde va cada impresora del mueble (en su espacio), en orden.
 static func printer_spots(furniture_id: String) -> Array[Vector3]:
 	match furniture_id:
@@ -50,7 +63,7 @@ static func printer_spots(furniture_id: String) -> Array[Vector3]:
 			return TableModels.SIDE_TABLE_SPOTS
 		"mesa_trabajo":
 			return TableModels.WORK_TABLE_SPOTS
-		"estanteria_metalica":
+		MetalRackModel.FURNITURE_ID:
 			var spots: Array[Vector3] = []
 			for height: float in MetalRackModel.spot_heights():
 				spots.append(Vector3(0.0, height, 0.0))
@@ -73,7 +86,7 @@ static func _mesh(furniture_id: String, on_wall: bool) -> ArrayMesh:
 			return TableModels.side_table()
 		"mesa_trabajo":
 			return TableModels.work_table()
-		"estanteria_metalica":
+		MetalRackModel.FURNITURE_ID:
 			return MetalRackModel.mesh()
 		"repisa_filamento":
 			return FilamentStorageModels.filament_shelf(on_wall)
